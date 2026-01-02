@@ -139,8 +139,40 @@ async def global_cancel(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer("🚫 Process cancelled and memory cleared.", reply_markup=types.ReplyKeyboardRemove())
-# --- 3. Admin & Callback Handlers ---
 
+@dp.message(Command("admin"), F.from_user.id == ADMIN_ID)
+async def admin_dashboard(message: types.Message):
+    builder = InlineKeyboardBuilder()
+    # Row 1: Management
+    builder.row(types.InlineKeyboardButton(text="📊 Pending Projects", callback_data="view_pending"))
+    # Row 2: Communication
+    builder.row(types.InlineKeyboardButton(text="📢 Broadcast Message", callback_data="admin_broadcast"))
+    # Row 3: Stats
+    builder.row(types.InlineKeyboardButton(text="📈 Statistics", callback_data="view_stats"))
+    
+    await message.answer(
+        "🛠 **Admin Control Panel**\nSelect an action below:",
+        reply_markup=builder.as_markup()
+    )
+# --- 3. Admin & Callback Handlers ---
+@dp.callback_query(F.data == "view_pending", F.from_user.id == ADMIN_ID)
+async def admin_view_pending(callback: types.CallbackQuery):
+    conn = sqlite3.connect("bot_requests.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, subject_name, user_id FROM projects WHERE status = 'Pending'")
+    pending = cursor.fetchall()
+    conn.close()
+
+    if not pending:
+        await callback.answer("No pending projects! ✅")
+        return
+
+    text = "⏳ **Pending Projects:**\n\n"
+    for p_id, subject, u_id in pending:
+        text += f"ID: #{p_id} | {subject} (User: {u_id})\n"
+    
+    await callback.message.answer(text)
+    await callback.answer()
 @dp.message(F.text, F.from_user.id == ADMIN_ID)
 async def execute_broadcast(message: types.Message, state: FSMContext):
     # Check if we are actually waiting for broadcast text
@@ -171,6 +203,7 @@ async def execute_broadcast(message: types.Message, state: FSMContext):
 
     await message.answer(f"✅ Broadcast sent successfully to {count} users.")
     await state.clear()
+    
 @dp.message(lambda message: message.from_user.id == ADMIN_ID and message.reply_to_message)
 async def admin_reply_handler(message: types.Message):
     try:
@@ -198,7 +231,12 @@ async def admin_reply_handler(message: types.Message):
         )
         await message.answer("✅ Offer sent!")
     conn.close()
-
+@dp.callback_query(F.data == "admin_broadcast", F.from_user.id == ADMIN_ID)
+async def trigger_broadcast_from_panel(callback: types.CallbackQuery, state: FSMContext):
+    # This re-uses the logic we already built!
+    await callback.message.answer("📢 Please enter the message you want to broadcast:")
+    await state.set_state("waiting_for_broadcast_text")
+    await callback.answer()
 @dp.callback_query(F.data.startswith("accept_"))
 async def handle_accept(callback: types.CallbackQuery):
     proj_id = callback.data.split("_")[1]
@@ -225,7 +263,8 @@ async def main():
 
     # 2. Define commands for the Admin (Students see these + Broadcast)
     admin_commands = student_commands + [
-        types.BotCommand(command="broadcast", description="📢 Admin: Send msg to all students")
+       types.BotCommand(command="broadcast", description="Send msg to all"),
+       types.BotCommand(command="admin", description="🛠 Open Admin Dashboard")
     ]
 
     # 3. Apply the Student commands to everyone (Default)
