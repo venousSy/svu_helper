@@ -50,3 +50,24 @@ async def cancel_broadcast_btn(callback: types.CallbackQuery, state: FSMContext)
     await state.clear()
     await callback.message.edit_text("🚫 Broadcast cancelled.")
     await callback.answer()
+@router.callback_query(F.data == "view_pending", F.from_user.id == ADMIN_ID)
+async def admin_view_pending(callback: types.CallbackQuery):
+    """Fetches and displays all projects with 'Pending' status."""
+    # We connect to the DB directly here for now
+    conn = sqlite3.connect("bot_requests.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, subject_name, user_id FROM projects WHERE status = 'Pending'")
+    pending = cursor.fetchall()
+    conn.close()
+
+    if not pending:
+        # Use an alert so you don't have to send a new message for 'Empty'
+        await callback.answer("No pending projects! ✅", show_alert=True)
+        return
+
+    text = "⏳ **Pending Projects:**\n\n"
+    for p_id, subject, u_id in pending:
+        text += f"ID: #{p_id} | {subject} (User: {u_id})\n"
+    
+    await callback.message.answer(text)
+    await callback.answer() # This removes the 'loading' clock on the button
