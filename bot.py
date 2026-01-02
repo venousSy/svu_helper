@@ -1,109 +1,243 @@
 import asyncio
-import sqlite3 # Built-in, no install needed
-from aiogram import Bot, Dispatcher, types
+import sqlite3
+import os
+from dotenv import load_dotenv
+from aiogram import Bot, Dispatcher, types, F # Added F here
 from aiogram.filters import Command
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext 
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-ADMIN_ID = 7450958767
-# --- DATABASE LOGIC ---
-def init_db():
-    conn = sqlite3.connect("bot_requests.db") # Creates the file if it doesn't exist
+load_dotenv()
+
+API_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
+# --- 1. Database & States ---
+def init_project_db():
+    conn = sqlite3.connect("bot_requests.db")
     cursor = conn.cursor()
-    # Create the table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS requests (
+        CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
-            message_text TEXT,
-            status TEXT DEFAULT 'Pending'
+            subject_name TEXT,
+            tutor_name TEXT,
+            deadline TEXT,
+            details TEXT,
+            file_id TEXT,
+            status TEXT DEFAULT 'Pending',
+            admin_price TEXT,
+            admin_time TEXT
         )
     ''')
     conn.commit()
     conn.close()
 
-# Run the initialization
-init_db()
-# 1. Replace 'YOUR_TOKEN_HERE' with the token from BotFather
-API_TOKEN = '8395569134:AAHun2cnEbo8YJ39Y08cEKH2AMvz1_HBrZI'
+init_project_db()
 
-# 2. Initialize the Bot and the Dispatcher (the brain)
+class ProjectOrder(StatesGroup):
+    subject = State()
+    tutor = State()
+    deadline = State()
+    details = State()
+
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
 
-# 3. COMMAND HANDLERS (High Priority)
+# --- 2. Handlers (Commands & FSM) ---
+
 @dp.message(Command("start"))
 async def welcome(message: types.Message):
-    await message.answer("Hello! Send me a request.")
+    await message.answer("Hello! Use /new_project to submit a homework request.")
 
-@dp.message(lambda message: message.from_user.id == ADMIN_ID and message.reply_to_message)
-async def admin_reply_handler(message: types.Message):
-    # 1. Get the original notification text
-    original_text = message.reply_to_message.text
+@dp.message(Command("new_project"))
+async def start_project(message: types.Message, state: FSMContext):
+    await message.answer("📚 What is the **Subject Name**?")
+    await state.set_state(ProjectOrder.subject)
+
+@dp.message(ProjectOrder.subject)
+async def process_subject(message: types.Message, state: FSMContext):
+    await state.update_data(subject=message.text)
+    await message.answer("👨‍🏫 What is the **Tutor's Name**?")
+    await state.set_state(ProjectOrder.tutor)
+
+@dp.message(ProjectOrder.tutor)
+async def process_tutor(message: types.Message, state: FSMContext):
+    await state.update_data(tutor=message.text)
+    await message.answer("📅 What is the **Final Date (Deadline)**?")
+    await state.set_state(ProjectOrder.deadline)
+
+@dp.message(ProjectOrder.deadline)
+async def process_deadline(message: types.Message, state: FSMContext):
+    await state.update_data(deadline=message.text)
+    await message.answer("📝 Please send the **Project Details** (Text or PDF).")
+    await state.set_state(ProjectOrder.details)
+
+@dp.message(ProjectOrder.details)
+async def process_details(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    file_id = message.document.file_id if message.document else None
+    details_text = message.caption if message.document else message.text
     
-    # 2. Extract the Request ID (we'll look for the '#' symbol)
-    # Simple logic: split the text and find the part starting with #
-    try:
-        req_id = original_text.split("ID: #")[1].split("\n")[0]
-    except Exception:
-        await message.answer("❌ Error: Could not find the Request ID in the replied message.")
-        return
-
-    # 3. Look up the User ID in the database using the Request ID
     conn = sqlite3.connect("bot_requests.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM requests WHERE id = ?", (req_id,))
-    result = cursor.fetchone()
+    cursor.execute('''
+        INSERT INTO projects (user_id, subject_name, tutor_name, deadline, details, file_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (message.from_user.id, data['subject'], data['tutor'], data['deadline'], details_text, file_id))
     
-    if result:
-        user_to_reply = result[0]
-        
-        # 4. Send your reply to that user
-        await bot.send_message(chat_id=user_to_reply, text=f"📩 **Reply from Admin:**\n{message.text}")
-        
-        # 5. Update status in Database
-        cursor.execute("UPDATE requests SET status = 'Resolved' WHERE id = ?", (req_id,))
-        conn.commit()
-        
-        await message.answer(f"✅ Reply sent to User {user_to_reply}!")
-    else:
-        await message.answer("❌ Could not find that request in the database.")
-    
-    conn.close()
-
-@dp.message()
-async def handle_user_request(message: types.Message):
-    # 1. Get info from the message
-    uid = message.from_user.id
-    text = message.text
-# Ignore messages from the admin for now (we'll handle those later)
-    if message.from_user.id == ADMIN_ID:
-        return
-    # 2. Save to Database
-    conn = sqlite3.connect("bot_requests.db")
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO requests (user_id, message_text) VALUES (?, ?)", 
-        (uid, text)
-    )
-    request_id = cursor.lastrowid
+    project_id = cursor.lastrowid
     conn.commit()
     conn.close()
 
-    # 3. Confirm to user
-    await message.answer(f"✅ Your request (ID: {request_id}) has been saved and is pending review.")
-    # 4. Notify the ADMIN
-    notification_text = (
-        f"🔔 **NEW REQUEST**\n"
-        f"ID: #{request_id}\n"
-        f"User: {message.from_user.full_name}\n"
-        f"Message: {text}\n\n"
-        f"Reply to this message to send your answer!"
-    )
-    await bot.send_message(chat_id=ADMIN_ID, text=notification_text)
+    await message.answer(f"✅ Project #{project_id} submitted!")
+    await bot.send_message(ADMIN_ID, f"🔔 **NEW PROJECT #{project_id}**\nSub: {data['subject']}\nDetails: {details_text}")
+    await state.clear()
+@dp.message(Command("my_projects"))
+async def view_projects(message: types.Message):
+    uid = message.from_user.id
     
-# 5. Start the bot
-async def main():
-    print("Bot is running...")
-    await dp.start_polling(bot)
+    conn = sqlite3.connect("bot_requests.db")
+    cursor = conn.cursor()
+    # Fetch all projects belonging to this specific user
+    cursor.execute("SELECT id, subject_name, status FROM projects WHERE user_id = ?", (uid,))
+    projects = cursor.fetchall()
+    conn.close()
 
+    if not projects:
+        await message.answer("📭 You haven't submitted any projects yet.")
+        return
+
+    response = "📋 **Your Projects:**\n\n"
+    for p_id, subject, status in projects:
+        # Determine an emoji based on status
+        emoji = "⏳" if status == "Pending" else "✅" if status == "Accepted" else "❌"
+        response += f"#{p_id} | {subject} - {emoji} {status}\n"
+    
+    await message.answer(response)
+
+
+@dp.message(Command("broadcast"), F.from_user.id == ADMIN_ID)
+async def start_broadcast(message: types.Message, state: FSMContext):
+    # Create a Cancel Button
+    builder = InlineKeyboardBuilder()
+    builder.add(types.InlineKeyboardButton(text="❌ Cancel Broadcast", callback_data="cancel_broadcast"))
+    
+    await message.answer(
+        "📢 Please enter the message you want to broadcast to **ALL** users:",
+        reply_markup=builder.as_markup()
+    )
+    await state.set_state("waiting_for_broadcast_text")
+@dp.message(Command("cancel"))
+async def global_cancel(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        await message.answer("No active process to cancel.")
+        return
+
+    await state.clear()
+    await message.answer("🚫 Process cancelled and memory cleared.", reply_markup=types.ReplyKeyboardRemove())
+# --- 3. Admin & Callback Handlers ---
+
+@dp.message(F.text, F.from_user.id == ADMIN_ID)
+async def execute_broadcast(message: types.Message, state: FSMContext):
+    # Check if we are actually waiting for broadcast text
+    current_state = await state.get_state()
+    if current_state != "waiting_for_broadcast_text":
+        return # Skip if it's just a regular admin message
+
+    broadcast_text = message.text
+    
+    # 1. Get all unique users from the projects table
+    conn = sqlite3.connect("bot_requests.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT user_id FROM projects")
+    users = cursor.fetchall()
+    conn.close()
+
+    count = 0
+    # 2. Loop and send
+    for user in users:
+        try:
+            user_id = user[0]
+            await bot.send_message(chat_id=user_id, text=f"🔔 **ANNOUNCEMENT:**\n\n{broadcast_text}")
+            count += 1
+            # Small sleep to avoid hitting Telegram's rate limits
+            await asyncio.sleep(0.05) 
+        except Exception as e:
+            print(f"Failed to send to {user_id}: {e}")
+
+    await message.answer(f"✅ Broadcast sent successfully to {count} users.")
+    await state.clear()
+@dp.message(lambda message: message.from_user.id == ADMIN_ID and message.reply_to_message)
+async def admin_reply_handler(message: types.Message):
+    try:
+        proj_id = message.reply_to_message.text.split("#")[1].split("\n")[0].strip()
+    except:
+        return
+
+    conn = sqlite3.connect("bot_requests.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, subject_name FROM projects WHERE id = ?", (proj_id,))
+    result = cursor.fetchone()
+    
+    if result:
+        user_to_reply, subject = result
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(text="✅ Accept", callback_data=f"accept_{proj_id}"),
+            types.InlineKeyboardButton(text="❌ Deny", callback_data=f"deny_{proj_id}")
+        )
+        
+        await bot.send_message(
+            chat_id=user_to_reply, 
+            text=f"💰 **Offer for {subject}:**\n\n{message.text}", 
+            reply_markup=builder.as_markup()
+        )
+        await message.answer("✅ Offer sent!")
+    conn.close()
+
+@dp.callback_query(F.data.startswith("accept_"))
+async def handle_accept(callback: types.CallbackQuery):
+    proj_id = callback.data.split("_")[1]
+    # Update DB status to 'Accepted'
+    await callback.message.edit_text("✅ Offer Accepted! The tutor is starting.")
+    await bot.send_message(ADMIN_ID, f"🚀 Project #{proj_id} was ACCEPTED.")
+
+@dp.callback_query(F.data.startswith("deny_"))
+async def handle_deny(callback: types.CallbackQuery):
+    await callback.message.edit_text("❌ Offer Declined.")
+@dp.callback_query(F.data == "cancel_broadcast", F.from_user.id == ADMIN_ID)
+async def cancel_broadcast(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear() # This is the most important part!
+    await callback.message.edit_text("🚫 Broadcast cancelled. No messages were sent.")
+    await callback.answer("Cancelled")
+# --- 4. Launch ---
+async def main():
+    # 1. Define commands for regular Students
+    student_commands = [
+        types.BotCommand(command="start", description="Restart the bot"),
+        types.BotCommand(command="new_project", description="Submit a homework/project"),
+        types.BotCommand(command="my_projects", description="Check your orders")
+    ]
+
+    # 2. Define commands for the Admin (Students see these + Broadcast)
+    admin_commands = student_commands + [
+        types.BotCommand(command="broadcast", description="📢 Admin: Send msg to all students")
+    ]
+
+    # 3. Apply the Student commands to everyone (Default)
+    await bot.set_my_commands(student_commands, scope=types.BotCommandScopeDefault())
+
+    # 4. Apply the Admin commands ONLY to your ID
+    await bot.set_my_commands(
+        admin_commands, 
+        scope=types.BotCommandScopeChat(chat_id=ADMIN_ID)
+    )
+
+    print("Bot is running and command scopes are set...")
+    await dp.start_polling(bot)
 if __name__ == "__main__":
     asyncio.run(main())
