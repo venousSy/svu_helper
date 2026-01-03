@@ -163,3 +163,47 @@ async def view_project_details(callback: types.CallbackQuery):
         await callback.message.edit_text(text, reply_markup=builder.as_markup())
     
     await callback.answer()
+@router.callback_query(F.data.startswith("make_offer_"), F.from_user.id == ADMIN_ID)
+async def start_offer(callback: types.CallbackQuery, state: FSMContext):
+    """Triggered when admin clicks 'Send Offer'. Asks for the price/details."""
+    proj_id = callback.data.split("_")[2]
+    
+    await state.update_data(offer_proj_id=proj_id) # Save the ID for the next step
+    await state.set_state(AdminStates.waiting_for_offer)
+    
+    await callback.message.answer(f"💰 **Project #{proj_id}**\nType your price and any message for the student:")
+    await callback.answer()
+
+@router.message(AdminStates.waiting_for_offer, F.from_user.id == ADMIN_ID)
+async def send_offer_to_student(message: types.Message, state: FSMContext, bot):
+    """Captures the admin's text and sends it to the student with buttons."""
+    data = await state.get_data()
+    proj_id = data.get("offer_proj_id")
+    
+    # Fetch student ID and subject
+    result = execute_query(
+        "SELECT user_id, subject_name FROM projects WHERE id = ?", 
+        (proj_id,), 
+        fetch_one=True
+    )
+    
+    if result:
+        user_id, subject = result
+        
+        # Build the Accept/Deny buttons for the student
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(text="✅ Accept", callback_data=f"accept_{proj_id}"),
+            types.InlineKeyboardButton(text="❌ Deny", callback_data=f"deny_{proj_id}")
+        )
+        
+        # Send to Student
+        await bot.send_message(
+            chat_id=user_id,
+            text=f"🎁 **New Offer for {subject}!**\n\n{message.text}",
+            reply_markup=builder.as_markup()
+        )
+        
+        await message.answer(f"✅ Offer sent for Project #{proj_id}!")
+    
+    await state.clear()
