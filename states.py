@@ -5,6 +5,6 @@ class ProjectOrder(StatesGroup):
     tutor = State()
     deadline = State()
     details = State()
-
 class AdminStates(StatesGroup):
     waiting_for_broadcast = State()
+    waiting_for_offer = State()  # Add this line
