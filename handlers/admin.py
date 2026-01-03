@@ -68,21 +68,40 @@ async def cancel_broadcast_btn(callback: types.CallbackQuery, state: FSMContext)
     await callback.answer()
 
 # --- PROJECT MANAGEMENT ---
-
 @router.callback_query(F.data == "view_pending", F.from_user.id == ADMIN_ID)
 async def admin_view_pending(callback: types.CallbackQuery):
-    """Lists all projects currently marked as 'Pending'."""
+    """Lists all pending projects as clickable buttons."""
     pending = get_pending_projects()
 
     if not pending:
         await callback.answer("No pending projects! ✅", show_alert=True)
         return
 
-    text = "⏳ **Pending Projects:**\n\n"
-    for p_id, subject, u_id in pending:
-        text += f"ID: #{p_id} | {subject} (User ID: {u_id})\n"
+    builder = InlineKeyboardBuilder()
     
-    await callback.message.answer(text)
+    # Create a button for each project
+    for p_id, subject, u_id in pending:
+        builder.row(types.InlineKeyboardButton(
+            text=f"📂 #{p_id}: {subject}", 
+            callback_data=f"manage_{p_id}"
+        ))
+    
+    # Add a back button to return to main admin panel
+    builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
+
+    await callback.message.edit_text(
+        "📂 **Select a project to manage:**", 
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+@router.callback_query(F.data == "back_to_admin", F.from_user.id == ADMIN_ID)
+async def back_to_admin(callback: types.CallbackQuery):
+    """Returns to the main admin dashboard."""
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="📊 Pending Projects", callback_data="view_pending"))
+    builder.row(types.InlineKeyboardButton(text="📢 Broadcast Message", callback_data="admin_broadcast"))
+    
+    await callback.message.edit_text("🛠 **Admin Control Panel**", reply_markup=builder.as_markup())
     await callback.answer()
 
 # --- STUDENT INTERACTION (ACCEPT/DENY) ---
@@ -104,4 +123,43 @@ async def handle_deny(callback: types.CallbackQuery):
     update_project_status(proj_id, "Denied")
     
     await callback.message.edit_text("❌ **Offer Declined.**\nThe request has been closed.")
+    await callback.answer()
+@router.callback_query(F.data.startswith("manage_"), F.from_user.id == ADMIN_ID)
+async def view_project_details(callback: types.CallbackQuery):
+    """Shows full details of a specific project with management options."""
+    proj_id = callback.data.split("_")[1]
+    
+    # Fetch all details for this specific project
+    project = execute_query(
+        "SELECT id, subject_name, tutor_name, deadline, details, file_id FROM projects WHERE id = ?", 
+        (proj_id,), 
+        fetch_one=True
+    )
+    
+    if not project:
+        await callback.answer("Project not found! ❌")
+        return
+
+    p_id, sub, tutor, dead, details, file_id = project
+
+    text = (
+        f"📑 **Project Details: #{p_id}**\n\n"
+        f"📚 **Subject:** {sub}\n"
+        f"👨‍🏫 **Tutor:** {tutor}\n"
+        f"📅 **Deadline:** {dead}\n"
+        f"📝 **Details:** {details}\n"
+    )
+
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="💰 Send Offer", callback_data=f"make_offer_{p_id}"))
+    builder.row(types.InlineKeyboardButton(text="❌ Reject", callback_data=f"deny_{p_id}"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Back to List", callback_data="view_pending"))
+
+    # If there's a file, we send it; otherwise, we just edit the text
+    if file_id:
+        await callback.message.answer_document(file_id, caption=text, reply_markup=builder.as_markup())
+        await callback.message.delete() # Remove the menu to keep chat clean
+    else:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    
     await callback.answer()
