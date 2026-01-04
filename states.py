@@ -11,3 +11,4 @@ class AdminStates(StatesGroup):
     waiting_for_delivery = State()
     waiting_for_notes_decision = State() # Do you want notes? (Yes/No)
     waiting_for_notes_text = State()     # Type the notes here.
+    waiting_for_finished_work = State()

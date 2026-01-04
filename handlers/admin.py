@@ -1,3 +1,6 @@
+"""
+Admin Handler Module - Final Polished Version
+"""
 import asyncio
 from aiogram import Router, F, types
 from aiogram.filters import Command
@@ -10,12 +13,14 @@ from database import get_pending_projects, update_project_status, execute_query
 
 router = Router()
 
-# --- ADMIN DASHBOARD & NAVIGATION ---
+# --- ADMIN DASHBOARD ---
 
 @router.message(Command("admin"), F.from_user.id == ADMIN_ID)
 async def admin_dashboard(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="📊 Pending Projects", callback_data="view_pending"))
+    builder.row(types.InlineKeyboardButton(text="✅ Accepted/Ongoing", callback_data="view_accepted"))
+    builder.row(types.InlineKeyboardButton(text="📜 Project History", callback_data="view_history"))
     builder.row(types.InlineKeyboardButton(text="📢 Broadcast Message", callback_data="admin_broadcast"))
     await message.answer("🛠 **Admin Control Panel**", reply_markup=builder.as_markup())
 
@@ -23,6 +28,8 @@ async def admin_dashboard(message: types.Message):
 async def back_to_admin(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="📊 Pending Projects", callback_data="view_pending"))
+    builder.row(types.InlineKeyboardButton(text="✅ Accepted/Ongoing", callback_data="view_accepted"))
+    builder.row(types.InlineKeyboardButton(text="📜 Project History", callback_data="view_history"))
     builder.row(types.InlineKeyboardButton(text="📢 Broadcast Message", callback_data="admin_broadcast"))
     await callback.message.edit_text("🛠 **Admin Control Panel**", reply_markup=builder.as_markup())
 
@@ -31,7 +38,7 @@ async def back_to_admin(callback: types.CallbackQuery):
 @router.callback_query(F.data == "admin_broadcast", F.from_user.id == ADMIN_ID)
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
     builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_broadcast"))
+    builder.add(types.InlineKeyboardButton(text="❌ Cancel", callback_data="back_to_admin"))
     await callback.message.answer("📢 Enter broadcast message:", reply_markup=builder.as_markup())
     await state.set_state(AdminStates.waiting_for_broadcast)
 
@@ -48,45 +55,42 @@ async def execute_broadcast(message: types.Message, state: FSMContext, bot):
     await message.answer(f"✅ Sent to {count} users.")
     await state.clear()
 
-# --- PROJECT MANAGEMENT ---
+# --- PROJECT MANAGEMENT (PENDING) ---
 
 @router.callback_query(F.data == "view_pending", F.from_user.id == ADMIN_ID)
 async def admin_view_pending(callback: types.CallbackQuery):
     pending = get_pending_projects()
+    builder = InlineKeyboardBuilder()
     if not pending:
-        await callback.answer("No pending projects! ✅", show_alert=True)
+        builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
+        await callback.message.edit_text("No pending projects! ✅", reply_markup=builder.as_markup())
         return
 
-    builder = InlineKeyboardBuilder()
     for p_id, subject, u_id in pending:
         builder.row(types.InlineKeyboardButton(text=f"📂 #{p_id}: {subject}", callback_data=f"manage_{p_id}"))
     builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
     await callback.message.edit_text("📂 **Select a project:**", reply_markup=builder.as_markup())
 
-@router.callback_query(F.data.startswith("manage_"), F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("manage_"), ~(F.data.contains("accepted")), F.from_user.id == ADMIN_ID)
 async def view_project_details(callback: types.CallbackQuery):
     proj_id = callback.data.split("_")[1]
-    project = execute_query(
-        "SELECT id, subject_name, tutor_name, deadline, details, file_id FROM projects WHERE id = ?", 
-        (proj_id,), fetch_one=True
-    )
+    project = execute_query("SELECT id, subject_name, tutor_name, deadline, details, file_id FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
+    
     if not project: return
-
     p_id, sub, tutor, dead, details, file_id = project
-    text = f"📑 **Project #{p_id}**\n\n**Sub:** {sub}\n**Tutor:** {tutor}\n**Date:** {dead}\n**Notes:** {details}"
-
+    text = f"📑 **Pending Project #{p_id}**\n\n**Sub:** {sub}\n**Tutor:** {tutor}\n**Date:** {dead}\n**Notes:** {details}"
+    
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="💰 Send Offer", callback_data=f"make_offer_{p_id}"))
     builder.row(types.InlineKeyboardButton(text="❌ Reject", callback_data=f"deny_{p_id}"))
     builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="view_pending"))
-
+    
     if file_id:
         await callback.message.answer_document(file_id, caption=text, reply_markup=builder.as_markup())
         await callback.message.delete()
     else:
         await callback.message.edit_text(text, reply_markup=builder.as_markup())
-
-# --- THE OFFER STAIRCASE (FIXED NOTES LOGIC) ---
+# --- OFFER FLOW ---
 
 @router.callback_query(F.data.startswith("make_offer_"), F.from_user.id == ADMIN_ID)
 async def start_offer_flow(callback: types.CallbackQuery, state: FSMContext):
@@ -116,7 +120,6 @@ async def process_notes_decision(message: types.Message, state: FSMContext, bot)
         await message.answer("🖋 Type your notes:", reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(AdminStates.waiting_for_notes_text)
     else:
-        # Finalize immediately with "None"
         await finalize_and_send_offer(message, state, bot, notes_text="None")
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id == ADMIN_ID)
@@ -126,66 +129,99 @@ async def process_notes_text(message: types.Message, state: FSMContext, bot):
 async def finalize_and_send_offer(message: types.Message, state: FSMContext, bot, notes_text: str):
     data = await state.get_data()
     proj_id = data['offer_proj_id']
-    
     result = execute_query("SELECT user_id, subject_name FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
     if result:
         user_id, subject = result
-        offer_text = (
-            f"🎁 **New Offer for {subject}!**\n━━━━━━━━━━━━━\n"
-            f"💰 **Price:** {data['price']}\n📅 **Delivery:** {data['delivery']}\n"
-            f"📝 **Notes:** {notes_text}\n━━━━━━━━━━━━━"
-        )
+        offer_text = (f"🎁 **New Offer for {subject}!**\n━━━━━━━━━━━━━\n"
+                      f"💰 **Price:** {data['price']}\n📅 **Delivery:** {data['delivery']}\n"
+                      f"📝 **Notes:** {notes_text}\n━━━━━━━━━━━━━")
         builder = InlineKeyboardBuilder()
         builder.row(types.InlineKeyboardButton(text="✅ Accept", callback_data=f"accept_{proj_id}"))
         builder.row(types.InlineKeyboardButton(text="❌ Deny", callback_data=f"deny_{proj_id}"))
-        
         await bot.send_message(user_id, offer_text, reply_markup=builder.as_markup())
         await message.answer(f"✅ Offer sent!", reply_markup=types.ReplyKeyboardRemove())
     await state.clear()
 
-# --- STATUS CALLBACKS (FIXED DENY LOGIC) ---
+# --- ONGOING & FINISHING WORK ---
+
+@router.callback_query(F.data == "view_accepted", F.from_user.id == ADMIN_ID)
+async def admin_view_accepted(callback: types.CallbackQuery):
+    accepted = execute_query("SELECT id, subject_name FROM projects WHERE status = 'Accepted'", fetch=True)
+    builder = InlineKeyboardBuilder()
+    if not accepted:
+        builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
+        await callback.message.edit_text("No ongoing projects. 🏖", reply_markup=builder.as_markup())
+        return
+    for p_id, subject in accepted:
+        builder.row(types.InlineKeyboardButton(text=f"🚀 #{p_id}: {subject}", callback_data=f"manage_accepted_{p_id}"))
+    builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
+    await callback.message.edit_text("🚀 **Ongoing Projects:**", reply_markup=builder.as_markup())
+
+@router.callback_query(F.data.startswith("manage_accepted_"), F.from_user.id == ADMIN_ID)
+async def manage_accepted_project(callback: types.CallbackQuery, state: FSMContext):
+    # Extract ID correctly: manage_accepted_123 -> split by _ is ['manage', 'accepted', '123']
+    parts = callback.data.split("_")
+    proj_id = parts[2] 
+    
+    await state.update_data(finish_proj_id=proj_id)
+    await state.set_state(AdminStates.waiting_for_finished_work)
+    
+    await callback.message.answer(
+        f"📤 **Project #{proj_id}**\n\n"
+        "Please **upload the final file** or type the final message for the student."
+    )
+    await callback.answer()
+
+@router.message(AdminStates.waiting_for_finished_work, F.from_user.id == ADMIN_ID)
+async def process_finished_work(message: types.Message, state: FSMContext, bot):
+    data = await state.get_data()
+    proj_id = data.get('finish_proj_id')
+    result = execute_query("SELECT user_id, subject_name FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
+    if result:
+        user_id, subject = result
+        await bot.send_message(user_id, f"🎉 **WORK COMPLETED!**\nProject: {subject} (#{proj_id})")
+        if message.document: await bot.send_document(user_id, message.document.file_id, caption=message.caption)
+        elif message.photo: await bot.send_photo(user_id, message.photo[-1].file_id, caption=message.caption)
+        else: await bot.send_message(user_id, message.text)
+        update_project_status(proj_id, "Finished")
+        await message.answer(f"✅ Project #{proj_id} Finished!")
+    await state.clear()
+
+# --- HISTORY ---
+
+@router.callback_query(F.data == "view_history", F.from_user.id == ADMIN_ID)
+async def admin_view_history(callback: types.CallbackQuery):
+    history = execute_query("SELECT id, subject_name, status FROM projects WHERE status IN ('Denied', 'Finished')", fetch=True)
+    builder = InlineKeyboardBuilder()
+    if not history:
+        builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
+        await callback.message.edit_text("History is empty. 📭", reply_markup=builder.as_markup())
+        return
+    text = "📜 **Project History:**\n\n"
+    for p_id, subject, status in history:
+        icon = "❌" if status == "Denied" else "🏁"
+        text += f"{icon} #{p_id} | {subject} ({status})\n"
+    builder.row(types.InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_admin"))
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+
+# --- STUDENT CALLBACKS (NO ADMIN FILTER) ---
 
 @router.callback_query(F.data.startswith("accept_"))
 async def handle_accept(callback: types.CallbackQuery, bot):
     proj_id = callback.data.split("_")[1]
     update_project_status(proj_id, "Accepted")
-    await callback.message.edit_text("✅ **Offer Accepted!**\nThe tutor has been notified.")
+    await callback.message.edit_text("✅ **Offer Accepted!**")
     await bot.send_message(ADMIN_ID, f"🚀 Project #{proj_id} ACCEPTED!")
 
 @router.callback_query(F.data.startswith("deny_"))
 async def handle_deny(callback: types.CallbackQuery, bot):
-    """
-    Fixed Deny Logic:
-    1. Works for both Admin (from dashboard) and Student (from offer).
-    2. Uses explicit string conversion for ID comparison.
-    """
     proj_id = callback.data.split("_")[1]
-    
-    # 1. Update the database first
     update_project_status(proj_id, "Denied")
-    
-    # 2. Check WHO clicked it (use strings to be 100% safe)
-    is_admin = str(callback.from_user.id) == str(ADMIN_ID)
-    
-    if not is_admin:
-        # STUDENT CLICKED DENY
-        # Notify the Admin
-        await bot.send_message(
-            ADMIN_ID, 
-            f"❌ **Offer Declined:** Student has rejected the offer for Project #{proj_id}."
-        )
-        # Update the student's screen
-        await callback.message.edit_text("❌ You have declined the offer. The request is now closed.")
+    if str(callback.from_user.id) == str(ADMIN_ID):
+        res = execute_query("SELECT user_id FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
+        if res: await bot.send_message(res[0], f"❌ Project #{proj_id} declined by admin.")
+        await callback.message.edit_text("🚫 Project rejected.")
     else:
-        # ADMIN CLICKED DENY (from the pending list)
-        result = execute_query("SELECT user_id FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
-        if result:
-            student_id = result[0]
-            try:
-                await bot.send_message(student_id, f"❌ Your project #{proj_id} was declined by the admin.")
-            except Exception as e:
-                print(f"Could not notify student: {e}")
-        
-        await callback.message.edit_text(f"🚫 Project #{proj_id} rejected.")
-
+        await bot.send_message(ADMIN_ID, f"❌ Student declined Project #{proj_id}.")
+        await callback.message.edit_text("❌ You declined the offer.")
     await callback.answer()
