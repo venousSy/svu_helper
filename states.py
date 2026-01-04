@@ -5,6 +5,7 @@ class ProjectOrder(StatesGroup):
     tutor = State()
     deadline = State()
     details = State()
+    waiting_for_payment_proof = State()
 class AdminStates(StatesGroup):
     waiting_for_broadcast = State()
     waiting_for_price = State()
