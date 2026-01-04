@@ -46,3 +46,13 @@ def update_project_status(project_id, status):
         "UPDATE projects SET status = ? WHERE id = ?", 
         (status, project_id)
     )
+def update_project_status(project_id, new_status):
+    """Updates the status of a project with a descriptive string."""
+    execute_query(
+        "UPDATE projects SET status = ? WHERE id = ?",
+        (new_status, project_id)
+    )
+
+def get_all_projects_categorized():
+    """Fetches all projects to be sorted in the Admin panel."""
+    return execute_query("SELECT id, subject_name, status FROM projects", fetch=True)
