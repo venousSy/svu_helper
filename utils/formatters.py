@@ -48,3 +48,38 @@ def format_master_report(projects):
             report_text += f"**{cat_title}**\n" + "\n".join(items) + "\n\n"
             
     return report_text.strip()
+def format_student_projects(projects):
+    """
+    Formats the project list specifically for the student view.
+    Includes status-specific emojis for better UX.
+    """
+    if not projects:
+        return "📭 You haven't submitted any projects yet."
+
+    response = "📋 **Your Project Status:**\n━━━━━━━━━━━━━━━━━━\n\n"
+    for p_id, subject, status in projects:
+        # Map statuses to emojis
+        if status == "Pending":
+            emoji = "⏳"
+        elif status in ["Accepted", "Awaiting Verification"]:
+            emoji = "🚀"
+        elif status == "Finished":
+            emoji = "✅"
+        elif "Denied" in status or "Rejected" in status:
+            emoji = "❌"
+        else:
+            emoji = "ℹ️"
+            
+        response += f"• #{p_id} | {subject}\n   ┗ Status: {emoji} {status}\n\n"
+        
+    return response.strip()
+
+def format_admin_notification(p_id, subject, deadline, details):
+    """Formats the alert sent to the admin when a new project arrives."""
+    return (
+        f"🔔 **NEW PROJECT #{p_id}**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"📚 **Sub:** {subject}\n"
+        f"📅 **Deadline:** {deadline}\n"
+        f"📝 **Details:** {details}"
+    )
