@@ -9,8 +9,8 @@ async def main():
     dp = Dispatcher()
 
     # Registering Routers
-    dp.include_router(common.router)
     dp.include_router(admin.router)
+    dp.include_router(common.router)
     dp.include_router(client.router)
 
     # Set up menus
