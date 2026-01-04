@@ -47,3 +47,7 @@ def update_project_status(project_id, new_status, db_path=DB_NAME):
 
 def get_all_projects_categorized(db_path=DB_NAME):
     return execute_query("SELECT id, subject_name, status FROM projects", fetch=True, db_path=db_path)
+def get_all_users(db_path=DB_NAME):
+    """Returns a list of unique user_ids who have submitted projects."""
+    rows = execute_query("SELECT DISTINCT user_id FROM projects", fetch=True, db_path=db_path)
+    return [row[0] for row in rows]
