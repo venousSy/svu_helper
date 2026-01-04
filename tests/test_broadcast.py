@@ -25,3 +25,10 @@ def test_unique_user_broadcast_logic():
     assert len(users) == 2  # Should be 2 users, not 3 projects
     assert 111 in users
     assert 222 in users
+def test_broadcast_on_empty_db():
+    # Setup: Ensure DB is empty
+    users = get_all_users(db_path="test_broadcast.db")
+    
+    # Logic: Should return an empty list, not None or crash
+    assert isinstance(users, list)
+    assert len(users) == 0
