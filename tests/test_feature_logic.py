@@ -45,11 +45,12 @@ def test_project_lifecycle():
 
 def test_rejection_reasons():
     proj_id = add_project(99, "Bad Project", "Tutor Z", "Date", "Notes", "File", db_path=TEST_DB)
-    
     update_project_status(proj_id, "Rejected: Payment Issue", db_path=TEST_DB)
+
+    all_projects_dict = get_all_projects_categorized(db_path=TEST_DB)
+
+    # Rejections are stored in "History"
+    # Find the specific project in the History list
+    project_entry = next(p for p in all_projects_dict["History"] if p[0] == proj_id)
     
-    all_projects = get_all_projects_categorized(db_path=TEST_DB)
-    
-    # Find the specific project in the list
-    project_entry = next(p for p in all_projects if p[0] == proj_id)
     assert "Payment Issue" in project_entry[2]
