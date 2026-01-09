@@ -11,9 +11,21 @@ from aiogram.fsm.context import FSMContext
 
 from config import ADMIN_ID
 from states import ProjectOrder
-from database import add_project, get_user_projects
-from utils.formatters import format_student_projects, format_admin_notification
+# Update these lines at the top of handlers/client.py
+from database import (
+    add_project, 
+    get_user_projects, 
+    get_student_offers,  # <--- Add this
+    execute_query
+)
+from utils.formatters import (
+    format_student_projects, 
+    format_admin_notification, 
+    format_offer_list    # <--- Add this
+)
+
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
 # Initialize router for student-related events
 router = Router()
 
@@ -155,3 +167,43 @@ async def view_projects(message: types.Message):
     # Generate the formatted response (handles empty lists internally)
     response = format_student_projects(projects)
     await message.answer(response)
+
+
+@router.message(Command("my_offers"))
+async def view_offers(message: types.Message):
+    """Shows the student all projects where an admin has sent an offer."""
+    offers = get_student_offers(message.from_user.id)
+    text = format_offer_list(offers)
+    
+    builder = InlineKeyboardBuilder()
+    for p_id, sub, _ in offers:
+        # This allows them to "re-fetch" the offer details
+        builder.row(types.InlineKeyboardButton(
+            text=f"View Offer #{p_id}", 
+            callback_data=f"view_offer_{p_id}"
+        ))
+    
+    await message.answer(text, reply_markup=builder.as_markup())
+
+@router.callback_query(F.data.startswith("view_offer_"))
+async def show_specific_offer(callback: types.CallbackQuery):
+    proj_id = callback.data.split("_")[2]
+    
+    # Query the new columns!
+    res = execute_query(
+        "SELECT subject_name, price, delivery_date FROM projects WHERE id = ?", 
+        (proj_id,), fetch_one=True
+    )
+    
+    if res:
+        subject, price, delivery = res
+        text = (f"🎁 **Offer Details: {subject}**\n━━━━━━━━━━━━━\n"
+                f"💰 **Price:** {price}\n"
+                f"📅 **Delivery:** {delivery}\n"
+                f"🆔 **Project ID:** #{proj_id}\n━━━━━━━━━━━━━")
+        
+        builder = InlineKeyboardBuilder()
+        builder.row(types.InlineKeyboardButton(text="✅ Accept", callback_data=f"accept_{proj_id}"))
+        builder.row(types.InlineKeyboardButton(text="❌ Deny", callback_data=f"deny_{proj_id}"))
+        
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
