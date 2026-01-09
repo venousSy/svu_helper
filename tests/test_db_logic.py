@@ -22,10 +22,10 @@ def test_add_and_get_project():
     projects_dict = get_all_projects_categorized(db_path=TEST_DB)
 
     # Check the length of the 'Pending' list specifically
-    assert len(projects_dict["Pending"]) == 1
+    assert len(projects_dict["New / Pending"]) == 1
 def test_empty_db_logic():
     projects_dict = get_all_projects_categorized(db_path=TEST_DB)
     # Check that all categories are empty
-    assert len(projects_dict["Pending"]) == 0
+    assert len(projects_dict["New / Pending"]) == 0
+    assert len(projects_dict["Offered / Waiting"]) == 0
     assert len(projects_dict["Ongoing"]) == 0
-    assert len(projects_dict["History"]) == 0

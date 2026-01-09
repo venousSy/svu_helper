@@ -22,7 +22,7 @@ def test_admin_list_segregation():
     categorized = get_all_projects_categorized(db_path=TEST_DB)
 
     # These assertions will now PASS because categorized is a dict
-    assert len(categorized["Pending"]) == 1
+    assert len(categorized["New / Pending"]) == 1
     assert len(categorized["History"]) == 1
     assert categorized["Pending"][0][1] == "Math"
     assert categorized["History"][0][1] == "History"
