@@ -14,6 +14,7 @@ def execute_query(query, params=(), fetch=False, fetch_one=False, db_path=DB_NAM
         return cursor.lastrowid
 
 def init_db(db_path=DB_NAME):
+    """Initializes the database with all necessary columns for the full workflow."""
     execute_query('''
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +24,9 @@ def init_db(db_path=DB_NAME):
             deadline TEXT,
             details TEXT,
             file_id TEXT,
-            status TEXT DEFAULT 'Pending'
+            status TEXT DEFAULT 'Pending',
+            price TEXT,           -- Added for /my_offers
+            delivery_date TEXT    -- Added for /my_offers
         )
     ''', db_path=db_path)
 
@@ -77,3 +80,10 @@ def get_all_users(db_path=DB_NAME):
     """Returns a list of unique user_ids who have submitted projects."""
     rows = execute_query("SELECT DISTINCT user_id FROM projects", fetch=True, db_path=db_path)
     return [row[0] for row in rows]
+def get_student_offers(user_id, db_path="bot_requests.db"):
+    """Retrieves all projects for a user that currently have an active offer."""
+    query = "SELECT id, subject_name, tutor_name FROM projects WHERE user_id = ? AND status = 'Offered'"
+    return execute_query(query, (user_id,), fetch=True, db_path=db_path)
+def update_offer_details(proj_id, price, delivery, db_path="bot_requests.db"):
+    query = "UPDATE projects SET status = 'Offered', price = ?, delivery_date = ? WHERE id = ?"
+    execute_query(query, (price, delivery, proj_id), db_path=db_path)

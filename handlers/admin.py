@@ -15,7 +15,7 @@ from config import ADMIN_ID
 from states import AdminStates, ProjectOrder
 from database import (
     get_pending_projects, update_project_status, execute_query, 
-    get_all_projects_categorized
+    get_all_projects_categorized,update_offer_details
 )
 from utils.formatters import format_project_list, format_project_history, format_master_report
 
@@ -193,6 +193,7 @@ async def finalize_and_send_offer(message: types.Message, state: FSMContext, bot
     res = execute_query("SELECT user_id, subject_name FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
     
     if res:
+        update_offer_details(proj_id, data['price'], data['delivery'])
         update_project_status(proj_id, "Offered")
         user_id, subject = res
         offer_text = (f"🎁 **New Offer for {subject}!**\n━━━━━━━━━━━━━\n"

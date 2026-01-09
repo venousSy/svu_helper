@@ -86,3 +86,14 @@ def format_admin_notification(p_id, subject, deadline, details):
         f"📅 **Deadline:** {deadline}\n"
         f"📝 **Details:** {details}"
     )
+def format_offer_list(offers: list) -> str:
+    """Formats a list of pending offers for the student."""
+    if not offers:
+        return "📪 **You have no pending offers at the moment.**"
+    
+    text = "🎁 **Your Pending Offers**\n" + "━" * 15 + "\n"
+    for p_id, sub, tutor in offers:
+        text += f"📍 **Project #{p_id}**: {sub}\n└ _Tutor: {tutor}_\n\n"
+    
+    text += "💡 Click a button below to view the offer details and respond."
+    return text
