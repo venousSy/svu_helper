@@ -45,33 +45,18 @@ def update_project_status(project_id, new_status, db_path=DB_NAME):
         (new_status, project_id), db_path=db_path
     )
 
-def get_all_projects_categorized(db_path=DB_NAME):
-    """
-    PRO UPDATE: Returns a dictionary instead of a list.
-    This fixes the TypeError in tests and makes the code more readable.
-    """
-    # 1. Fetch data for each category
-    pending = execute_query(
-        "SELECT id, subject_name FROM projects WHERE status = 'Pending'", 
-        fetch=True, db_path=db_path
-    )
-    ongoing = execute_query(
-        "SELECT id, subject_name FROM projects WHERE status = 'Accepted'", 
-        fetch=True, db_path=db_path
-    )
-    # History includes everything finished or denied
-    history = execute_query(
-        "SELECT id, subject_name, status FROM projects WHERE status IN ('Finished', 'Denied') "
-        "OR status LIKE 'Rejected%' OR status LIKE 'Denied%'", 
-        fetch=True, db_path=db_path
-    )
+def get_all_projects_categorized(db_path=DB_NAME): 
+    """Returns a dictionary of projects grouped by their status."""
+    statuses = ["Pending", "Accepted", "Finished", "Denied"]
+    report = {}
     
-    return {
-        "Pending": pending,
-        "Ongoing": ongoing,
-        "History": history
-    }
-
+    for status in statuses:
+        # Pass the db_path into the execute_query call
+        query = "SELECT id, subject_name FROM projects WHERE status LIKE ?"
+        results = execute_query(query, (f"{status}%",), fetch=True, db_path=db_path)
+        report[status] = results
+    
+    return report
 def get_all_users(db_path=DB_NAME):
     """Returns a list of unique user_ids who have submitted projects."""
     rows = execute_query("SELECT DISTINCT user_id FROM projects", fetch=True, db_path=db_path)
