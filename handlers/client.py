@@ -13,7 +13,7 @@ from config import ADMIN_ID
 from states import ProjectOrder
 from database import add_project, get_user_projects
 from utils.formatters import format_student_projects, format_admin_notification
-
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 # Initialize router for student-related events
 router = Router()
 
@@ -102,6 +102,46 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     # Clear FSM state to allow new commands
     await state.clear()
 
+
+@router.callback_query(F.data.startswith("accept_"))
+async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext):
+    """Student clicks 'Accept' on the offer."""
+    proj_id = callback.data.split("_")[1]
+    
+    # Store the project ID in FSM so we know which project the receipt belongs to
+    await state.update_data(active_pay_proj_id=proj_id)
+    
+    await callback.message.edit_text(
+        f"✅ **You've accepted the offer for Project #{proj_id}!**\n\n"
+        "💳 Please send the **Payment Receipt** (Photo or PDF) to begin the work."
+    )
+    # Set the state defined in your states.py
+    await state.set_state(ProjectOrder.waiting_for_payment_proof)
+    await callback.answer()
+
+@router.message(ProjectOrder.waiting_for_payment_proof, F.photo | F.document)
+async def process_payment_proof(message: types.Message, state: FSMContext, bot):
+    """Student sends the receipt; we relay it to the Admin for verification."""
+    data = await state.get_data()
+    proj_id = data.get("active_pay_proj_id")
+    
+    # Identify the file
+    file_id = message.photo[-1].file_id if message.photo else message.document.file_id
+    
+    # Notify Student
+    await message.answer("📨 **Receipt received!**\nWaiting for admin to verify payment. You will be notified once work starts.")
+    
+    # Notify Admin (Using buttons you already handled in admin.py)
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        types.InlineKeyboardButton(text="✅ Confirm Pay", callback_data=f"confirm_pay_{proj_id}"),
+        types.InlineKeyboardButton(text="❌ Reject Pay", callback_data=f"reject_pay_{proj_id}")
+    )
+    
+    await bot.send_message(ADMIN_ID, f"💰 **PAYMENT PROOF: Project #{proj_id}**")
+    await bot.send_photo(ADMIN_ID, file_id, caption=f"Verify payment for Project #{proj_id}", reply_markup=builder.as_markup())
+    
+    await state.clear()
 # --- PROJECT STATUS LOOKUP ---
 
 @router.message(Command("my_projects"))

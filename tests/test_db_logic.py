@@ -19,13 +19,13 @@ def setup_teardown():
 
 def test_add_and_get_project():
     add_project(123, "Math", "Dr. Smith", "2026-01-01", "Details", None, db_path=TEST_DB)
-    
-    projects = get_all_projects_categorized(db_path=TEST_DB)
-    
-    assert len(projects) == 1
-    assert projects[0][1] == "Math"
+    projects_dict = get_all_projects_categorized(db_path=TEST_DB)
 
+    # Check the length of the 'Pending' list specifically
+    assert len(projects_dict["Pending"]) == 1
 def test_empty_db_logic():
-    # The fixture has already run "DELETE FROM projects", so this is guaranteed empty
-    projects = get_all_projects_categorized(db_path=TEST_DB)
-    assert len(projects) == 0
+    projects_dict = get_all_projects_categorized(db_path=TEST_DB)
+    # Check that all categories are empty
+    assert len(projects_dict["Pending"]) == 0
+    assert len(projects_dict["Ongoing"]) == 0
+    assert len(projects_dict["History"]) == 0
