@@ -63,9 +63,13 @@ def get_all_projects_categorized(db_path="bot_requests.db"):
         "OR status LIKE 'Rejected%' OR status LIKE 'Denied%'", 
         fetch=True, db_path=db_path
     )
-    
+    offered = execute_query(
+        "SELECT id, subject_name, tutor_name FROM projects WHERE status = 'Offered'", 
+        fetch=True, db_path=db_path
+    )
     return {
-        "Pending": pending,
+        "New / Pending": pending,
+        "Offered / Waiting": offered,
         "Ongoing": ongoing,
         "History": history
     }

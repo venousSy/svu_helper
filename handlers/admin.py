@@ -193,6 +193,7 @@ async def finalize_and_send_offer(message: types.Message, state: FSMContext, bot
     res = execute_query("SELECT user_id, subject_name FROM projects WHERE id = ?", (proj_id,), fetch_one=True)
     
     if res:
+        update_project_status(proj_id, "Offered")
         user_id, subject = res
         offer_text = (f"🎁 **New Offer for {subject}!**\n━━━━━━━━━━━━━\n"
                       f"💰 **Price:** {data['price']}\n📅 **Delivery:** {data['delivery']}\n"
