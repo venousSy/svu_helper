@@ -44,19 +44,31 @@ def update_project_status(project_id, new_status, db_path=DB_NAME):
         "UPDATE projects SET status = ? WHERE id = ?",
         (new_status, project_id), db_path=db_path
     )
-
-def get_all_projects_categorized(db_path=DB_NAME): 
-    """Returns a dictionary of projects grouped by their status."""
-    statuses = ["Pending", "Accepted", "Finished", "Denied"]
-    report = {}
+def get_all_projects_categorized(db_path="bot_requests.db"):
+    """Returns a dictionary of projects grouped by status."""
+    # Note: We now select THREE columns: id, subject_name, and tutor_name
+    pending = execute_query(
+        "SELECT id, subject_name, tutor_name FROM projects WHERE status = 'Pending'", 
+        fetch=True, db_path=db_path
+    )
     
-    for status in statuses:
-        # Pass the db_path into the execute_query call
-        query = "SELECT id, subject_name FROM projects WHERE status LIKE ?"
-        results = execute_query(query, (f"{status}%",), fetch=True, db_path=db_path)
-        report[status] = results
+    ongoing = execute_query(
+        "SELECT id, subject_name, tutor_name FROM projects WHERE status IN ('Accepted', 'Awaiting Verification')", 
+        fetch=True, db_path=db_path
+    )
     
-    return report
+    # Selecting the 3rd value as 'status' for the History category logic
+    history = execute_query(
+        "SELECT id, subject_name, status FROM projects WHERE status IN ('Finished', 'Denied') "
+        "OR status LIKE 'Rejected%' OR status LIKE 'Denied%'", 
+        fetch=True, db_path=db_path
+    )
+    
+    return {
+        "Pending": pending,
+        "Ongoing": ongoing,
+        "History": history
+    }
 def get_all_users(db_path=DB_NAME):
     """Returns a list of unique user_ids who have submitted projects."""
     rows = execute_query("SELECT DISTINCT user_id FROM projects", fetch=True, db_path=db_path)
