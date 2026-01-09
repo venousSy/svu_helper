@@ -20,23 +20,23 @@ def format_project_history(projects):
     return text.strip()
 
 def format_master_report(categorized_data: dict) -> str:
-    """Formats the categorized project dictionary into a readable summary."""
-    text = "📋 **MASTER PROJECT REPORT**\n" + "━" * 15 + "\n"
+    text = "📑 **MASTER PROJECT REPORT**\n" + "━" * 15 + "\n"
     
-    for status, projects in categorized_data.items():
-        count = len(projects)
-        icon = {"Pending": "⏳", "Accepted": "🚀", "Finished": "✅", "Denied": "❌"}.get(status, "🔹")
-        
-        text += f"\n{icon} **{status}** ({count})\n"
+    for status_key, projects in categorized_data.items():
+        text += f"\n🔹 **{status_key.upper()}**\n"
         if not projects:
-            text += "└ _No projects in this category_\n"
-        else:
-            for p_id, sub, tutor in projects[:5]: # Show only top 5 to avoid message length limits
-                text += f"└ #{p_id}: {sub} ({tutor})\n"
-            if count > 5:
-                text += f"   ... and {count-5} more.\n"
-                
-    return text
+            text += "└ _No projects_\n"
+            continue
+
+        for item in projects[:5]:
+            p_id = item[0]
+            sub = item[1]
+            # Use a fallback if the 3rd value (tutor or status) isn't there
+            extra = item[2] if len(item) > 2 else "N/A"
+            
+            text += f"└ #{p_id}: {sub} ({extra})\n"
+            
+    return text.strip()
 def format_student_projects(projects):
     """
     Formats the project list specifically for the student view.
