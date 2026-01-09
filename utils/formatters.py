@@ -19,35 +19,24 @@ def format_project_history(projects):
         text += f"{icon} #{p_id} | {subject} ({status})\n"
     return text.strip()
 
-def format_master_report(projects):
-    """Categorized master list for the admin."""
-    if not projects:
-        return "No projects found in database."
-
-    categories = {
-        "⏳ PENDING": [],
-        "🚀 ONGOING": [],
-        "🏁 FINISHED": [],
-        "🚫 STOPPED/DENIED": []
-    }
-
-    for p_id, subject, status in projects:
-        line = f"• #{p_id}: {subject}"
-        if status == "Pending":
-            categories["⏳ PENDING"].append(line)
-        elif status in ["Accepted", "Awaiting Verification"]:
-            categories["🚀 ONGOING"].append(f"{line} ({status})")
-        elif status == "Finished":
-            categories["🏁 FINISHED"].append(line)
+def format_master_report(categorized_data: dict) -> str:
+    """Formats the categorized project dictionary into a readable summary."""
+    text = "📋 **MASTER PROJECT REPORT**\n" + "━" * 15 + "\n"
+    
+    for status, projects in categorized_data.items():
+        count = len(projects)
+        icon = {"Pending": "⏳", "Accepted": "🚀", "Finished": "✅", "Denied": "❌"}.get(status, "🔹")
+        
+        text += f"\n{icon} **{status}** ({count})\n"
+        if not projects:
+            text += "└ _No projects in this category_\n"
         else:
-            categories["🚫 STOPPED/DENIED"].append(f"{line} ({status})")
-
-    report_text = "📑 **MASTER PROJECT REPORT**\n━━━━━━━━━━━━━━━━━━\n\n"
-    for cat_title, items in categories.items():
-        if items:
-            report_text += f"**{cat_title}**\n" + "\n".join(items) + "\n\n"
-            
-    return report_text.strip()
+            for p_id, sub, tutor in projects[:5]: # Show only top 5 to avoid message length limits
+                text += f"└ #{p_id}: {sub} ({tutor})\n"
+            if count > 5:
+                text += f"   ... and {count-5} more.\n"
+                
+    return text
 def format_student_projects(projects):
     """
     Formats the project list specifically for the student view.

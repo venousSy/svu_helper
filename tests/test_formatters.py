@@ -8,9 +8,15 @@ def test_history_icons():
     assert "🏁 #2" in result
 
 def test_master_report_categorization():
-    data = [(1, "Math", "Pending"), (2, "Code", "Awaiting Verification")]
-    result = format_master_report(data)
-    assert "⏳ PENDING" in result
-    assert "🚀 ONGOING" in result
-    assert "Awaiting Verification" in result
+    # Old way (List): data = [(1, "Math", "Pending")] ❌
     
+    # New way (Dictionary): ✅
+    data = {
+        "Pending": [(1, "Math")],
+        "Accepted": [(2, "Code")],
+        "Finished": [],
+        "Denied": []
+    }
+    result = format_master_report(data)
+    assert "Math" in result
+    assert "PENDING" in result.upper()
