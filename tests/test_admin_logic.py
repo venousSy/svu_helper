@@ -24,7 +24,7 @@ def test_admin_list_segregation():
     # These assertions will now PASS because categorized is a dict
     assert len(categorized["New / Pending"]) == 1
     assert len(categorized["History"]) == 1
-    assert categorized["Pending"][0][1] == "Math"
+    assert categorized["New / Pending"][0][1] == "Math"
     assert categorized["History"][0][1] == "History"
 def test_status_update_persistence():
     """Ensures that when an admin clicks 'Accept', the change is permanent in the DB."""
