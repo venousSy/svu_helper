@@ -28,7 +28,7 @@ def format_master_report(categorized_data: dict) -> str:
             text += "└ _No projects_\n"
             continue
 
-        for item in projects[:5]:
+        for item in projects[:15]:
             p_id = item[0]
             sub = item[1]
             # Use a fallback if the 3rd value (tutor or status) isn't there
