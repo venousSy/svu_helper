@@ -18,23 +18,37 @@ def format_project_history(projects):
         icon = "🏁" if status == "Finished" else "❌"
         text += f"{icon} #{p_id} | {subject} ({status})\n"
     return text.strip()
-
 def format_master_report(categorized_data: dict) -> str:
+    """
+    Formats the project dictionary into a summary.
+    Distinguishes between New requests and Sent offers.
+    """
     text = "📑 **MASTER PROJECT REPORT**\n" + "━" * 15 + "\n"
     
-    for status_key, projects in categorized_data.items():
-        text += f"\n🔹 **{status_key.upper()}**\n"
+    # Mapping keys to their visual representation
+    meta = {
+        "New / Pending": {"icon": "🆕", "label": "NEW REQUESTS"},
+        "Offered / Waiting": {"icon": "📨", "label": "OFFERED (WAITING)"},
+        "Ongoing": {"icon": "🚀", "label": "ONGOING WORK"},
+        "History": {"icon": "📜", "label": "PROJECT HISTORY"}
+    }
+    
+    for key, projects in categorized_data.items():
+        config = meta.get(key, {"icon": "🔹", "label": key.upper()})
+        
+        text += f"\n{config['icon']} **{config['label']}** ({len(projects)})\n"
+        
         if not projects:
-            text += "└ _No projects_\n"
+            text += "└ _Empty_\n"
             continue
 
-        for item in projects[:15]:
+        for item in projects:
             p_id = item[0]
             sub = item[1]
-            # Use a fallback if the 3rd value (tutor or status) isn't there
-            extra = item[2] if len(item) > 2 else "N/A"
+            # extra is either Tutor Name or the Status String
+            extra = item[2] if len(item) > 2 else "No details"
             
-            text += f"└ #{p_id}: {sub} ({extra})\n"
+            text += f"└ #{p_id}: {sub} — _{extra}_\n"
             
     return text.strip()
 def format_student_projects(projects):
