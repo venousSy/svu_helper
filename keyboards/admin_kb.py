@@ -1,3 +1,9 @@
+"""
+Admin Keyboard Module
+=====================
+Defines all inline and reply keyboards used in the administrative dashboard.
+"""
+
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 

@@ -1,9 +1,17 @@
+"""
+Command Management Script
+=========================
+Resets and updates bot menu commands for both standard users and administrators.
+Run this script to sync local command definitions with Telegram.
+"""
+
 import asyncio
-from aiogram import Bot
-from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
 import os
 from dotenv import load_dotenv
+from aiogram import Bot
+from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
 
+# --- CONFIGURATION ---
 load_dotenv()
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
