@@ -8,23 +8,24 @@ and handles status inquiries for existing requests.
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import ADMIN_ID
 from states import ProjectOrder
-# Update these lines at the top of handlers/client.py
 from database import (
     add_project, 
     get_user_projects, 
-    get_student_offers,  # <--- Add this
+    get_student_offers,
     execute_query
 )
 from utils.formatters import (
     format_student_projects, 
     format_admin_notification, 
-    format_offer_list    # <--- Add this
+    format_offer_list
 )
-
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from keyboards.common_kb import get_student_main_kb
+from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb
+from utils.constants import STATUS_OFFERED
 
 # Initialize router for student-related events
 router = Router()
@@ -99,17 +100,21 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     # Provide immediate feedback to the student
     await message.answer(
         f"✅ **Project #{project_id} submitted!**\n"
-        "The admin will review it and send you an offer shortly."
+        "The admin will review it and send you an offer shortly.",
+        reply_markup=get_student_main_kb()
     )
     
     # Notify Admin using the centralized notification formatter
+    # Notify Admin using the centralized notification formatter
+    from keyboards.admin_kb import get_new_project_alert_kb
+    
     admin_text = format_admin_notification(
         project_id, 
         data['subject'], 
         data['deadline'], 
         details_text
     )
-    await bot.send_message(ADMIN_ID, admin_text)
+    await bot.send_message(ADMIN_ID, admin_text, reply_markup=get_new_project_alert_kb(project_id))
     
     # Clear FSM state to allow new commands
     await state.clear()
@@ -143,17 +148,17 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     # Notify Student
     await message.answer("📨 **Receipt received!**\nWaiting for admin to verify payment. You will be notified once work starts.")
     
-    # Notify Admin (Using buttons you already handled in admin.py)
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        types.InlineKeyboardButton(text="✅ Confirm Pay", callback_data=f"confirm_pay_{proj_id}"),
-        types.InlineKeyboardButton(text="❌ Reject Pay", callback_data=f"reject_pay_{proj_id}")
-    )
+    # Notify Admin (Using code that replicates admin options manually here or import admin kb if needed)
+    # Since this sends TO admin, we can use an Admin KB here or build inline manually.
+    # To avoid circular imports between admin/client KB if any, we'll use a local builder or import from proper place.
+    # Let's check admin_kb.py - we implemented `get_payment_verify_kb(proj_id)`.
+    from keyboards.admin_kb import get_payment_verify_kb
     
     await bot.send_message(ADMIN_ID, f"💰 **PAYMENT PROOF: Project #{proj_id}**")
-    await bot.send_photo(ADMIN_ID, file_id, caption=f"Verify payment for Project #{proj_id}", reply_markup=builder.as_markup())
+    await bot.send_photo(ADMIN_ID, file_id, caption=f"Verify payment for Project #{proj_id}", reply_markup=get_payment_verify_kb(proj_id))
     
     await state.clear()
+
 # --- PROJECT STATUS LOOKUP ---
 
 @router.message(Command("my_projects"))
@@ -175,15 +180,10 @@ async def view_offers(message: types.Message):
     offers = get_student_offers(message.from_user.id)
     text = format_offer_list(offers)
     
-    builder = InlineKeyboardBuilder()
-    for p_id, sub, _ in offers:
-        # This allows them to "re-fetch" the offer details
-        builder.row(types.InlineKeyboardButton(
-            text=f"View Offer #{p_id}", 
-            callback_data=f"view_offer_{p_id}"
-        ))
+    # Use new keyboard
+    markup = get_offers_list_kb(offers)
     
-    await message.answer(text, reply_markup=builder.as_markup())
+    await message.answer(text, reply_markup=markup)
 
 @router.callback_query(F.data.startswith("view_offer_"))
 async def show_specific_offer(callback: types.CallbackQuery):
@@ -196,14 +196,15 @@ async def show_specific_offer(callback: types.CallbackQuery):
     )
     
     if res:
-        subject, price, delivery = res
+        subject = res['subject_name']
+        price = res['price']
+        delivery = res['delivery_date']
+        
         text = (f"🎁 **Offer Details: {subject}**\n━━━━━━━━━━━━━\n"
                 f"💰 **Price:** {price}\n"
                 f"📅 **Delivery:** {delivery}\n"
                 f"🆔 **Project ID:** #{proj_id}\n━━━━━━━━━━━━━")
         
-        builder = InlineKeyboardBuilder()
-        builder.row(types.InlineKeyboardButton(text="✅ Accept", callback_data=f"accept_{proj_id}"))
-        builder.row(types.InlineKeyboardButton(text="❌ Deny", callback_data=f"deny_{proj_id}"))
+        markup = get_offer_actions_kb(proj_id)
         
-        await callback.message.edit_text(text, reply_markup=builder.as_markup())
+        await callback.message.edit_text(text, reply_markup=markup)
