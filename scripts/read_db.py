@@ -2,7 +2,7 @@ import sqlite3
 
 def read_all_requests():
     # 1. Connect to the database
-    conn = sqlite3.connect("projects.db")
+    conn = sqlite3.connect("bot_requests.db")
     cursor = conn.cursor()
 
     # 2. Select all columns from our 'requests' table

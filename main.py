@@ -30,9 +30,24 @@ dp.include_router(common_router)
 dp.include_router(client_router)
 dp.include_router(admin_router)
 
-# --- MAIN ---
+from database import init_db
+
+# --- CONFIGURATION ---
+load_dotenv()
+API_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
+# --- MAIN ENTRY POINT ---
 async def main():
+    """
+    Initializes the bot, sets up commands, and starts the polling loop.
+    Ensures the database is ready before accepting any updates.
+    """
     try:
+        # Step 1: Initialize Database schema
+        init_db()
+        logger.info("📂 Database initialized.")
+
         # Set bot commands
         student_commands = [
             types.BotCommand(command="start", description="🏠 Main Menu"),
