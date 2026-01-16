@@ -1,7 +1,13 @@
+"""
+Client Keyboard Module
+======================
+Constructs inline keyboards for student interactions, such as viewing offers.
+"""
+
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-def get_offer_actions_kb(proj_id):
+def get_offer_actions_kb(proj_id: int) -> types.InlineKeyboardMarkup:
     """Buttons for student to accept or deny an offer."""
     builder = InlineKeyboardBuilder()
     builder.row(types.InlineKeyboardButton(text="✅ Accept", callback_data=f"accept_{proj_id}"))

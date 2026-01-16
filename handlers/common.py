@@ -1,10 +1,17 @@
+"""
+Common Handlers Module
+======================
+Manages universal bot commands like /start, /help, and /cancel, 
+as well as basic main menu navigation logic.
+"""
+
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from utils.constants import MSG_WELCOME, MSG_HELP, MSG_CANCELLED, MSG_NO_ACTIVE_PROCESS, BTN_NEW_PROJECT, BTN_MY_PROJECTS, BTN_MY_OFFERS
 from keyboards.common_kb import get_student_main_kb
 
-# Create the router instance
+# --- ROUTER INITIALIZATION ---
 router = Router()
 
 @router.message(Command("start"))
@@ -17,6 +24,7 @@ async def welcome(message: types.Message):
 
 @router.message(Command("help"))
 async def help_command(message: types.Message):
+    """Provides help information to the user."""
     await message.answer(
         MSG_HELP,
         reply_markup=get_student_main_kb()

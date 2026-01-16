@@ -1,3 +1,9 @@
+"""
+Database Inspection Script
+==========================
+Quickly view all projects stored in the local SQLite database from the terminal.
+"""
+
 import sqlite3
 
 def read_all_requests():
