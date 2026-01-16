@@ -1,41 +1,43 @@
 import asyncio
-import os
 import logging
-from dotenv import load_dotenv
+import sys
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 
-# Import your routers
+# Internal Project Imports
+from config import BOT_TOKEN, ADMIN_ID, LOG_FILE
+from database import init_db
 from handlers.common import router as common_router
 from handlers.client import router as client_router
 from handlers.admin import router as admin_router
 
-# --- CONFIGURATION ---
-load_dotenv()
-API_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+# Ensure console handles UTF-8 for emojis (especially on Windows)
+if sys.stdout.encoding.lower() != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Configure Logging
+# --- LOGGING CONFIGURATION ---
+# Configure formatting for both console and file logs
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format=log_format,
+    handlers=[
+        logging.StreamHandler(sys.stdout),           # Console output
+        logging.FileHandler(LOG_FILE, encoding='utf-8') # Persistent file log
+    ]
 )
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=API_TOKEN)
+# --- BOT INITIALIZATION ---
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# Include all routers
+# Register all hander routers
 dp.include_router(common_router)
 dp.include_router(client_router)
 dp.include_router(admin_router)
-
-from database import init_db
-
-# --- CONFIGURATION ---
-load_dotenv()
-API_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 # --- MAIN ENTRY POINT ---
 async def main():

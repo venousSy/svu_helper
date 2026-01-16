@@ -1,4 +1,21 @@
-bot_requests.db
-__pycache__/
+# Environments
 .env
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
 *.db
+!bot_requests.db_template
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
