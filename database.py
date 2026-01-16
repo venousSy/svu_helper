@@ -1,13 +1,23 @@
+"""
+Database Management Module
+==========================
+Handles all SQLite operations for project tracking, including initialization,
+record insertion, status updates, and categorized reporting.
+"""
+
 import sqlite3
 import os
 from contextlib import contextmanager
 
-# Default DB name
+# Default database filename
 DB_NAME = "bot_requests.db"
 
 @contextmanager
 def get_db_connection(db_path=DB_NAME):
-    """Context manager for database connections."""
+    """
+    Context manager for database connections.
+    Ensures the connection is closed after use and enables row-name access.
+    """
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row  # Enable column access by name
     try:
@@ -49,9 +59,7 @@ def init_db(db_path=DB_NAME):
                 file_id TEXT,
                 status TEXT DEFAULT 'Pending',
                 price TEXT,           -- Admin's offered price
-                delivery_date TEXT,   -- Admin's offered delivery date
-                admin_price TEXT,     -- Legacy column (keep for compatibility)
-                admin_time TEXT       -- Legacy column (keep for compatibility)
+                delivery_date TEXT    -- Admin's offered delivery date
             )
         ''')
         conn.commit()
