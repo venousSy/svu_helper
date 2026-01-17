@@ -52,16 +52,16 @@ async def main():
 
         # Set bot commands
         student_commands = [
-            types.BotCommand(command="start", description="🏠 Main Menu"),
-            types.BotCommand(command="new_project", description="📚 Submit New Project"),
-            types.BotCommand(command="my_projects", description="📂 My Status"),
-            types.BotCommand(command="my_offers", description="🎁 View My Offers"),
-            types.BotCommand(command="help", description="❓ Help"),
-            types.BotCommand(command="cancel", description="🚫 Cancel Process")
+            types.BotCommand(command="start", description="🏠 القائمة الرئيسية"),
+            types.BotCommand(command="new_project", description="📚 تقديم مشروع جديد"),
+            types.BotCommand(command="my_projects", description="📂 عرض مشاريعي"),
+            types.BotCommand(command="my_offers", description="🎁 الأسعار والعروض"),
+            types.BotCommand(command="help", description="❓ مساعدة"),
+            types.BotCommand(command="cancel", description="🚫 إلغاء العملية")
         ]
         
-        admin_commands = student_commands + [
-            types.BotCommand(command="admin", description="🛠 Admin Panel")
+        admin_commands = [
+            types.BotCommand(command="admin", description="🛠 لوحة التحكم")
         ]
         
         # Apply student commands to everyone
