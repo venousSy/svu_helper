@@ -8,6 +8,7 @@ record insertion, status updates, and categorized reporting.
 import sqlite3
 import os
 from contextlib import contextmanager
+from utils.constants import STATUS_PENDING
 
 # Default database filename
 DB_NAME = "bot_requests.db"
@@ -48,30 +49,39 @@ def init_db(db_path=DB_NAME):
     """Initializes the database with all necessary columns for the full workflow."""
     with get_db_connection(db_path) as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
+                username TEXT,        -- Telegram username (without @)
+                user_full_name TEXT,  -- First + Last name
                 subject_name TEXT,
                 tutor_name TEXT,
                 deadline TEXT,
                 details TEXT,
                 file_id TEXT,
-                status TEXT DEFAULT 'Pending',
+                status TEXT DEFAULT '{STATUS_PENDING}',
                 price TEXT,           -- Admin's offered price
                 delivery_date TEXT    -- Admin's offered delivery date
             )
         ''')
         conn.commit()
 
-def add_project(user_id, subject, tutor, deadline, details, file_id, db_path=DB_NAME):
+def add_project(user_id, username, user_full_name, subject, tutor, deadline, details, file_id, db_path=DB_NAME):
     return execute_query('''
-        INSERT INTO projects (user_id, subject_name, tutor_name, deadline, details, file_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (user_id, subject, tutor, deadline, details, file_id), db_path=db_path)
+        INSERT INTO projects (user_id, username, user_full_name, subject_name, tutor_name, deadline, details, file_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, username, user_full_name, subject, tutor, deadline, details, file_id), db_path=db_path)
+
+from utils.constants import (
+    STATUS_PENDING, STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION,
+    STATUS_FINISHED, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT, STATUS_OFFERED, STATUS_REJECTED_PAYMENT
+)
+
+# ... (omitted)
 
 def get_pending_projects(db_path=DB_NAME):
-    return execute_query("SELECT id, subject_name, user_id FROM projects WHERE status = 'Pending'", fetch=True, db_path=db_path)
+    return execute_query("SELECT id, subject_name, user_id, username, user_full_name FROM projects WHERE status = ?", (STATUS_PENDING,), fetch=True, db_path=db_path)
 
 def get_user_projects(user_id, db_path=DB_NAME):
     return execute_query("SELECT id, subject_name, status FROM projects WHERE user_id = ?", (user_id,), fetch=True, db_path=db_path)
@@ -85,24 +95,25 @@ def update_project_status(project_id, new_status, db_path=DB_NAME):
 def get_all_projects_categorized(db_path="bot_requests.db"):
     """Returns a dictionary of projects grouped by status."""
     pending = execute_query(
-        "SELECT id, subject_name, tutor_name FROM projects WHERE status = 'Pending'", 
-        fetch=True, db_path=db_path
+        "SELECT id, subject_name, tutor_name, user_id, username, user_full_name FROM projects WHERE status = ?", 
+        (STATUS_PENDING,), fetch=True, db_path=db_path
     )
     
     ongoing = execute_query(
-        "SELECT id, subject_name, tutor_name FROM projects WHERE status IN ('Accepted', 'Awaiting Verification')", 
-        fetch=True, db_path=db_path
+        "SELECT id, subject_name, tutor_name, user_id, username, user_full_name FROM projects WHERE status IN (?, ?)", 
+        (STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION), fetch=True, db_path=db_path
     )
     
     # Selecting the 3rd value as 'status' for the History category logic
     history = execute_query(
-        "SELECT id, subject_name, status FROM projects WHERE status IN ('Finished', 'Denied') "
-        "OR status LIKE 'Rejected%' OR status LIKE 'Denied%'", 
+        "SELECT id, subject_name, status, user_id, username, user_full_name FROM projects WHERE status IN (?, ?, ?, ?)", 
+        (STATUS_FINISHED, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT, STATUS_REJECTED_PAYMENT),
         fetch=True, db_path=db_path
     )
+    
     offered = execute_query(
-        "SELECT id, subject_name, tutor_name FROM projects WHERE status = 'Offered'", 
-        fetch=True, db_path=db_path
+        "SELECT id, subject_name, tutor_name, user_id, username, user_full_name FROM projects WHERE status = ?", 
+        (STATUS_OFFERED,), fetch=True, db_path=db_path
     )
     return {
         "New / Pending": pending,
@@ -118,9 +129,9 @@ def get_all_users(db_path=DB_NAME):
 
 def get_student_offers(user_id, db_path="bot_requests.db"):
     """Retrieves all projects for a user that currently have an active offer."""
-    query = "SELECT id, subject_name, tutor_name FROM projects WHERE user_id = ? AND status = 'Offered'"
-    return execute_query(query, (user_id,), fetch=True, db_path=db_path)
+    query = "SELECT id, subject_name, tutor_name FROM projects WHERE user_id = ? AND status = ?"
+    return execute_query(query, (user_id, STATUS_OFFERED), fetch=True, db_path=db_path)
 
 def update_offer_details(proj_id, price, delivery, db_path="bot_requests.db"):
-    query = "UPDATE projects SET status = 'Offered', price = ?, delivery_date = ? WHERE id = ?"
-    execute_query(query, (price, delivery, proj_id), db_path=db_path)
+    query = "UPDATE projects SET status = ?, price = ?, delivery_date = ? WHERE id = ?"
+    execute_query(query, (STATUS_OFFERED, price, delivery, proj_id), db_path=db_path)

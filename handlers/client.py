@@ -23,7 +23,7 @@ from utils.formatters import (
     format_admin_notification, 
     format_offer_list
 )
-from keyboards.common_kb import get_student_main_kb
+
 from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb
 from utils.constants import STATUS_OFFERED
 
@@ -39,8 +39,8 @@ async def start_project(message: types.Message, state: FSMContext):
     Initializes the FSM and requests the subject name.
     """
     await message.answer(
-        "📚 What is the **Subject Name**?\n\n"
-        "💡 *Tip: You can type /cancel at any time to stop.*"
+        "📚 ما هو **اسم المادة**؟\n\n"
+        "💡 *تلميح: يمكنك كتابة /cancel في أي وقت للإلغاء.*"
     )
     await state.set_state(ProjectOrder.subject)
 
@@ -48,14 +48,14 @@ async def start_project(message: types.Message, state: FSMContext):
 async def process_subject(message: types.Message, state: FSMContext):
     """Stores the subject name and advances to tutor selection."""
     await state.update_data(subject=message.text)
-    await message.answer("👨‍🏫 What is the **Tutor's Name**?")
+    await message.answer("👨‍🏫 ما هو **اسم الدكتور (المدرس)**؟")
     await state.set_state(ProjectOrder.tutor)
 
 @router.message(ProjectOrder.tutor)
 async def process_tutor(message: types.Message, state: FSMContext):
     """Stores the tutor name and advances to deadline input."""
     await state.update_data(tutor=message.text)
-    await message.answer("📅 What is the **Final Date (Deadline)**?")
+    await message.answer("📅 ما هو **تاريخ التسليم (Deadline)**؟")
     await state.set_state(ProjectOrder.deadline)
 
 @router.message(ProjectOrder.deadline)
@@ -63,8 +63,8 @@ async def process_deadline(message: types.Message, state: FSMContext):
     """Stores the deadline and requests final project documentation/description."""
     await state.update_data(deadline=message.text)
     await message.answer(
-        "📝 Please send **Details**.\n"
-        "You can type a description or upload a file (Image/PDF)."
+        "📝 الرجاء إرسال **التفاصيل**.\n"
+        "يمكنك كتابة وصف أو رفع ملف (صورة / PDF)."
     )
     await state.set_state(ProjectOrder.details)
 
@@ -85,11 +85,18 @@ async def process_details(message: types.Message, state: FSMContext, bot):
         file_id = message.photo[-1].file_id  # Select the highest resolution photo
     
     # Logic: Details can be in the message text or a file caption
-    details_text = message.text or message.caption or "No description provided."
+    details_text = message.text or message.caption or "لا يوجد وصف."
+    
+    # Capture user details
+    user = message.from_user
+    username = user.username  # Can be None
+    full_name = user.full_name
     
     # Commit project to database and retrieve the auto-generated ID
     project_id = add_project(
-        user_id=message.from_user.id, 
+        user_id=user.id,
+        username=username,
+        user_full_name=full_name,
         subject=data['subject'], 
         tutor=data['tutor'], 
         deadline=data['deadline'], 
@@ -99,12 +106,10 @@ async def process_details(message: types.Message, state: FSMContext, bot):
 
     # Provide immediate feedback to the student
     await message.answer(
-        f"✅ **Project #{project_id} submitted!**\n"
-        "The admin will review it and send you an offer shortly.",
-        reply_markup=get_student_main_kb()
+        f"✅ **تم تقديم المشروع #{project_id} بنجاح!**\n"
+        "سيقوم المشرف بمراجعته وإرسال عرض لك قريباً."
     )
     
-    # Notify Admin using the centralized notification formatter
     # Notify Admin using the centralized notification formatter
     from keyboards.admin_kb import get_new_project_alert_kb
     
@@ -112,7 +117,9 @@ async def process_details(message: types.Message, state: FSMContext, bot):
         project_id, 
         data['subject'], 
         data['deadline'], 
-        details_text
+        details_text,
+        user_name=full_name,
+        username=username
     )
     await bot.send_message(ADMIN_ID, admin_text, reply_markup=get_new_project_alert_kb(project_id))
     
@@ -129,8 +136,8 @@ async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext)
     await state.update_data(active_pay_proj_id=proj_id)
     
     await callback.message.edit_text(
-        f"✅ **You've accepted the offer for Project #{proj_id}!**\n\n"
-        "💳 Please send the **Payment Receipt** (Photo or PDF) to begin the work."
+        f"✅ **لقد قبلت العرض للمشروع #{proj_id}!**\n\n"
+        "💳 الرجاء إرسال **إيصال الدفع** (صورة أو PDF) للبدء في العمل."
     )
     # Set the state defined in your states.py
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
@@ -146,7 +153,7 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     file_id = message.photo[-1].file_id if message.photo else message.document.file_id
     
     # Notify Student
-    await message.answer("📨 **Receipt received!**\nWaiting for admin to verify payment. You will be notified once work starts.")
+    await message.answer("📨 **تم استلام الإيصال!**\nبانتظار تحقق المشرف من الدفع. سيتم إعلامك عند بدء العمل.")
     
     # Notify Admin (Using code that replicates admin options manually here or import admin kb if needed)
     # Since this sends TO admin, we can use an Admin KB here or build inline manually.
@@ -200,10 +207,10 @@ async def show_specific_offer(callback: types.CallbackQuery):
         price = res['price']
         delivery = res['delivery_date']
         
-        text = (f"🎁 **Offer Details: {subject}**\n━━━━━━━━━━━━━\n"
-                f"💰 **Price:** {price}\n"
-                f"📅 **Delivery:** {delivery}\n"
-                f"🆔 **Project ID:** #{proj_id}\n━━━━━━━━━━━━━")
+        text = (f"🎁 **تفاصيل العرض: {subject}**\n━━━━━━━━━━━━━\n"
+                f"💰 **السعر:** {price}\n"
+                f"📅 **موعد التسليم:** {delivery}\n"
+                f"🆔 **رقم المشروع:** #{proj_id}\n━━━━━━━━━━━━━")
         
         markup = get_offer_actions_kb(proj_id)
         
