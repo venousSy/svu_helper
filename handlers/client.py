@@ -16,7 +16,7 @@ from database import (
     add_project, 
     get_user_projects, 
     get_student_offers,
-    execute_query
+    get_project_by_id
 )
 from utils.formatters import (
     format_student_projects, 
@@ -25,6 +25,7 @@ from utils.formatters import (
 )
 
 from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb
+from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
 from utils.constants import STATUS_OFFERED
 
 # Initialize router for student-related events
@@ -40,7 +41,8 @@ async def start_project(message: types.Message, state: FSMContext):
     """
     await message.answer(
         "📚 ما هو **اسم المادة**؟\n\n"
-        "💡 *تلميح: يمكنك كتابة /cancel في أي وقت للإلغاء.*"
+        "💡 *تلميح: يمكنك كتابة /cancel في أي وقت للإلغاء.*",
+        parse_mode="Markdown"
     )
     await state.set_state(ProjectOrder.subject)
 
@@ -48,14 +50,14 @@ async def start_project(message: types.Message, state: FSMContext):
 async def process_subject(message: types.Message, state: FSMContext):
     """Stores the subject name and advances to tutor selection."""
     await state.update_data(subject=message.text)
-    await message.answer("👨‍🏫 ما هو **اسم الدكتور (المدرس)**؟")
+    await message.answer("👨‍🏫 ما هو **اسم الدكتور (المدرس)**؟", parse_mode="Markdown")
     await state.set_state(ProjectOrder.tutor)
 
 @router.message(ProjectOrder.tutor)
 async def process_tutor(message: types.Message, state: FSMContext):
     """Stores the tutor name and advances to deadline input."""
     await state.update_data(tutor=message.text)
-    await message.answer("📅 ما هو **تاريخ التسليم (Deadline)**؟")
+    await message.answer("📅 ما هو **تاريخ التسليم (Deadline)**؟", parse_mode="Markdown")
     await state.set_state(ProjectOrder.deadline)
 
 @router.message(ProjectOrder.deadline)
@@ -64,7 +66,8 @@ async def process_deadline(message: types.Message, state: FSMContext):
     await state.update_data(deadline=message.text)
     await message.answer(
         "📝 الرجاء إرسال **التفاصيل**.\n"
-        "يمكنك كتابة وصف أو رفع ملف (صورة / PDF)."
+        "يمكنك كتابة وصف أو رفع ملف (صورة / PDF).",
+        parse_mode="Markdown"
     )
     await state.set_state(ProjectOrder.details)
 
@@ -93,7 +96,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     full_name = user.full_name
     
     # Commit project to database and retrieve the auto-generated ID
-    project_id = add_project(
+    project_id = await add_project(
         user_id=user.id,
         username=username,
         user_full_name=full_name,
@@ -107,11 +110,9 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     # Provide immediate feedback to the student
     await message.answer(
         f"✅ **تم تقديم المشروع #{project_id} بنجاح!**\n"
-        "سيقوم المشرف بمراجعته وإرسال عرض لك قريباً."
+        "سيقوم المشرف بمراجعته وإرسال عرض لك قريباً.",
+        parse_mode="Markdown"
     )
-    
-    # Notify Admin using the centralized notification formatter
-    from keyboards.admin_kb import get_new_project_alert_kb
     
     admin_text = format_admin_notification(
         project_id, 
@@ -121,7 +122,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
         user_name=full_name,
         username=username
     )
-    await bot.send_message(ADMIN_ID, admin_text, reply_markup=get_new_project_alert_kb(project_id))
+    await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown", reply_markup=get_new_project_alert_kb(project_id))
     
     # Clear FSM state to allow new commands
     await state.clear()
@@ -137,7 +138,8 @@ async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext)
     
     await callback.message.edit_text(
         f"✅ **لقد قبلت العرض للمشروع #{proj_id}!**\n\n"
-        "💳 الرجاء إرسال **إيصال الدفع** (صورة أو PDF) للبدء في العمل."
+        "💳 الرجاء إرسال **إيصال الدفع** (صورة أو PDF) للبدء في العمل.",
+        parse_mode="Markdown"
     )
     # Set the state defined in your states.py
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
@@ -153,15 +155,10 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     file_id = message.photo[-1].file_id if message.photo else message.document.file_id
     
     # Notify Student
-    await message.answer("📨 **تم استلام الإيصال!**\nبانتظار تحقق المشرف من الدفع. سيتم إعلامك عند بدء العمل.")
+    await message.answer("📨 **تم استلام الإيصال!**\nبانتظار تحقق المشرف من الدفع. سيتم إعلامك عند بدء العمل.", parse_mode="Markdown")
     
-    # Notify Admin (Using code that replicates admin options manually here or import admin kb if needed)
-    # Since this sends TO admin, we can use an Admin KB here or build inline manually.
-    # To avoid circular imports between admin/client KB if any, we'll use a local builder or import from proper place.
-    # Let's check admin_kb.py - we implemented `get_payment_verify_kb(proj_id)`.
-    from keyboards.admin_kb import get_payment_verify_kb
-    
-    await bot.send_message(ADMIN_ID, f"💰 **PAYMENT PROOF: Project #{proj_id}**")
+    # Notify Admin
+    await bot.send_message(ADMIN_ID, f"💰 **PAYMENT PROOF: Project #{proj_id}**", parse_mode="Markdown")
     await bot.send_photo(ADMIN_ID, file_id, caption=f"Verify payment for Project #{proj_id}", reply_markup=get_payment_verify_kb(proj_id))
     
     await state.clear()
@@ -174,33 +171,30 @@ async def view_projects(message: types.Message):
     Retrieves and displays a list of all projects owned by the user.
     Uses centralized formatting for consistent UI/UX.
     """
-    projects = get_user_projects(message.from_user.id)
+    projects = await get_user_projects(message.from_user.id)
     
     # Generate the formatted response (handles empty lists internally)
     response = format_student_projects(projects)
-    await message.answer(response)
+    await message.answer(response, parse_mode="Markdown")
 
 
 @router.message(Command("my_offers"))
 async def view_offers(message: types.Message):
     """Shows the student all projects where an admin has sent an offer."""
-    offers = get_student_offers(message.from_user.id)
+    offers = await get_student_offers(message.from_user.id)
     text = format_offer_list(offers)
     
     # Use new keyboard
     markup = get_offers_list_kb(offers)
     
-    await message.answer(text, reply_markup=markup)
+    await message.answer(text, parse_mode="Markdown", reply_markup=markup)
 
 @router.callback_query(F.data.startswith("view_offer_"))
 async def show_specific_offer(callback: types.CallbackQuery):
     proj_id = callback.data.split("_")[2]
     
     # Query the new columns!
-    res = execute_query(
-        "SELECT subject_name, price, delivery_date FROM projects WHERE id = ?", 
-        (proj_id,), fetch_one=True
-    )
+    res = await get_project_by_id(proj_id)
     
     if res:
         subject = res['subject_name']
@@ -214,4 +208,4 @@ async def show_specific_offer(callback: types.CallbackQuery):
         
         markup = get_offer_actions_kb(proj_id)
         
-        await callback.message.edit_text(text, reply_markup=markup)
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
