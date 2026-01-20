@@ -47,7 +47,7 @@ async def main():
     """
     try:
         # Step 1: Initialize Database schema
-        init_db()
+        await init_db()
         logger.info("📂 Database initialized.")
 
         # Set bot commands

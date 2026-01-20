@@ -1,120 +1,127 @@
 """
-Database Management Module
-==========================
-Handles all SQLite operations for project tracking, including initialization,
-record insertion, status updates, and categorized reporting.
+Database Management Module (MongoDB)
+====================================
+Handles all MongoDB operations using Motor (Async).
 """
 
-import sqlite3
-import os
-from contextlib import contextmanager
-from utils.constants import STATUS_PENDING
-
-# Default database filename
-DB_NAME = "bot_requests.db"
-
-@contextmanager
-def get_db_connection(db_path=DB_NAME):
-    """
-    Context manager for database connections.
-    Ensures the connection is closed after use and enables row-name access.
-    """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row  # Enable column access by name
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-def execute_query(query, params=(), fetch=False, fetch_one=False, db_path=DB_NAME):
-    """
-    Executes a query safely using the context manager.
-    """
-    with get_db_connection(db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        
-        if fetch_one:
-            result = cursor.fetchone()
-            return dict(result) if result else None
-        
-        if fetch:
-            results = cursor.fetchall()
-            return [dict(row) for row in results]
-        
-        conn.commit()
-        return cursor.lastrowid
-
-def init_db(db_path=DB_NAME):
-    """Initializes the database with all necessary columns for the full workflow."""
-    with get_db_connection(db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute(f'''
-            CREATE TABLE IF NOT EXISTS projects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                username TEXT,        -- Telegram username (without @)
-                user_full_name TEXT,  -- First + Last name
-                subject_name TEXT,
-                tutor_name TEXT,
-                deadline TEXT,
-                details TEXT,
-                file_id TEXT,
-                status TEXT DEFAULT '{STATUS_PENDING}',
-                price TEXT,           -- Admin's offered price
-                delivery_date TEXT    -- Admin's offered delivery date
-            )
-        ''')
-        conn.commit()
-
-def add_project(user_id, username, user_full_name, subject, tutor, deadline, details, file_id, db_path=DB_NAME):
-    return execute_query('''
-        INSERT INTO projects (user_id, username, user_full_name, subject_name, tutor_name, deadline, details, file_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, username, user_full_name, subject, tutor, deadline, details, file_id), db_path=db_path)
-
+import logging
+from motor.motor_asyncio import AsyncIOMotorClient
+from config import MONGO_URI
 from utils.constants import (
     STATUS_PENDING, STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION,
-    STATUS_FINISHED, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT, STATUS_OFFERED, STATUS_REJECTED_PAYMENT
+    STATUS_FINISHED, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT, 
+    STATUS_OFFERED, STATUS_REJECTED_PAYMENT
 )
 
-# ... (omitted)
+# Use a default DB name if not specified in URI, or fall back to 'svu_helper_db'
+DB_NAME = "svu_helper_bot"
 
-def get_pending_projects(db_path=DB_NAME):
-    return execute_query("SELECT id, subject_name, user_id, username, user_full_name FROM projects WHERE status = ?", (STATUS_PENDING,), fetch=True, db_path=db_path)
+class Database:
+    client: AsyncIOMotorClient = None
+    db = None
 
-def get_user_projects(user_id, db_path=DB_NAME):
-    return execute_query("SELECT id, subject_name, status FROM projects WHERE user_id = ?", (user_id,), fetch=True, db_path=db_path)
+    @classmethod
+    async def connect(cls):
+        """Initializes the MongoDB connection."""
+        if not MONGO_URI:
+            raise ValueError("MONGO_URI is not set in environment or config.py")
+        
+        cls.client = AsyncIOMotorClient(MONGO_URI)
+        cls.db = cls.client[DB_NAME]
+        logging.info(f"🔌 Connected to MongoDB: {DB_NAME}")
+        
+        # Ensure indexes
+        await cls.db.projects.create_index("id", unique=True)
+        await cls.db.projects.create_index("user_id")
+        await cls.db.projects.create_index("status")
 
-def update_project_status(project_id, new_status, db_path=DB_NAME):
-    return execute_query(
-        "UPDATE projects SET status = ? WHERE id = ?",
-        (new_status, project_id), db_path=db_path
+    @classmethod
+    async def get_next_sequence(cls, sequence_name):
+        """
+        Atomically increments and returns the next integer ID for a sequence.
+        Used to maintain simple integer IDs for projects (like SQL AUTOINCREMENT).
+        """
+        result = await cls.db.counters.find_one_and_update(
+            {"_id": sequence_name},
+            {"$inc": {"seq": 1}},
+            upsert=True,
+            return_document=True
+        )
+        return result["seq"]
+
+# Helper to ensure DB is connected
+async def get_db():
+    if Database.db is None:
+        await Database.connect()
+    return Database.db
+
+# --- INITIALIZATION ---
+async def init_db():
+    """Wrapper to initialize the database connection."""
+    await Database.connect()
+
+# --- PROJECT OPERATIONS ---
+
+async def add_project(user_id, username, user_full_name, subject, tutor, deadline, details, file_id):
+    db = await get_db()
+    
+    # Get next auto-increment ID
+    project_id = await Database.get_next_sequence("project_id")
+    
+    document = {
+        "id": project_id,
+        "user_id": user_id,
+        "username": username,
+        "user_full_name": user_full_name,
+        "subject_name": subject,
+        "tutor_name": tutor,
+        "deadline": deadline,
+        "details": details,
+        "file_id": file_id,
+        "status": STATUS_PENDING,
+        "price": None,
+        "delivery_date": None
+    }
+    
+    await db.projects.insert_one(document)
+    return project_id
+
+async def get_pending_projects():
+    db = await get_db()
+    cursor = db.projects.find({"status": STATUS_PENDING})
+    return await cursor.to_list(length=None)
+
+async def get_user_projects(user_id):
+    db = await get_db()
+    cursor = db.projects.find({"user_id": user_id})
+    return await cursor.to_list(length=None)
+
+async def update_project_status(project_id, new_status):
+    db = await get_db()
+    await db.projects.update_one(
+        {"id": int(project_id)},
+        {"$set": {"status": new_status}}
     )
 
-def get_all_projects_categorized(db_path="bot_requests.db"):
+async def get_all_projects_categorized():
     """Returns a dictionary of projects grouped by status."""
-    pending = execute_query(
-        "SELECT id, subject_name, tutor_name, user_id, username, user_full_name FROM projects WHERE status = ?", 
-        (STATUS_PENDING,), fetch=True, db_path=db_path
-    )
+    db = await get_db()
     
-    ongoing = execute_query(
-        "SELECT id, subject_name, tutor_name, user_id, username, user_full_name FROM projects WHERE status IN (?, ?)", 
-        (STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION), fetch=True, db_path=db_path
-    )
+    pending = await db.projects.find({"status": STATUS_PENDING}).to_list(length=None)
     
-    # Selecting the 3rd value as 'status' for the History category logic
-    history = execute_query(
-        "SELECT id, subject_name, status, user_id, username, user_full_name FROM projects WHERE status IN (?, ?, ?, ?)", 
-        (STATUS_FINISHED, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT, STATUS_REJECTED_PAYMENT),
-        fetch=True, db_path=db_path
-    )
+    ongoing = await db.projects.find({
+        "status": {"$in": [STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION]}
+    }).to_list(length=None)
     
-    offered = execute_query(
-        "SELECT id, subject_name, tutor_name, user_id, username, user_full_name FROM projects WHERE status = ?", 
-        (STATUS_OFFERED,), fetch=True, db_path=db_path
-    )
+    history = await db.projects.find({
+        "status": {"$in": [
+            STATUS_FINISHED, STATUS_DENIED_ADMIN, 
+            STATUS_DENIED_STUDENT, STATUS_REJECTED_PAYMENT
+        ]}
+    }).to_list(length=None)
+    
+    offered = await db.projects.find({"status": STATUS_OFFERED}).to_list(length=None)
+    
     return {
         "New / Pending": pending,
         "Offered / Waiting": offered,
@@ -122,16 +129,49 @@ def get_all_projects_categorized(db_path="bot_requests.db"):
         "History": history
     }
 
-def get_all_users(db_path=DB_NAME):
-    """Returns a list of unique user_ids who have submitted projects."""
-    rows = execute_query("SELECT DISTINCT user_id FROM projects", fetch=True, db_path=db_path)
-    return [row['user_id'] for row in rows]
+async def get_all_users():
+    """Returns a list of unique user_ids."""
+    db = await get_db()
+    return await db.projects.distinct("user_id")
 
-def get_student_offers(user_id, db_path="bot_requests.db"):
+async def get_student_offers(user_id):
     """Retrieves all projects for a user that currently have an active offer."""
-    query = "SELECT id, subject_name, tutor_name FROM projects WHERE user_id = ? AND status = ?"
-    return execute_query(query, (user_id, STATUS_OFFERED), fetch=True, db_path=db_path)
+    db = await get_db()
+    cursor = db.projects.find({
+        "user_id": user_id,
+        "status": STATUS_OFFERED
+    })
+    return await cursor.to_list(length=None)
 
-def update_offer_details(proj_id, price, delivery, db_path="bot_requests.db"):
-    query = "UPDATE projects SET status = ?, price = ?, delivery_date = ? WHERE id = ?"
-    execute_query(query, (STATUS_OFFERED, price, delivery, proj_id), db_path=db_path)
+async def update_offer_details(proj_id, price, delivery):
+    db = await get_db()
+    await db.projects.update_one(
+        {"id": int(proj_id)},
+        {"$set": {
+            "status": STATUS_OFFERED,
+            "price": price,
+            "delivery_date": delivery
+        }}
+    )
+
+async def get_project_by_id(project_id):
+    """Retrieves a single project by its integer ID."""
+    db = await get_db()
+    return await db.projects.find_one({"id": int(project_id)})
+
+async def get_accepted_projects():
+    """Retrieves all active/ongoing projects."""
+    db = await get_db()
+    cursor = db.projects.find({"status": STATUS_ACCEPTED})
+    return await cursor.to_list(length=None)
+
+async def get_history_projects():
+    """Retrieves finished or denied projects."""
+    db = await get_db()
+    cursor = db.projects.find({
+        "status": {"$in": [
+            STATUS_FINISHED, STATUS_DENIED_ADMIN, 
+            STATUS_DENIED_STUDENT, STATUS_REJECTED_PAYMENT
+        ]}
+    })
+    return await cursor.to_list(length=None)

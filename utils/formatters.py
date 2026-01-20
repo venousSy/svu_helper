@@ -15,12 +15,30 @@ def format_project_list(projects, title="📂 قائمة المشاريع"):
             p_id = project['id']
             subject = project['subject_name']
             
-            # Add user info if available (e.g. for Pending view)
+            # Add user info if available
             user_info = ""
             if 'user_full_name' in project and project['user_full_name']:
                 name = project['user_full_name']
+                u_id = project.get('user_id')
                 username = f" (@{project['username']})" if project.get('username') else ""
-                user_info = f"\n   👤 {name}{username}"
+                
+                # Link user if u_id is present
+                if u_id:
+                    user_info = f"\n   👤 [{name}](tg://user?id={u_id}){username}"
+                else:
+                    user_info = f"\n   👤 {name}{username}"
+            
+            # Add Tutor and Deadline if available
+            extra_info = ""
+            if 'tutor_name' in project and project['tutor_name']:
+                tutor = project['tutor_name']
+                extra_info += f"\n   👨‍🏫 المدرس: {tutor}"
+            
+            if 'deadline' in project and project['deadline']:
+                deadline = project['deadline']
+                extra_info += f" | 📅 الموعد: {deadline}"
+                
+            user_info += extra_info
                 
         else:
             p_id = project[0]

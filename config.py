@@ -24,6 +24,9 @@ except ValueError:
     logger.error("⚠️ Invalid ADMIN_ID format in .env. Defaulting to 0.")
     ADMIN_ID = 0
 
+MONGO_URI = os.getenv("MONGO_URI")
+
 # --- FILE PATHS ---
-DB_PATH = "bot_requests.db"
+# --- FILE PATHS ---
+# DB_NAME removed as part of MongoDB migration
 LOG_FILE = "bot.log"
