@@ -21,12 +21,18 @@ from database import (
 from utils.formatters import (
     format_student_projects, 
     format_admin_notification, 
-    format_offer_list
+    format_offer_list,
+    escape_md
 )
 
 from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
-from utils.constants import STATUS_OFFERED
+from utils.constants import (
+    STATUS_OFFERED, 
+    MSG_ASK_SUBJECT, MSG_ASK_TUTOR, MSG_ASK_DEADLINE, MSG_ASK_DETAILS, 
+    MSG_NO_DESC, MSG_PROJECT_SUBMITTED, MSG_OFFER_ACCEPTED, 
+    MSG_RECEIPT_RECEIVED, MSG_OFFER_DETAILS, MSG_NO_PROJECTS, MSG_NO_OFFERS
+)
 
 # Initialize router for student-related events
 router = Router()
@@ -39,9 +45,9 @@ async def start_project(message: types.Message, state: FSMContext):
     Entry point for the project submission wizard.
     Initializes the FSM and requests the subject name.
     """
+    """
     await message.answer(
-        "📚 ما هو **اسم المادة**؟\n\n"
-        "💡 *تلميح: يمكنك كتابة /cancel في أي وقت للإلغاء.*",
+        MSG_ASK_SUBJECT,
         parse_mode="Markdown"
     )
     await state.set_state(ProjectOrder.subject)
@@ -50,14 +56,14 @@ async def start_project(message: types.Message, state: FSMContext):
 async def process_subject(message: types.Message, state: FSMContext):
     """Stores the subject name and advances to tutor selection."""
     await state.update_data(subject=message.text)
-    await message.answer("👨‍🏫 ما هو **اسم الدكتور (المدرس)**؟", parse_mode="Markdown")
+    await message.answer(MSG_ASK_TUTOR, parse_mode="Markdown")
     await state.set_state(ProjectOrder.tutor)
 
 @router.message(ProjectOrder.tutor)
 async def process_tutor(message: types.Message, state: FSMContext):
     """Stores the tutor name and advances to deadline input."""
     await state.update_data(tutor=message.text)
-    await message.answer("📅 ما هو **تاريخ التسليم (Deadline)**؟", parse_mode="Markdown")
+    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown")
     await state.set_state(ProjectOrder.deadline)
 
 @router.message(ProjectOrder.deadline)
@@ -65,8 +71,7 @@ async def process_deadline(message: types.Message, state: FSMContext):
     """Stores the deadline and requests final project documentation/description."""
     await state.update_data(deadline=message.text)
     await message.answer(
-        "📝 الرجاء إرسال **التفاصيل**.\n"
-        "يمكنك كتابة وصف أو رفع ملف (صورة / PDF).",
+        MSG_ASK_DETAILS,
         parse_mode="Markdown"
     )
     await state.set_state(ProjectOrder.details)
@@ -88,7 +93,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
         file_id = message.photo[-1].file_id  # Select the highest resolution photo
     
     # Logic: Details can be in the message text or a file caption
-    details_text = message.text or message.caption or "لا يوجد وصف."
+    details_text = message.text or message.caption or MSG_NO_DESC
     
     # Capture user details
     user = message.from_user
@@ -109,8 +114,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
 
     # Provide immediate feedback to the student
     await message.answer(
-        f"✅ **تم تقديم المشروع #{project_id} بنجاح!**\n"
-        "سيقوم المشرف بمراجعته وإرسال عرض لك قريباً.",
+        MSG_PROJECT_SUBMITTED.format(project_id),
         parse_mode="Markdown"
     )
     
@@ -137,8 +141,7 @@ async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext)
     await state.update_data(active_pay_proj_id=proj_id)
     
     await callback.message.edit_text(
-        f"✅ **لقد قبلت العرض للمشروع #{proj_id}!**\n\n"
-        "💳 الرجاء إرسال **إيصال الدفع** (صورة أو PDF) للبدء في العمل.",
+        MSG_OFFER_ACCEPTED.format(proj_id),
         parse_mode="Markdown"
     )
     # Set the state defined in your states.py
@@ -155,7 +158,7 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     file_id = message.photo[-1].file_id if message.photo else message.document.file_id
     
     # Notify Student
-    await message.answer("📨 **تم استلام الإيصال!**\nبانتظار تحقق المشرف من الدفع. سيتم إعلامك عند بدء العمل.", parse_mode="Markdown")
+    await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
     
     # Notify Admin
     await bot.send_message(ADMIN_ID, f"💰 **PAYMENT PROOF: Project #{proj_id}**", parse_mode="Markdown")
@@ -197,14 +200,11 @@ async def show_specific_offer(callback: types.CallbackQuery):
     res = await get_project_by_id(proj_id)
     
     if res:
-        subject = res['subject_name']
-        price = res['price']
-        delivery = res['delivery_date']
+        subject = escape_md(res['subject_name'])
+        price = escape_md(res['price'])
+        delivery = escape_md(res['delivery_date'])
         
-        text = (f"🎁 **تفاصيل العرض: {subject}**\n━━━━━━━━━━━━━\n"
-                f"💰 **السعر:** {price}\n"
-                f"📅 **موعد التسليم:** {delivery}\n"
-                f"🆔 **رقم المشروع:** #{proj_id}\n━━━━━━━━━━━━━")
+        text = MSG_OFFER_DETAILS.format(subject, price, delivery, proj_id)
         
         markup = get_offer_actions_kb(proj_id)
         
