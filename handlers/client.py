@@ -45,7 +45,7 @@ async def start_project(message: types.Message, state: FSMContext):
     Entry point for the project submission wizard.
     Initializes the FSM and requests the subject name.
     """
-    """
+
     await message.answer(
         MSG_ASK_SUBJECT,
         parse_mode="Markdown"
