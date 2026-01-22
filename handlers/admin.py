@@ -19,7 +19,7 @@ from database import (
     get_all_projects_categorized, update_offer_details,
     get_accepted_projects, get_history_projects, get_all_users
 )
-from utils.formatters import format_project_list, format_project_history, format_master_report
+from utils.formatters import format_project_list, format_project_history, format_master_report, escape_md
 from keyboards.admin_kb import (
     get_admin_dashboard_kb, 
     get_back_btn, 
@@ -31,7 +31,15 @@ from keyboards.admin_kb import (
 from keyboards.client_kb import get_offer_actions_kb
 from utils.constants import (
     STATUS_OFFERED, STATUS_ACCEPTED, STATUS_FINISHED, 
-    STATUS_REJECTED_PAYMENT, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT
+    STATUS_REJECTED_PAYMENT, STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT,
+    MSG_ADMIN_DASHBOARD, MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS,
+    MSG_PROJECT_DETAILS_HEADER, MSG_ASK_PRICE, MSG_ASK_DELIVERY, 
+    MSG_ASK_NOTES, MSG_ASK_NOTES_TEXT, MSG_NO_NOTES, MSG_OFFER_SENT, 
+    MSG_UPLOAD_FINISHED_WORK, MSG_WORK_FINISHED_ALERT, MSG_FINISHED_CONFIRM,
+    MSG_PAYMENT_CONFIRMED_CLIENT, MSG_PAYMENT_CONFIRMED_ADMIN, 
+    MSG_PAYMENT_REJECTED_CLIENT, MSG_PAYMENT_REJECTED_ADMIN, 
+    MSG_PROJECT_DENIED_CLIENT, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN, 
+    MSG_PROJECT_CLOSED, BTN_YES
 )
 
 # Initialize router for admin-only events
@@ -43,12 +51,12 @@ logger = logging.getLogger(__name__)
 @router.message(Command("admin"), F.from_user.id == ADMIN_ID)
 async def admin_dashboard(message: types.Message):
     """Entry point: Displays the administrative control panel."""
-    await message.answer("🛠 **لوحة تحكم المسؤول**", reply_markup=get_admin_dashboard_kb())
+    await message.answer(MSG_ADMIN_DASHBOARD, reply_markup=get_admin_dashboard_kb())
 
 @router.callback_query(F.data == "back_to_admin", F.from_user.id == ADMIN_ID)
 async def back_to_admin(callback: types.CallbackQuery):
     """Returns the user to the main dashboard menu."""
-    await callback.message.edit_text("🛠 **لوحة تحكم المسؤول**", parse_mode="Markdown", reply_markup=get_admin_dashboard_kb())
+    await callback.message.edit_text(MSG_ADMIN_DASHBOARD, parse_mode="Markdown", reply_markup=get_admin_dashboard_kb())
 
 # --- DATA VIEW HANDLERS ---
 
@@ -98,7 +106,7 @@ async def admin_view_history(callback: types.CallbackQuery):
 @router.callback_query(F.data == "admin_broadcast", F.from_user.id == ADMIN_ID)
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
     """Initiates the broadcast FSM flow."""
-    await callback.message.answer("📢 أدخل رسالة الإعلان:", reply_markup=get_back_btn().as_markup())
+    await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_back_btn().as_markup())
     await state.set_state(AdminStates.waiting_for_broadcast)
 
 @router.message(AdminStates.waiting_for_broadcast, F.from_user.id == ADMIN_ID)
@@ -114,7 +122,7 @@ async def execute_broadcast(message: types.Message, state: FSMContext, bot):
         except Exception as e: 
             logger.warning(f"Failed to broadcast to {u_id}: {e}")
             continue # Skip users who blocked the bot
-    await message.answer(f"✅ تم الإرسال إلى {count} مستخدم.")
+    await message.answer(MSG_BROADCAST_SUCCESS.format(count))
     await state.clear()
 
 # --- OFFER GENERATION FSM ---
@@ -127,23 +135,22 @@ async def view_project_details(callback: types.CallbackQuery):
     if not project: return
     
     p_id = project['id']
-    sub = project['subject_name']
-    tutor = project['tutor_name']
-    dead = project['deadline']
-    details = project['details']
+    sub = escape_md(project['subject_name'])
+    tutor = escape_md(project['tutor_name'])
+    dead = escape_md(project['deadline'])
+    details = escape_md(project['details'])
     file_id = project['file_id']
     
     # User Info Construction
     u_id = project['user_id']
-    name = project['user_full_name'] or "Unknown"
-    username = project['username']
+    name = escape_md(project['user_full_name'] or "Unknown")
+    username = escape_md(project['username'])
     
     user_line = f"👤 [{name}](tg://user?id={u_id})"
     if username:
         user_line += f" (@{username})"
     
-    text = (f"📑 **المشروع #{p_id}**\n"
-            f"━━━━━━━━━━━━━\n"
+    text = (MSG_PROJECT_DETAILS_HEADER.format(p_id) + "\n"
             f"{user_line}\n"
             f"**المادة:** {sub}\n"
             f"**المدرس:** {tutor}\n"
@@ -164,14 +171,14 @@ async def start_offer_flow(callback: types.CallbackQuery, state: FSMContext):
     """Starts a step-by-step FSM to collect price and delivery data."""
     proj_id = callback.data.split("_")[2]
     await state.update_data(offer_proj_id=proj_id)
-    await callback.message.answer(f"💰 **المشروع #{proj_id}**\nما هو **السعر المقترح**؟")
+    await callback.message.answer(MSG_ASK_PRICE.format(proj_id))
     await state.set_state(AdminStates.waiting_for_price)
 
 @router.message(AdminStates.waiting_for_price, F.from_user.id == ADMIN_ID)
 async def process_price(message: types.Message, state: FSMContext):
     """Stores price and requests delivery date."""
     await state.update_data(price=message.text)
-    await message.answer("📅 ما هو **موعد التسليم**؟")
+    await message.answer(MSG_ASK_DELIVERY)
     await state.set_state(AdminStates.waiting_for_delivery)
 
 @router.message(AdminStates.waiting_for_delivery, F.from_user.id == ADMIN_ID)
@@ -179,17 +186,17 @@ async def process_delivery(message: types.Message, state: FSMContext):
     """Stores delivery date and asks if extra notes are needed."""
     await state.update_data(delivery=message.text)
     
-    await message.answer("📝 هل تود إضافة **ملاحظات**؟", reply_markup=get_notes_decision_kb())
+    await message.answer(MSG_ASK_NOTES, reply_markup=get_notes_decision_kb())
     await state.set_state(AdminStates.waiting_for_notes_decision)
 
 @router.message(AdminStates.waiting_for_notes_decision, F.from_user.id == ADMIN_ID)
 async def process_notes_decision(message: types.Message, state: FSMContext, bot):
     """Branches FSM based on whether the admin wants to add custom notes."""
-    if message.text == "نعم": # Updated to match Arabic button
-        await message.answer("🖋 اكتب ملاحظاتك:", reply_markup=types.ReplyKeyboardRemove())
+    if message.text == BTN_YES: # Updated to match Arabic button
+        await message.answer(MSG_ASK_NOTES_TEXT, reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(AdminStates.waiting_for_notes_text)
     else:
-        await finalize_and_send_offer(message, state, bot, notes_text="لا توجد ملاحظات")
+        await finalize_and_send_offer(message, state, bot, notes_text=MSG_NO_NOTES)
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id == ADMIN_ID)
 async def process_notes_text(message: types.Message, state: FSMContext, bot):
@@ -206,15 +213,23 @@ async def finalize_and_send_offer(message: types.Message, state: FSMContext, bot
         await update_offer_details(proj_id, data['price'], data['delivery'])
         await update_project_status(proj_id, STATUS_OFFERED)
         user_id = res['user_id']
-        subject = res['subject_name']
+        subject = escape_md(res['subject_name'])
+        
+        # Escape user-provided inputs
+        price = escape_md(data['price'])
+        delivery = escape_md(data['delivery'])
+        notes = escape_md(notes_text)
+
         offer_text = (f"🎁 **عرض جديد لمشروع: {subject}!**\n━━━━━━━━━━━━━\n"
-                      f"💰 **السعر:** {data['price']}\n📅 **التسليم:** {data['delivery']}\n"
-                      f"📝 **ملاحظات:** {notes_text}\n━━━━━━━━━━━━━")
+                      f"💰 **السعر:** {price}\n📅 **التسليم:** {delivery}\n"
+                      f"📝 **ملاحظات:** {notes}\n━━━━━━━━━━━━━")
+        
+        markup = get_offer_actions_kb(proj_id)
         
         markup = get_offer_actions_kb(proj_id)
         
         await bot.send_message(user_id, offer_text, parse_mode="Markdown", reply_markup=markup)
-        await message.answer(f"✅ تم إرسال العرض!", reply_markup=types.ReplyKeyboardRemove())
+        await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
     
     await state.clear()
 
@@ -226,7 +241,7 @@ async def manage_accepted_project(callback: types.CallbackQuery, state: FSMConte
     proj_id = callback.data.split("_")[2]
     await state.update_data(finish_proj_id=proj_id)
     await state.set_state(AdminStates.waiting_for_finished_work)
-    await callback.message.answer(f"📤 **المشروع #{proj_id}**\nارفع العمل النهائي (ملف/صورة/نص):")
+    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id))
     await callback.answer()
 
 @router.message(AdminStates.waiting_for_finished_work, F.from_user.id == ADMIN_ID)
@@ -238,16 +253,16 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
     
     if res:
         u_id = res['user_id']
-        sub = res['subject_name']
+        sub = escape_md(res['subject_name'])
         
-        await bot.send_message(u_id, f"🎉 **تم إنجاز العمل!**\nالمشروع: {sub} (#{proj_id})", parse_mode="Markdown")
+        await bot.send_message(u_id, MSG_WORK_FINISHED_ALERT.format(sub, proj_id), parse_mode="Markdown")
         # Relay the actual content (supports document, photo, or plain text)
         if message.document: await bot.send_document(u_id, message.document.file_id, caption=message.caption)
         elif message.photo: await bot.send_photo(u_id, message.photo[-1].file_id, caption=message.caption)
         else: await bot.send_message(u_id, message.text)
         
         await update_project_status(proj_id, STATUS_FINISHED)
-        await message.answer(f"✅ تم إنهاء المشروع #{proj_id}!")
+        await message.answer(MSG_FINISHED_CONFIRM.format(proj_id))
     
     await state.clear()
 
@@ -260,18 +275,20 @@ async def confirm_payment(callback: types.CallbackQuery, bot):
     await update_project_status(proj_id, STATUS_ACCEPTED)
     res = await get_project_by_id(proj_id)
     if res:
-        await bot.send_message(res['user_id'], f"🚀 **تم تأكيد الدفع!**\nبدأ العمل على **{res['subject_name']}**.", parse_mode="Markdown")
-    await callback.message.edit_caption(caption=f"✅ **تم التأكيد** المشروع #{proj_id}", parse_mode="Markdown")
+        subject = escape_md(res['subject_name'])
+        await bot.send_message(res['user_id'], MSG_PAYMENT_CONFIRMED_CLIENT.format(subject), parse_mode="Markdown")
+    await callback.message.edit_caption(caption=MSG_PAYMENT_CONFIRMED_ADMIN.format(proj_id), parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("reject_pay_"), F.from_user.id == ADMIN_ID)
 async def reject_payment(callback: types.CallbackQuery, bot):
     """Marks project as payment-failed and notifies the student."""
     proj_id = callback.data.split("_")[2]
     await update_project_status(proj_id, STATUS_REJECTED_PAYMENT)
+    
     res = await get_project_by_id(proj_id)
     if res:
-        await bot.send_message(res['user_id'], "❌ **رفض الدفع:** تعذر التحقق من الإيصال.", parse_mode="Markdown")
-    await callback.message.edit_caption(caption=f"❌ **مرفوض** المشروع #{proj_id}", parse_mode="Markdown")
+        await bot.send_message(res['user_id'], MSG_PAYMENT_REJECTED_CLIENT, parse_mode="Markdown")
+    await callback.message.edit_caption(caption=MSG_PAYMENT_REJECTED_ADMIN.format(proj_id), parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("deny_"))
 async def handle_deny(callback: types.CallbackQuery, bot):
@@ -280,9 +297,9 @@ async def handle_deny(callback: types.CallbackQuery, bot):
     if callback.from_user.id == ADMIN_ID:
         await update_project_status(proj_id, STATUS_DENIED_ADMIN)
         res = await get_project_by_id(proj_id)
-        if res: await bot.send_message(res['user_id'], f"❌ تم رفض المشروع #{proj_id} من قبل المشرف.")
+        if res: await bot.send_message(res['user_id'], MSG_PROJECT_DENIED_CLIENT.format(proj_id))
     else:
         await update_project_status(proj_id, STATUS_DENIED_STUDENT)
-        await bot.send_message(ADMIN_ID, f"❌ قام الطالب بإلغاء المشروع #{proj_id}.")
+        await bot.send_message(ADMIN_ID, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id))
     
-    await callback.message.edit_text(f"🚫 تم إغلاق المشروع #{proj_id}.")
+    await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
