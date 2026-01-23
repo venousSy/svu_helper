@@ -5,6 +5,7 @@ Handles all MongoDB operations using Motor (Async).
 """
 
 import logging
+from typing import List, Dict, Any, Optional, Union
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import MONGO_URI
 from utils.constants import (
@@ -36,7 +37,7 @@ class Database:
         await cls.db.projects.create_index("status")
 
     @classmethod
-    async def get_next_sequence(cls, sequence_name):
+    async def get_next_sequence(cls, sequence_name: str) -> int:
         """
         Atomically increments and returns the next integer ID for a sequence.
         Used to maintain simple integer IDs for projects (like SQL AUTOINCREMENT).
@@ -62,7 +63,7 @@ async def init_db():
 
 # --- PROJECT OPERATIONS ---
 
-async def add_project(user_id, username, user_full_name, subject, tutor, deadline, details, file_id):
+async def add_project(user_id: int, username: str, user_full_name: str, subject: str, tutor: str, deadline: str, details: str, file_id: Optional[str]) -> int:
     db = await get_db()
     
     # Get next auto-increment ID
@@ -86,24 +87,24 @@ async def add_project(user_id, username, user_full_name, subject, tutor, deadlin
     await db.projects.insert_one(document)
     return project_id
 
-async def get_pending_projects():
+async def get_pending_projects() -> List[Dict[str, Any]]:
     db = await get_db()
     cursor = db.projects.find({"status": STATUS_PENDING})
     return await cursor.to_list(length=None)
 
-async def get_user_projects(user_id):
+async def get_user_projects(user_id: int) -> List[Dict[str, Any]]:
     db = await get_db()
     cursor = db.projects.find({"user_id": user_id})
     return await cursor.to_list(length=None)
 
-async def update_project_status(project_id, new_status):
+async def update_project_status(project_id: int, new_status: str) -> None:
     db = await get_db()
     await db.projects.update_one(
         {"id": int(project_id)},
         {"$set": {"status": new_status}}
     )
 
-async def get_all_projects_categorized():
+async def get_all_projects_categorized() -> Dict[str, List[Dict[str, Any]]]:
     """Returns a dictionary of projects grouped by status."""
     db = await get_db()
     
@@ -129,12 +130,12 @@ async def get_all_projects_categorized():
         "History": history
     }
 
-async def get_all_users():
+async def get_all_users() -> List[int]:
     """Returns a list of unique user_ids."""
     db = await get_db()
     return await db.projects.distinct("user_id")
 
-async def get_student_offers(user_id):
+async def get_student_offers(user_id: int) -> List[Dict[str, Any]]:
     """Retrieves all projects for a user that currently have an active offer."""
     db = await get_db()
     cursor = db.projects.find({
@@ -143,7 +144,7 @@ async def get_student_offers(user_id):
     })
     return await cursor.to_list(length=None)
 
-async def update_offer_details(proj_id, price, delivery):
+async def update_offer_details(proj_id: int, price: str, delivery: str) -> None:
     db = await get_db()
     await db.projects.update_one(
         {"id": int(proj_id)},
@@ -154,18 +155,18 @@ async def update_offer_details(proj_id, price, delivery):
         }}
     )
 
-async def get_project_by_id(project_id):
+async def get_project_by_id(project_id: int) -> Optional[Dict[str, Any]]:
     """Retrieves a single project by its integer ID."""
     db = await get_db()
     return await db.projects.find_one({"id": int(project_id)})
 
-async def get_accepted_projects():
+async def get_accepted_projects() -> List[Dict[str, Any]]:
     """Retrieves all active/ongoing projects."""
     db = await get_db()
     cursor = db.projects.find({"status": STATUS_ACCEPTED})
     return await cursor.to_list(length=None)
 
-async def get_history_projects():
+async def get_history_projects() -> List[Dict[str, Any]]:
     """Retrieves finished or denied projects."""
     db = await get_db()
     cursor = db.projects.find({

@@ -26,7 +26,8 @@ from keyboards.admin_kb import (
     get_pending_projects_kb, 
     get_accepted_projects_kb,
     get_manage_project_kb,
-    get_notes_decision_kb
+    get_notes_decision_kb,
+    get_cancel_kb
 )
 from keyboards.client_kb import get_offer_actions_kb
 from utils.constants import (
@@ -39,7 +40,7 @@ from utils.constants import (
     MSG_PAYMENT_CONFIRMED_CLIENT, MSG_PAYMENT_CONFIRMED_ADMIN, 
     MSG_PAYMENT_REJECTED_CLIENT, MSG_PAYMENT_REJECTED_ADMIN, 
     MSG_PROJECT_DENIED_CLIENT, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN, 
-    MSG_PROJECT_CLOSED, BTN_YES
+    MSG_PROJECT_CLOSED, BTN_YES, BTN_CANCEL, MSG_CANCELLED
 )
 
 # Initialize router for admin-only events
@@ -47,6 +48,17 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 # --- NAVIGATION HANDLERS ---
+
+@router.message(F.text == BTN_CANCEL, F.from_user.id == ADMIN_ID)
+async def admin_cancel_process(message: types.Message, state: FSMContext):
+    """Cancels any active admin FSM state."""
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+        await message.answer(MSG_CANCELLED, reply_markup=types.ReplyKeyboardRemove())
+        await admin_dashboard(message) # Return to dashboard
+    else:
+        await admin_dashboard(message)
 
 @router.message(Command("admin"), F.from_user.id == ADMIN_ID)
 async def admin_dashboard(message: types.Message):
@@ -106,7 +118,7 @@ async def admin_view_history(callback: types.CallbackQuery):
 @router.callback_query(F.data == "admin_broadcast", F.from_user.id == ADMIN_ID)
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
     """Initiates the broadcast FSM flow."""
-    await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_back_btn().as_markup())
+    await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_broadcast)
 
 @router.message(AdminStates.waiting_for_broadcast, F.from_user.id == ADMIN_ID)
@@ -122,7 +134,7 @@ async def execute_broadcast(message: types.Message, state: FSMContext, bot):
         except Exception as e: 
             logger.warning(f"Failed to broadcast to {u_id}: {e}")
             continue # Skip users who blocked the bot
-    await message.answer(MSG_BROADCAST_SUCCESS.format(count))
+    await message.answer(MSG_BROADCAST_SUCCESS.format(count), reply_markup=types.ReplyKeyboardRemove())
     await state.clear()
 
 # --- OFFER GENERATION FSM ---
@@ -171,14 +183,14 @@ async def start_offer_flow(callback: types.CallbackQuery, state: FSMContext):
     """Starts a step-by-step FSM to collect price and delivery data."""
     proj_id = callback.data.split("_")[2]
     await state.update_data(offer_proj_id=proj_id)
-    await callback.message.answer(MSG_ASK_PRICE.format(proj_id))
+    await callback.message.answer(MSG_ASK_PRICE.format(proj_id), reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_price)
 
 @router.message(AdminStates.waiting_for_price, F.from_user.id == ADMIN_ID)
 async def process_price(message: types.Message, state: FSMContext):
     """Stores price and requests delivery date."""
     await state.update_data(price=message.text)
-    await message.answer(MSG_ASK_DELIVERY)
+    await message.answer(MSG_ASK_DELIVERY, reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_delivery)
 
 @router.message(AdminStates.waiting_for_delivery, F.from_user.id == ADMIN_ID)
@@ -241,7 +253,7 @@ async def manage_accepted_project(callback: types.CallbackQuery, state: FSMConte
     proj_id = callback.data.split("_")[2]
     await state.update_data(finish_proj_id=proj_id)
     await state.set_state(AdminStates.waiting_for_finished_work)
-    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id))
+    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=get_cancel_kb())
     await callback.answer()
 
 @router.message(AdminStates.waiting_for_finished_work, F.from_user.id == ADMIN_ID)
@@ -262,7 +274,7 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
         else: await bot.send_message(u_id, message.text)
         
         await update_project_status(proj_id, STATUS_FINISHED)
-        await message.answer(MSG_FINISHED_CONFIRM.format(proj_id))
+        await message.answer(MSG_FINISHED_CONFIRM.format(proj_id), reply_markup=types.ReplyKeyboardRemove())
     
     await state.clear()
 
