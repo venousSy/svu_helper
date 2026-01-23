@@ -17,12 +17,15 @@ if not BOT_TOKEN:
     print("Please check your .env configuration.\n")
     sys.exit(1)
 
-# Administrative ID (defaults to 0 if missing)
+# Administrative ID
 try:
     ADMIN_ID = int(os.getenv("ADMIN_ID", 0))
-except ValueError:
-    logger.error("⚠️ Invalid ADMIN_ID format in .env. Defaulting to 0.")
-    ADMIN_ID = 0
+    if ADMIN_ID == 0:
+        raise ValueError("ADMIN_ID cannot be 0")
+except ValueError as e:
+    logger.critical(f"❌ Invalid or missing ADMIN_ID: {e}")
+    print("\nCRITICAL ERROR: ADMIN_ID is required in .env file.")
+    sys.exit(1)
 
 MONGO_URI = os.getenv("MONGO_URI")
 

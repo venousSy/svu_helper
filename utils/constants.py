@@ -46,6 +46,7 @@ BTN_MY_OFFERS = "🎁 عروضي"
 BTN_BACK = "🔙 رجوع"
 BTN_YES = "نعم"
 BTN_NO = "لا"
+BTN_CANCEL = "❌ إلغاء"
 
 # --- ADMIN DASHBOARD ---
 MSG_ADMIN_DASHBOARD = "🛠 **لوحة تحكم المسؤول**"

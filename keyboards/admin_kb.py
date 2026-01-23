@@ -6,6 +6,7 @@ Defines all inline and reply keyboards used in the administrative dashboard.
 
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from utils.constants import BTN_YES, BTN_NO, BTN_CANCEL
 
 def get_admin_dashboard_kb() -> types.InlineKeyboardMarkup:
     """Generates the main administrative dashboard keyboard."""
@@ -75,8 +76,14 @@ def get_payment_verify_kb(proj_id):
 
 def get_notes_decision_kb():
     builder = ReplyKeyboardBuilder()
-    builder.button(text="نعم") # Yes
-    builder.button(text="لا، أرسل الآن") # No, send now
+    builder.button(text=BTN_YES)
+    builder.button(text=BTN_NO)
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+def get_cancel_kb():
+    builder = ReplyKeyboardBuilder()
+    builder.button(text=BTN_CANCEL)
     return builder.as_markup(resize_keyboard=True)
 
 def get_new_project_alert_kb(p_id):
