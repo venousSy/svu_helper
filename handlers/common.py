@@ -27,7 +27,6 @@ async def help_command(message: types.Message):
     """Provides help information to the user."""
     await message.answer(
         MSG_HELP,
-        parse_mode="Markdown",
         reply_markup=types.ReplyKeyboardRemove()
     )
 
