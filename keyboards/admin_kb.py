@@ -92,3 +92,19 @@ def get_new_project_alert_kb(p_id):
     builder.row(types.InlineKeyboardButton(text="💰 إرسال عرض", callback_data=f"make_offer_{p_id}"))
     builder.row(types.InlineKeyboardButton(text="❌ رفض", callback_data=f"deny_{p_id}"))
     return builder.as_markup()
+
+def get_payment_history_kb(payments):
+    """Generates buttons for each payment to view its receipt."""
+    builder = get_back_btn()
+    
+    # Show last 10 payments to avoid button clutter
+    recent_payments = payments[:10]
+    
+    for pay in recent_payments:
+        p_id = pay['id']
+        builder.row(types.InlineKeyboardButton(
+            text=f"📄 عرض الإيصال #{p_id}", 
+            callback_data=f"view_receipt_{p_id}"
+        ))
+        
+    return builder.as_markup()

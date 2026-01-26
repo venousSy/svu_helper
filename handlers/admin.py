@@ -28,7 +28,8 @@ from keyboards.admin_kb import (
     get_accepted_projects_kb,
     get_manage_project_kb,
     get_notes_decision_kb,
-    get_cancel_kb
+    get_cancel_kb,
+    get_payment_history_kb
 )
 from keyboards.client_kb import get_offer_actions_kb
 from utils.constants import (
@@ -121,8 +122,35 @@ async def admin_view_payments(callback: types.CallbackQuery):
     await callback.message.edit_text(
         format_payment_list(payments),
         parse_mode="Markdown",
-        reply_markup=get_back_btn().as_markup()
+        reply_markup=get_payment_history_kb(payments)
     )
+
+@router.callback_query(F.data.startswith("view_receipt_"), F.from_user.id == ADMIN_ID)
+async def admin_view_receipt(callback: types.CallbackQuery, bot):
+    """Fetches and sends the actual receipt file for a specific payment."""
+    payment_id = callback.data.split("_")[2]
+    payment = await get_payment_by_id(payment_id)
+    
+    if not payment:
+        await callback.answer("⚠️ File not found.", show_alert=True)
+        return
+        
+    file_id = payment['file_id']
+    status = payment['status']
+    caption = f"📄 **Detail View: Payment #{payment_id}**\nStatus: {status}"
+    
+    try:
+        # We don't know if it's a photo or document, so we try sending as document (safe bet) 
+        # or we could rely on how aiogram handles file_ids.
+        # Generally send_document works for both if we treat it as a file.
+        # But let's try send_photo if it looks like one, or default to document.
+        # Simple approach: Just send_document as it's the most versatile.
+        await bot.send_document(ADMIN_ID, file_id, caption=caption, parse_mode="Markdown")
+        await callback.answer()
+    except Exception:
+        # Fallback if it's a photo ID that send_document doesn't like
+        await bot.send_photo(ADMIN_ID, file_id, caption=caption, parse_mode="Markdown")
+        await callback.answer()
 
 # --- GLOBAL COMMUNICATION ---
 
