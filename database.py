@@ -35,6 +35,11 @@ class Database:
         await cls.db.projects.create_index("id", unique=True)
         await cls.db.projects.create_index("user_id")
         await cls.db.projects.create_index("status")
+        
+        # Payment Indexes
+        await cls.db.payments.create_index("id", unique=True)
+        await cls.db.payments.create_index("project_id")
+        await cls.db.payments.create_index("status")
 
     @classmethod
     async def get_next_sequence(cls, sequence_name: str) -> int:
@@ -176,3 +181,32 @@ async def get_history_projects() -> List[Dict[str, Any]]:
         ]}
     })
     return await cursor.to_list(length=None)
+
+# --- PAYMENT OPERATIONS ---
+
+async def add_payment(project_id: int, user_id: int, file_id: str) -> int:
+    db = await get_db()
+    
+    payment_id = await Database.get_next_sequence("payment_id")
+    
+    document = {
+        "id": payment_id,
+        "project_id": int(project_id),
+        "user_id": user_id,
+        "file_id": file_id,
+        "status": "pending",  # pending, accepted, rejected
+    }
+    
+    await db.payments.insert_one(document)
+    return payment_id
+
+async def get_payment_by_id(payment_id: int) -> Optional[Dict[str, Any]]:
+    db = await get_db()
+    return await db.payments.find_one({"id": int(payment_id)})
+
+async def update_payment_status(payment_id: int, new_status: str) -> None:
+    db = await get_db()
+    await db.payments.update_one(
+        {"id": int(payment_id)},
+        {"$set": {"status": new_status}}
+    )

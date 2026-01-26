@@ -16,10 +16,10 @@ The project is split into distinct layers to separate concerns:
     -   **`admin.py`**: The control panel. Allows the admin to view pending work, send offers, and verify payments.
     -   **`common.py`**: Basic commands like `/start`, `/help`, and `/cancel`.
 
-3.  **`database.py` (The Memory)**
-    -   A simplified wrapper around **SQLite**.
+3.  **database.py (The Memory)**
+    -   A wrapper around **MongoDB** (using `Motor` for async).
     -   Functions like `add_project()`, `update_project_status()`.
-    -   Uses a "Context Manager" (`with get_db_connection()...`) to ensure the database always closes safely, preventing corruption.
+    -   Uses a **Singleton Pattern** to maintain a persistent connection pool.
 
 4.  **`keyboards/` (The Interface)**
     -   Contains "Builders" for the buttons you see (Inline and Reply keyboards).

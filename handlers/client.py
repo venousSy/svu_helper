@@ -16,7 +16,12 @@ from database import (
     add_project, 
     get_user_projects, 
     get_student_offers,
-    get_project_by_id
+    get_user_projects, 
+    get_student_offers,
+    get_project_by_id,
+    add_payment,
+    update_project_status,
+    STATUS_AWAITING_VERIFICATION
 )
 from utils.formatters import (
     format_student_projects, 
@@ -25,7 +30,7 @@ from utils.formatters import (
     escape_md
 )
 
-from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb
+from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb, get_cancel_payment_kb
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
 from utils.constants import (
     STATUS_OFFERED, 
@@ -101,35 +106,42 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     full_name = user.full_name
     
     # Commit project to database and retrieve the auto-generated ID
-    project_id = await add_project(
-        user_id=user.id,
-        username=username,
-        user_full_name=full_name,
-        subject=data['subject'], 
-        tutor=data['tutor'], 
-        deadline=data['deadline'], 
-        details=details_text, 
-        file_id=file_id
-    )
+    try:
+        project_id = await add_project(
+            user_id=user.id,
+            username=username,
+            user_full_name=full_name,
+            subject=data['subject'], 
+            tutor=data['tutor'], 
+            deadline=data['deadline'], 
+            details=details_text, 
+            file_id=file_id
+        )
 
-    # Provide immediate feedback to the student
-    await message.answer(
-        MSG_PROJECT_SUBMITTED.format(project_id),
-        parse_mode="Markdown"
-    )
-    
-    admin_text = format_admin_notification(
-        project_id, 
-        data['subject'], 
-        data['deadline'], 
-        details_text,
-        user_name=full_name,
-        username=username
-    )
-    await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown", reply_markup=get_new_project_alert_kb(project_id))
-    
-    # Clear FSM state to allow new commands
-    await state.clear()
+        # Provide immediate feedback to the student
+        await message.answer(
+            MSG_PROJECT_SUBMITTED.format(project_id),
+            parse_mode="Markdown"
+        )
+        
+        admin_text = format_admin_notification(
+            project_id, 
+            data['subject'], 
+            data['deadline'], 
+            details_text,
+            user_name=full_name,
+            username=username
+        )
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown", reply_markup=get_new_project_alert_kb(project_id))
+        
+        # Clear FSM state to allow new commands
+        await state.clear()
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to submit project: {e}", exc_info=True)
+        await message.answer("⚠️ حدث خطأ أثناء حفظ المشروع. حاول مرة أخرى لاحقاً.", reply_markup=types.ReplyKeyboardRemove())
+        await state.clear()
 
 
 @router.callback_query(F.data.startswith("accept_"))
@@ -142,10 +154,18 @@ async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext)
     
     await callback.message.edit_text(
         MSG_OFFER_ACCEPTED.format(proj_id),
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+        reply_markup=get_cancel_payment_kb() # Add Cancel Button
     )
     # Set the state defined in your states.py
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
+    await callback.answer()
+
+@router.callback_query(F.data == "cancel_payment_upload")
+async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContext):
+    """Cancels the payment upload and returns the user to safety."""
+    await state.clear()
+    await callback.message.edit_text("🚫 تم إلغاء عملية الدفع. يمكنك قبول العرض لاحقاً من قائمة 'عروضي'.")
     await callback.answer()
 
 @router.message(ProjectOrder.waiting_for_payment_proof, F.photo | F.document)
@@ -157,14 +177,26 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     # Identify the file
     file_id = message.photo[-1].file_id if message.photo else message.document.file_id
     
-    # Notify Student
-    await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
-    
-    # Notify Admin
-    await bot.send_message(ADMIN_ID, f"💰 **PAYMENT PROOF: Project #{proj_id}**", parse_mode="Markdown")
-    await bot.send_photo(ADMIN_ID, file_id, caption=f"Verify payment for Project #{proj_id}", reply_markup=get_payment_verify_kb(proj_id))
-    
-    await state.clear()
+    try:
+        # 1. Save to Payment Registry
+        payment_id = await add_payment(proj_id, message.from_user.id, file_id)
+        
+        # 2. Update Project Status
+        await update_project_status(proj_id, STATUS_AWAITING_VERIFICATION)
+
+        # 3. Notify Student
+        await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
+        
+        # 4. Notify Admin (WITH PAYMENT ID)
+        await bot.send_message(ADMIN_ID, f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}", parse_mode="Markdown")
+        await bot.send_photo(ADMIN_ID, file_id, caption=f"verify_pay_{payment_id}", reply_markup=get_payment_verify_kb(payment_id))
+        
+        await state.clear()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Payment upload failed: {e}", exc_info=True)
+        await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
+        await state.clear()
 
 # --- PROJECT STATUS LOOKUP ---
 

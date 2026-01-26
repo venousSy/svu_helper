@@ -17,7 +17,8 @@ from states import AdminStates, ProjectOrder
 from database import (
     get_pending_projects, update_project_status, get_project_by_id, 
     get_all_projects_categorized, update_offer_details,
-    get_accepted_projects, get_history_projects, get_all_users
+    get_accepted_projects, get_history_projects, get_all_users,
+    get_payment_by_id, update_payment_status, STATUS_ACCEPTED, STATUS_REJECTED_PAYMENT
 )
 from utils.formatters import format_project_list, format_project_history, format_master_report, escape_md
 from keyboards.admin_kb import (
@@ -189,14 +190,36 @@ async def start_offer_flow(callback: types.CallbackQuery, state: FSMContext):
 @router.message(AdminStates.waiting_for_price, F.from_user.id == ADMIN_ID)
 async def process_price(message: types.Message, state: FSMContext):
     """Stores price and requests delivery date."""
-    await state.update_data(price=message.text)
+    price_text = message.text.strip()
+    
+    # VALIDATION: Check for reasonable length and empty content
+    if not price_text:
+        await message.answer("⚠️ الرجاء إدخال سعر صالح.")
+        return
+        
+    if len(price_text) > 50:
+        await message.answer("⚠️ النص طويل جداً. الرجاء إدخال سعر مختصر (مثلاً: 50,000 ل.س).")
+        return
+
+    await state.update_data(price=price_text)
     await message.answer(MSG_ASK_DELIVERY, reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_delivery)
 
 @router.message(AdminStates.waiting_for_delivery, F.from_user.id == ADMIN_ID)
 async def process_delivery(message: types.Message, state: FSMContext):
     """Stores delivery date and asks if extra notes are needed."""
-    await state.update_data(delivery=message.text)
+    delivery_text = message.text.strip()
+
+    # VALIDATION
+    if not delivery_text:
+        await message.answer("⚠️ الرجاء إدخال موعد صالح.")
+        return
+        
+    if len(delivery_text) > 50:
+        await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
+        return
+
+    await state.update_data(delivery=delivery_text)
     
     await message.answer(MSG_ASK_NOTES, reply_markup=get_notes_decision_kb())
     await state.set_state(AdminStates.waiting_for_notes_decision)
@@ -221,29 +244,32 @@ async def finalize_and_send_offer(message: types.Message, state: FSMContext, bot
     proj_id = data['offer_proj_id']
     res = await get_project_by_id(proj_id)
     
-    if res:
-        await update_offer_details(proj_id, data['price'], data['delivery'])
-        await update_project_status(proj_id, STATUS_OFFERED)
-        user_id = res['user_id']
-        subject = escape_md(res['subject_name'])
-        
-        # Escape user-provided inputs
-        price = escape_md(data['price'])
-        delivery = escape_md(data['delivery'])
-        notes = escape_md(notes_text)
+    try:
+        if res:
+            await update_offer_details(proj_id, data['price'], data['delivery'])
+            await update_project_status(proj_id, STATUS_OFFERED)
+            user_id = res['user_id']
+            subject = escape_md(res['subject_name'])
+            
+            # Escape user-provided inputs
+            price = escape_md(data['price'])
+            delivery = escape_md(data['delivery'])
+            notes = escape_md(notes_text)
 
-        offer_text = (f"🎁 **عرض جديد لمشروع: {subject}!**\n━━━━━━━━━━━━━\n"
-                      f"💰 **السعر:** {price}\n📅 **التسليم:** {delivery}\n"
-                      f"📝 **ملاحظات:** {notes}\n━━━━━━━━━━━━━")
+            offer_text = (f"🎁 **عرض جديد لمشروع: {subject}!**\n━━━━━━━━━━━━━\n"
+                          f"💰 **السعر:** {price}\n📅 **التسليم:** {delivery}\n"
+                          f"📝 **ملاحظات:** {notes}\n━━━━━━━━━━━━━")
+            
+            markup = get_offer_actions_kb(proj_id)
+            
+            await bot.send_message(user_id, offer_text, parse_mode="Markdown", reply_markup=markup)
+            await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
         
-        markup = get_offer_actions_kb(proj_id)
-        
-        markup = get_offer_actions_kb(proj_id)
-        
-        await bot.send_message(user_id, offer_text, parse_mode="Markdown", reply_markup=markup)
-        await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
-    
-    await state.clear()
+        await state.clear()
+    except Exception as e:
+        logger.error(f"Failed to send offer for #{proj_id}: {e}", exc_info=True)
+        await message.answer("⚠️ حدث خطأ أثناء إرسال العرض.", reply_markup=types.ReplyKeyboardRemove())
+        await state.clear()
 
 # --- WORK LIFECYCLE MANAGEMENT ---
 
@@ -283,24 +309,52 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
 @router.callback_query(F.data.startswith("confirm_pay_"), F.from_user.id == ADMIN_ID)
 async def confirm_payment(callback: types.CallbackQuery, bot):
     """Transitions project from 'Verification' to 'Accepted' (Ongoing)."""
-    proj_id = callback.data.split("_")[2]
+    payment_id = callback.data.split("_")[2]
+    
+    # 1. Get Payment Info
+    payment = await get_payment_by_id(payment_id)
+    if not payment:
+        await callback.answer("⚠️ Payment not found!", show_alert=True)
+        return
+
+    proj_id = payment['project_id']
+
+    # 2. Update Payment -> Accepted
+    await update_payment_status(payment_id, "accepted")
+
+    # 3. Update Project -> Accepted
     await update_project_status(proj_id, STATUS_ACCEPTED)
+
     res = await get_project_by_id(proj_id)
     if res:
         subject = escape_md(res['subject_name'])
         await bot.send_message(res['user_id'], MSG_PAYMENT_CONFIRMED_CLIENT.format(subject), parse_mode="Markdown")
-    await callback.message.edit_caption(caption=MSG_PAYMENT_CONFIRMED_ADMIN.format(proj_id), parse_mode="Markdown")
+    
+    await callback.message.edit_caption(caption=MSG_PAYMENT_CONFIRMED_ADMIN.format(proj_id) + f"\n(Payment #{payment_id} Accepted)", parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("reject_pay_"), F.from_user.id == ADMIN_ID)
 async def reject_payment(callback: types.CallbackQuery, bot):
     """Marks project as payment-failed and notifies the student."""
-    proj_id = callback.data.split("_")[2]
-    await update_project_status(proj_id, STATUS_REJECTED_PAYMENT)
+    payment_id = callback.data.split("_")[2]
+    
+    payment = await get_payment_by_id(payment_id)
+    if not payment: return
+
+    proj_id = payment['project_id']
+
+    # 1. Update Payment -> Rejected
+    await update_payment_status(payment_id, "rejected")
+
+    # 2. Update Project -> Offered (Reset so they can try again)
+    # We do NOT kill the project. We let them re-upload.
+    await update_project_status(proj_id, STATUS_OFFERED)
     
     res = await get_project_by_id(proj_id)
     if res:
-        await bot.send_message(res['user_id'], MSG_PAYMENT_REJECTED_CLIENT, parse_mode="Markdown")
-    await callback.message.edit_caption(caption=MSG_PAYMENT_REJECTED_ADMIN.format(proj_id), parse_mode="Markdown")
+        # Custom reject message telling them to try again
+        await bot.send_message(res['user_id'], "❌ **تم رفض عملية الدفع.**\nالرجاء التأكد من الإيصال وإعادة المحاولة من قائمة 'عروضي'.", parse_mode="Markdown")
+        
+    await callback.message.edit_caption(caption=MSG_PAYMENT_REJECTED_ADMIN.format(proj_id) + f"\n(Payment #{payment_id} Rejected)", parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("deny_"))
 async def handle_deny(callback: types.CallbackQuery, bot):
