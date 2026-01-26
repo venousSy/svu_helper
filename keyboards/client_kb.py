@@ -28,3 +28,9 @@ def get_offers_list_kb(offers):
             callback_data=f"view_offer_{p_id}"
         ))
     return builder.as_markup()
+
+def get_cancel_payment_kb() -> types.InlineKeyboardMarkup:
+    """Button to cancel the payment upload process."""
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="❌ إلغاء", callback_data="cancel_payment_upload"))
+    return builder.as_markup()

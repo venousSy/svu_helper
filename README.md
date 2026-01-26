@@ -32,6 +32,7 @@ Create a `.env` file in the root directory:
 ```env
 BOT_TOKEN=your_telegram_bot_token
 ADMIN_ID=your_telegram_user_id
+MONGO_URI=mongodb://localhost:27017
 ```
 
 ### 4. Running the Bot
@@ -44,7 +45,7 @@ python main.py
 - `keyboards/`: Inline and reply keyboard definitions.
 - `utils/`: Constants and formatting helpers.
 - `scripts/`: Maintenance and debugging utilities.
-- `database.py`: SQLite database abstraction layer.
+- `database.py`: **MongoDB** async wrapper using Motor.
 - `main.py`: Entry point and bot initialization.
 
 ## Maintenance
