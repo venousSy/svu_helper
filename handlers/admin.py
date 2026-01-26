@@ -13,7 +13,7 @@ from aiogram.fsm.context import FSMContext
 
 
 from config import ADMIN_ID
-from states import AdminStates, ProjectOrder
+from states import AdminStates
 from database import (
     get_pending_projects, update_project_status, get_project_by_id, 
     get_all_projects_categorized, update_offer_details,
@@ -21,6 +21,7 @@ from database import (
     get_payment_by_id, update_payment_status, get_all_payments, STATUS_ACCEPTED, STATUS_REJECTED_PAYMENT
 )
 from utils.formatters import format_project_list, format_project_history, format_master_report, format_payment_list, escape_md
+from utils.helpers import get_file_id
 from keyboards.admin_kb import (
     get_admin_dashboard_kb, 
     get_back_btn, 
@@ -332,10 +333,15 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
         sub = escape_md(res['subject_name'])
         
         await bot.send_message(u_id, MSG_WORK_FINISHED_ALERT.format(sub, proj_id), parse_mode="Markdown")
+        
         # Relay the actual content (supports document, photo, or plain text)
-        if message.document: await bot.send_document(u_id, message.document.file_id, caption=message.caption)
-        elif message.photo: await bot.send_photo(u_id, message.photo[-1].file_id, caption=message.caption)
-        else: await bot.send_message(u_id, message.text)
+        file_id, file_type = get_file_id(message)
+        if file_type == 'document':
+            await bot.send_document(u_id, file_id, caption=message.caption)
+        elif file_type == 'photo':
+            await bot.send_photo(u_id, file_id, caption=message.caption)
+        else:
+            await bot.send_message(u_id, message.text)
         
         await update_project_status(proj_id, STATUS_FINISHED)
         await message.answer(MSG_FINISHED_CONFIRM.format(proj_id), reply_markup=types.ReplyKeyboardRemove())

@@ -27,8 +27,10 @@ from utils.formatters import (
     format_student_projects, 
     format_admin_notification, 
     format_offer_list,
+    format_offer_list,
     escape_md
 )
+from utils.helpers import get_file_id
 
 from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb, get_cancel_payment_kb
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
@@ -91,11 +93,8 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     data = await state.get_data()
     
     # Logic: Prioritize document, then photo. Fallback to None if text-only.
-    file_id = None
-    if message.document:
-        file_id = message.document.file_id
-    elif message.photo:
-        file_id = message.photo[-1].file_id  # Select the highest resolution photo
+    # Logic: Prioritize document, then photo. Fallback to None if text-only.
+    file_id, _ = get_file_id(message)
     
     # Logic: Details can be in the message text or a file caption
     details_text = message.text or message.caption or MSG_NO_DESC
@@ -175,7 +174,7 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     proj_id = data.get("active_pay_proj_id")
     
     # Identify the file
-    file_id = message.photo[-1].file_id if message.photo else message.document.file_id
+    file_id, _ = get_file_id(message)
     
     try:
         # 1. Save to Payment Registry
