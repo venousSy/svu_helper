@@ -205,6 +205,7 @@ async def get_payment_by_id(payment_id: int) -> Optional[Dict[str, Any]]:
     return await db.payments.find_one({"id": int(payment_id)})
 
 async def update_payment_status(payment_id: int, new_status: str) -> None:
+    db = await get_db()
     await db.payments.update_one(
         {"id": int(payment_id)},
         {"$set": {"status": new_status}}
