@@ -205,8 +205,13 @@ async def get_payment_by_id(payment_id: int) -> Optional[Dict[str, Any]]:
     return await db.payments.find_one({"id": int(payment_id)})
 
 async def update_payment_status(payment_id: int, new_status: str) -> None:
-    db = await get_db()
     await db.payments.update_one(
         {"id": int(payment_id)},
         {"$set": {"status": new_status}}
     )
+
+async def get_all_payments() -> List[Dict[str, Any]]:
+    """Retrieves all payments sorted by ID descending (newest first)."""
+    db = await get_db()
+    cursor = db.payments.find().sort("id", -1)
+    return await cursor.to_list(length=None)

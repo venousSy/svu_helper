@@ -200,3 +200,25 @@ def format_offer_list(offers: list) -> str:
     
     text += "💡 اضغط على الزر أدناه لعرض التفاصيل والرد."
     return text
+
+def format_payment_list(payments: list) -> str:
+    """Formats the raw payment logs into a readable history log."""
+    if not payments:
+        return "سجل المدفوعات فارغ. 📭"
+
+    text = "💰 **سجل المدفوعات**\n" + "━" * 15 + "\n"
+    
+    for pay in payments:
+        p_id = pay['id']
+        proj_id = pay['project_id']
+        u_id = pay['user_id']
+        status = pay['status']
+        
+        # Emoji Logic
+        if status == "accepted": icon = "✅"
+        elif status == "rejected": icon = "❌"
+        else: icon = "⏳"
+        
+        text += f"{icon} **D#{p_id}** | 🆔 Proj: #{proj_id}\n   👤 User: [{u_id}](tg://user?id={u_id})\n   🏷 Status: {status}\n\n"
+        
+    return text.strip()

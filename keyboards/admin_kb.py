@@ -15,6 +15,7 @@ def get_admin_dashboard_kb() -> types.InlineKeyboardMarkup:
     builder.row(types.InlineKeyboardButton(text="📊 مشاريع قيد الانتظار", callback_data="view_pending"))
     builder.row(types.InlineKeyboardButton(text="✅ مشاريع مقبولة/جارية", callback_data="view_accepted"))
     builder.row(types.InlineKeyboardButton(text="📜 سجل المشاريع", callback_data="view_history"))
+    builder.row(types.InlineKeyboardButton(text="💰 سجل المدفوعات", callback_data="view_payments"))
     builder.row(types.InlineKeyboardButton(text="📢 إرسال إعلان", callback_data="admin_broadcast"))
     return builder.as_markup()
 
