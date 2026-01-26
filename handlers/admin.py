@@ -18,9 +18,9 @@ from database import (
     get_pending_projects, update_project_status, get_project_by_id, 
     get_all_projects_categorized, update_offer_details,
     get_accepted_projects, get_history_projects, get_all_users,
-    get_payment_by_id, update_payment_status, STATUS_ACCEPTED, STATUS_REJECTED_PAYMENT
+    get_payment_by_id, update_payment_status, get_all_payments, STATUS_ACCEPTED, STATUS_REJECTED_PAYMENT
 )
-from utils.formatters import format_project_list, format_project_history, format_master_report, escape_md
+from utils.formatters import format_project_list, format_project_history, format_master_report, format_payment_list, escape_md
 from keyboards.admin_kb import (
     get_admin_dashboard_kb, 
     get_back_btn, 
@@ -110,6 +110,16 @@ async def admin_view_history(callback: types.CallbackQuery):
     history = await get_history_projects()
     await callback.message.edit_text(
         format_project_history(history), 
+        parse_mode="Markdown",
+        reply_markup=get_back_btn().as_markup()
+    )
+
+@router.callback_query(F.data == "view_payments", F.from_user.id == ADMIN_ID)
+async def admin_view_payments(callback: types.CallbackQuery):
+    """Displays a log of all payments (Pending, Accepted, Rejected)."""
+    payments = await get_all_payments()
+    await callback.message.edit_text(
+        format_payment_list(payments),
         parse_mode="Markdown",
         reply_markup=get_back_btn().as_markup()
     )
