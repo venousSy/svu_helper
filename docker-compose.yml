@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: svu_helper_bot
+    restart: always
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_ID=${ADMIN_ID}
+      - MONGO_URI=mongodb://mongo:27017
+    depends_on:
+      - mongo
+    volumes:
+      - .:/app  # Mounts current directory for hot-reloading (optional, good for dev)
+
+  mongo:
+    image: mongo:latest
+    container_name: svu_helper_mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017" # Expose to host if you want to connect from outside
+
+  mongo-express:
+    image: mongo-express
+    container_name: svu_helper_mongo_express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
