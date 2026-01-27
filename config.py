@@ -27,7 +27,7 @@ except ValueError as e:
     print("\nCRITICAL ERROR: ADMIN_ID is required in .env file.")
     sys.exit(1)
 
-MONGO_URI = os.getenv("MONGO_URI")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 
 # --- FILE PATHS ---
 # --- FILE PATHS ---
