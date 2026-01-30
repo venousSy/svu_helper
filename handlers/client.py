@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import ADMIN_ID
+from config import ADMIN_IDS
 from database import (
     STATUS_AWAITING_VERIFICATION,
     add_payment,
@@ -137,12 +137,13 @@ async def process_details(message: types.Message, state: FSMContext, bot):
             user_name=full_name,
             username=username,
         )
-        await bot.send_message(
-            ADMIN_ID,
-            admin_text,
-            parse_mode="Markdown",
-            reply_markup=get_new_project_alert_kb(project_id),
-        )
+        for admin_id in ADMIN_IDS:
+            await bot.send_message(
+                admin_id,
+                admin_text,
+                parse_mode="Markdown",
+                reply_markup=get_new_project_alert_kb(project_id),
+            )
 
         # Clear FSM state to allow new commands
         await state.clear()
@@ -208,17 +209,18 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
         await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
 
         # 4. Notify Admin (WITH PAYMENT ID)
-        await bot.send_message(
-            ADMIN_ID,
-            f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
-            parse_mode="Markdown",
-        )
-        await bot.send_photo(
-            ADMIN_ID,
-            file_id,
-            caption=f"verify_pay_{payment_id}",
-            reply_markup=get_payment_verify_kb(payment_id),
-        )
+        for admin_id in ADMIN_IDS:
+            await bot.send_message(
+                admin_id,
+                f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
+                parse_mode="Markdown",
+            )
+            await bot.send_photo(
+                admin_id,
+                file_id,
+                caption=f"verify_pay_{payment_id}",
+                reply_markup=get_payment_verify_kb(payment_id),
+            )
 
         await state.clear()
     except Exception as e:

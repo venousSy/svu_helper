@@ -18,14 +18,24 @@ if not BOT_TOKEN:
     print("Please check your .env configuration.\n")
     sys.exit(1)
 
-# Administrative ID
+# Administrative IDs
 try:
-    ADMIN_ID = int(os.getenv("ADMIN_ID", 0))
-    if ADMIN_ID == 0:
-        raise ValueError("ADMIN_ID cannot be 0")
+    # Try loading list first (ADMIN_IDS=123,456)
+    env_ids = os.getenv("ADMIN_IDS", "")
+    ADMIN_IDS = [int(x.strip()) for x in env_ids.split(",") if x.strip()]
+
+    # Fallback/Support for single ADMIN_ID
+    if not ADMIN_IDS:
+        single_id = os.getenv("ADMIN_ID")
+        if single_id:
+            ADMIN_IDS.append(int(single_id))
+
+    if not ADMIN_IDS:
+        raise ValueError("No valid admin IDs found in ADMIN_IDS or ADMIN_ID.")
+        
 except ValueError as e:
-    logger.critical(f"❌ Invalid or missing ADMIN_ID: {e}")
-    print("\nCRITICAL ERROR: ADMIN_ID is required in .env file.")
+    logger.critical(f"❌ Invalid Admin Configuration: {e}")
+    print("\nCRITICAL ERROR: ADMIN_IDS (comma-separated) or ADMIN_ID is required in .env file.")
     sys.exit(1)
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
