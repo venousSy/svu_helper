@@ -24,18 +24,20 @@ from utils.constants import (
 # Use a default DB name if not specified in URI, or fall back to 'svu_helper_db'
 DB_NAME = "svu_helper_bot"
 
+if not MONGO_URI:
+    raise ValueError("MONGO_URI is not set in environment or config.py")
+
+# Create a global client instance (lazy connection)
+mongo_client = AsyncIOMotorClient(MONGO_URI)
 
 class Database:
-    client: AsyncIOMotorClient = None
+    client: AsyncIOMotorClient = mongo_client
     db = None
 
     @classmethod
     async def connect(cls):
         """Initializes the MongoDB connection."""
-        if not MONGO_URI:
-            raise ValueError("MONGO_URI is not set in environment or config.py")
-
-        cls.client = AsyncIOMotorClient(MONGO_URI)
+        # Use simple topology check or just assign db
         cls.db = cls.client[DB_NAME]
         logging.info(f"🔌 Connected to MongoDB: {DB_NAME}")
 
