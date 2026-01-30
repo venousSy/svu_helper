@@ -1,24 +1,41 @@
-# Use an official lightweight Python image.
-# https://hub.docker.com/_/python
-FROM python:3.10-slim
+# Stage 1: Builder
+FROM python:3.10-slim as builder
 
-# Set environment variables:
-# PYTHONDONTWRITEBYTECODE: Prevents Python from writing pyc files to disc
-# PYTHONUNBUFFERED: Ensures python output is sent straight to terminal (e.g. your container logs) without being buffered
+WORKDIR /app
+
+# Prevent python from writing pyc files to disc
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Set the working directory in the container
+# Install system dependencies required for building wheels (if any)
+# RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+
+# Stage 2: Final Runtime
+FROM python:3.10-slim
+
 WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt .
+# Create a non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy wheels from builder
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
 
-# Copy the rest of the application code
+# Install dependencies (from pre-built wheels)
+RUN pip install --no-cache /wheels/*
+
+# Copy application code
 COPY . .
 
-# Run the application
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 CMD ["python", "main.py"]

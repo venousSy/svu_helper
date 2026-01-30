@@ -70,7 +70,8 @@ async def main():
         ]
 
         admin_commands = [
-            types.BotCommand(command="admin", description="🛠 لوحة التحكم")
+            types.BotCommand(command="admin", description="🛠 لوحة التحكم"),
+            types.BotCommand(command="stats", description="📊 الإحصائيات"),
         ]
 
         # Apply student commands to everyone

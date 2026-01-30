@@ -24,6 +24,7 @@ from database import (
     get_payment_by_id,
     get_pending_projects,
     get_project_by_id,
+    get_statistics,
     update_offer_details,
     update_payment_status,
     update_project_status,
@@ -113,6 +114,22 @@ async def back_to_admin(callback: types.CallbackQuery):
         parse_mode="Markdown",
         reply_markup=get_admin_dashboard_kb(),
     )
+
+
+@router.message(Command("stats"), F.from_user.id == ADMIN_ID)
+async def admin_stats_handler(message: types.Message):
+    """Displays project statistics."""
+    stats = await get_statistics()
+    text = (
+        "📊 **إحصائيات البوت**\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"📦 **شامل:** {stats['total']}\n"
+        f"⏳ **قيد الانتظار:** {stats['pending']}\n"
+        f"🚀 **نشط / جاري:** {stats['active']}\n"
+        f"✅ **منتهي:** {stats['finished']}\n"
+        f"⛔ **مرفوض:** {stats['denied']}\n"
+    )
+    await message.answer(text, parse_mode="Markdown")
 
 
 # --- DATA VIEW HANDLERS ---
