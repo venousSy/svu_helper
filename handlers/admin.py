@@ -28,6 +28,7 @@ from database import (
     update_offer_details,
     update_payment_status,
     update_project_status,
+    set_maintenance_mode,
 )
 from keyboards.admin_kb import (
     get_accepted_projects_kb,
@@ -561,3 +562,17 @@ async def handle_deny(callback: types.CallbackQuery, bot):
             )
 
     await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
+
+
+@router.message(Command("maintenance_on"), F.from_user.id.in_(ADMIN_IDS))
+async def admin_maintenance_on(message: types.Message):
+    """Enables maintenance mode."""
+    await set_maintenance_mode(True)
+    await message.answer("🛑 **تم تفعيل وضع الصيانة.**\nلن يتمكن المستخدمون من استخدام البوت.")
+
+
+@router.message(Command("maintenance_off"), F.from_user.id.in_(ADMIN_IDS))
+async def admin_maintenance_off(message: types.Message):
+    """Disables maintenance mode."""
+    await set_maintenance_mode(False)
+    await message.answer("✅ **تم إيقاف وضع الصيانة.**\nالبوت متاح للجميع الآن.")

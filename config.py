@@ -41,7 +41,10 @@ except ValueError as e:
     print("\nCRITICAL ERROR: ADMIN_IDS (comma-separated) or ADMIN_ID is required in .env file.")
     sys.exit(1)
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI")
+
+# Sentry Configuration
+SENTRY_DSN = os.getenv("SENTRY_DSN")
 
 # --- FILE PATHS ---
 # --- FILE PATHS ---

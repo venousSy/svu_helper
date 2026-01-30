@@ -6,12 +6,16 @@ from aiogram import Bot, Dispatcher, types
 from aiogram import Bot, Dispatcher, types
 
 # Internal Project Imports
-from config import ADMIN_IDS, BOT_TOKEN, LOG_FILE
+import sentry_sdk
+
+from config import ADMIN_IDS, BOT_TOKEN, LOG_FILE, SENTRY_DSN
 from database import init_db, mongo_client
 from handlers.admin import router as admin_router
 from handlers.client import router as client_router
 from handlers.common import router as common_router
 from middlewares.error_handler import GlobalErrorHandler
+from middlewares.maintenance import MaintenanceMiddleware
+from middlewares.throttling import ThrottlingMiddleware
 from utils.storage import MongoStorage
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
@@ -34,6 +38,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# --- SENTRY INITIALIZATION ---
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=0.1,  # Sample 10% of transactions for performance
+        profiles_sample_rate=0.1,
+    )
+    logger.info("✅ Sentry Integration Enabled")
+else:
+    logger.warning("⚠️ Sentry DSN not found. Error tracking disabled.")
+
+
 # --- BOT INITIALIZATION ---
 bot = Bot(token=BOT_TOKEN)
 
@@ -41,8 +57,10 @@ bot = Bot(token=BOT_TOKEN)
 storage = MongoStorage(mongo_client)
 dp = Dispatcher(storage=storage)
 
-# Register Middleware (Global Error Handler)
-# Apply to both Message and CallbackQuery updates
+# Register Middleware
+# Order matters: Maintenance -> Throttling -> Error Handler
+dp.message.middleware(MaintenanceMiddleware())
+dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5))  # 0.5s limit
 dp.message.middleware(GlobalErrorHandler())
 dp.callback_query.middleware(GlobalErrorHandler())
 
