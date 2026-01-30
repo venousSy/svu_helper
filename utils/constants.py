@@ -1,90 +1,68 @@
 """
 Centralized constants for the SVU Helper Bot.
+Now uses external JSON for internationalization (i18n).
 """
+from utils.i18n import load_messages
+
+# Load messages globally (at import time)
+_msgs = load_messages("ar")
 
 # --- STATUS CONSTANTS ---
-# --- STATUS CONSTANTS ---
-STATUS_PENDING = "قيد المراجعة"  # Pending Review
-STATUS_ACCEPTED = "قيد التنفيذ"  # Work in Progress / Accepted
-STATUS_AWAITING_VERIFICATION = "بانتظار التحقق"
-STATUS_FINISHED = "منتهى"
-STATUS_OFFERED = "تم تقديم عرض"
-STATUS_REJECTED_PAYMENT = "مرفوض: مشكلة في الدفع"
-STATUS_DENIED_ADMIN = "مرفوض من المشرف"
-STATUS_DENIED_STUDENT = "ملغى من الطالب"
+STATUS_PENDING = _msgs["status"]["pending"]
+STATUS_ACCEPTED = _msgs["status"]["accepted"]
+STATUS_AWAITING_VERIFICATION = _msgs["status"]["awaiting_verification"]
+STATUS_FINISHED = _msgs["status"]["finished"]
+STATUS_OFFERED = _msgs["status"]["offered"]
+STATUS_REJECTED_PAYMENT = _msgs["status"]["rejected_payment"]
+STATUS_DENIED_ADMIN = _msgs["status"]["denied_admin"]
+STATUS_DENIED_STUDENT = _msgs["status"]["denied_student"]
 
 # --- MESSAGES ---
-MSG_WELCOME = (
-    "👋 مرحباً! استخدم القائمة أدناه لإدارة مشاريعك.\n\n"
-    "الأوامر المتاحة:\n"
-    "/new_project - تقديم مشروع جديد\n"
-    "/my_projects - عرض مشاريعي\n"
-    "/my_offers - عرض العروض المستلمة\n"
-    "/help - المساعدة\n"
-    "/cancel - إلغاء العملية الحالية"
-)
-
-MSG_HELP = (
-    "ℹ️ **الأوامر المتاحة:**\n\n"
-    "📚 **المشاريع:**\n"
-    "/new_project - تقديم طلب مشروع جديد\n\n"
-    "📊 **إدارة المشاريع:**\n"
-    "/my_projects - استعراض حالة مشاريعي\n"
-    "/my_offers - استعراض العروض المقدمة لي\n\n"
-    "🛠 **أخرى:**\n"
-    "/cancel - إلغاء العملية\n"
-    "/start - القائمة الرئيسية"
-)
-
-MSG_CANCELLED = "🚫 تم الإلغاء."
-MSG_NO_ACTIVE_PROCESS = "❌ لا توجد عملية نشطة للإلغاء."
-
-# --- MENU BUTTONS ---
-BTN_NEW_PROJECT = "📚 مشروع جديد"
-BTN_MY_PROJECTS = "📂 مشاريعي"
-BTN_MY_OFFERS = "🎁 عروضي"
-BTN_BACK = "🔙 رجوع"
-BTN_YES = "نعم"
-BTN_NO = "لا"
-BTN_CANCEL = "❌ إلغاء"
+MSG_WELCOME = _msgs["messages"]["welcome"]
+MSG_HELP = _msgs["messages"]["help"]
+MSG_CANCELLED = _msgs["messages"]["cancelled"]
+MSG_NO_ACTIVE_PROCESS = _msgs["messages"]["no_active_process"]
 
 # --- ADMIN DASHBOARD ---
-MSG_ADMIN_DASHBOARD = "🛠 **لوحة تحكم المسؤول**"
-MSG_BROADCAST_PROMPT = "📢 أدخل رسالة الإعلان:"
-MSG_BROADCAST_SUCCESS = "✅ تم الإرسال إلى {} مستخدم."
-MSG_PROJECT_DETAILS_HEADER = "📑 **المشروع #{}**\n━━━━━━━━━━━━━"
-MSG_ASK_PRICE = "💰 **المشروع #{}**\nما هو **السعر المقترح**؟"
-MSG_ASK_DELIVERY = "📅 ما هو **موعد التسليم**؟"
-MSG_ASK_NOTES = "📝 هل تود إضافة **ملاحظات**؟"
-MSG_ASK_NOTES_TEXT = "🖋 اكتب ملاحظاتك:"
-MSG_NO_NOTES = "لا توجد ملاحظات"
-MSG_OFFER_SENT = "✅ تم إرسال العرض!"
-MSG_UPLOAD_FINISHED_WORK = "📤 **المشروع #{}**\nارفع العمل النهائي (ملف/صورة/نص):"
-MSG_WORK_FINISHED_ALERT = "🎉 **تم إنجاز العمل!**\nالمشروع: {} (#{})\n"
-MSG_FINISHED_CONFIRM = "✅ تم إنهاء المشروع #{}!"
-MSG_PAYMENT_CONFIRMED_CLIENT = "🚀 **تم تأكيد الدفع!**\nبدأ العمل على **{}**."
-MSG_PAYMENT_CONFIRMED_ADMIN = "✅ **تم التأكيد** المشروع #{}"
-MSG_PAYMENT_REJECTED_CLIENT = "❌ **رفض الدفع:** تعذر التحقق من الإيصال."
-MSG_PAYMENT_REJECTED_ADMIN = "❌ **مرفوض** المشروع #{}"
-MSG_PROJECT_DENIED_CLIENT = "❌ تم رفض المشروع #{} من قبل المشرف."
-MSG_PROJECT_DENIED_STUDENT_TO_ADMIN = "❌ قام الطالب بإلغاء المشروع #{}."
-MSG_PROJECT_CLOSED = "🚫 تم إغلاق المشروع #{}."
+MSG_ADMIN_DASHBOARD = _msgs["messages"]["admin_dashboard"]
+MSG_BROADCAST_PROMPT = _msgs["messages"]["broadcast_prompt"]
+MSG_BROADCAST_SUCCESS = _msgs["messages"]["broadcast_success"]
+MSG_PROJECT_DETAILS_HEADER = _msgs["messages"]["project_details_header"]
+MSG_ASK_PRICE = _msgs["messages"]["ask_price"]
+MSG_ASK_DELIVERY = _msgs["messages"]["ask_delivery"]
+MSG_ASK_NOTES = _msgs["messages"]["ask_notes"]
+MSG_ASK_NOTES_TEXT = _msgs["messages"]["ask_notes_text"]
+MSG_NO_NOTES = _msgs["messages"]["no_notes"]
+MSG_OFFER_SENT = _msgs["messages"]["offer_sent"]
+MSG_UPLOAD_FINISHED_WORK = _msgs["messages"]["upload_finished_work"]
+MSG_WORK_FINISHED_ALERT = _msgs["messages"]["work_finished_alert"]
+MSG_FINISHED_CONFIRM = _msgs["messages"]["finished_confirm"]
+MSG_PAYMENT_CONFIRMED_CLIENT = _msgs["messages"]["payment_confirmed_client"]
+MSG_PAYMENT_CONFIRMED_ADMIN = _msgs["messages"]["payment_confirmed_admin"]
+MSG_PAYMENT_REJECTED_CLIENT = _msgs["messages"]["payment_rejected_client"]
+MSG_PAYMENT_REJECTED_ADMIN = _msgs["messages"]["payment_rejected_admin"]
+MSG_PROJECT_DENIED_CLIENT = _msgs["messages"]["project_denied_client"]
+MSG_PROJECT_DENIED_STUDENT_TO_ADMIN = _msgs["messages"]["project_denied_student_to_admin"]
+MSG_PROJECT_CLOSED = _msgs["messages"]["project_closed"]
+
+# --- MENU BUTTONS ---
+BTN_NEW_PROJECT = _msgs["buttons"]["new_project"]
+BTN_MY_PROJECTS = _msgs["buttons"]["my_projects"]
+BTN_MY_OFFERS = _msgs["buttons"]["my_offers"]
+BTN_BACK = _msgs["buttons"]["back"]
+BTN_YES = _msgs["buttons"]["yes"]
+BTN_NO = _msgs["buttons"]["no"]
+BTN_CANCEL = _msgs["buttons"]["cancel"]
 
 # --- CLIENT PROMPTS ---
-MSG_ASK_SUBJECT = (
-    "📚 ما هو **اسم المادة**؟\n\n💡 *تلميح: يمكنك كتابة /cancel في أي وقت للإلغاء.*"
-)
-MSG_ASK_TUTOR = "👨‍🏫 ما هو **اسم الدكتور (المدرس)**؟"
-MSG_ASK_DEADLINE = "📅 ما هو **تاريخ التسليم (Deadline)**؟"
-MSG_ASK_DETAILS = (
-    "📝 الرجاء إرسال **التفاصيل**.\nيمكنك كتابة وصف أو رفع ملف (صورة / PDF)."
-)
-MSG_NO_DESC = "لا يوجد وصف."
-MSG_PROJECT_SUBMITTED = (
-    "✅ **تم تقديم المشروع #{} بنجاح!**\nسيقوم المشرف بمراجعته وإرسال عرض لك قريباً."
-)
-MSG_OFFER_ACCEPTED = "✅ **لقد قبلت العرض للمشروع #{}!**\n\n💳 الرجاء إرسال **إيصال الدفع** (صورة أو PDF) للبدء في العمل."
-MSG_RECEIPT_RECEIVED = "📨 **تم استلام الإيصال!**\nبانتظار تحقق المشرف من الدفع. سيتم إعلامك عند بدء العمل."
-MSG_OFFER_DETAILS = "🎁 **تفاصيل العرض: {}**\n━━━━━━━━━━━━━\n💰 **السعر:** {}\n📅 **موعد التسليم:** {}\n🆔 **رقم المشروع:** #{}\n━━━━━━━━━━━━━"
-MSG_NO_PROJECTS = "📭 لم تقم بتقديم أي مشاريع بعد."
-MSG_NO_OFFERS = "📪 **لا توجد عروض معلقة حالياً.**"
+MSG_ASK_SUBJECT = _msgs["client_prompts"]["ask_subject"]
+MSG_ASK_TUTOR = _msgs["client_prompts"]["ask_tutor"]
+MSG_ASK_DEADLINE = _msgs["client_prompts"]["ask_deadline"]
+MSG_ASK_DETAILS = _msgs["client_prompts"]["ask_details"]
+MSG_NO_DESC = _msgs["client_prompts"]["no_desc"]
+MSG_PROJECT_SUBMITTED = _msgs["client_prompts"]["project_submitted"]
+MSG_OFFER_ACCEPTED = _msgs["client_prompts"]["offer_accepted"]
+MSG_RECEIPT_RECEIVED = _msgs["client_prompts"]["receipt_received"]
+MSG_OFFER_DETAILS = _msgs["client_prompts"]["offer_details"]
+MSG_NO_PROJECTS = _msgs["client_prompts"]["no_projects"]
+MSG_NO_OFFERS = _msgs["client_prompts"]["no_offers"]

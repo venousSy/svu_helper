@@ -218,6 +218,27 @@ async def get_history_projects() -> List[Dict[str, Any]]:
     return await cursor.to_list(length=None)
 
 
+async def get_statistics() -> Dict[str, int]:
+    """
+    Aggregates project counts by status.
+    Skipping revenue calculation as requested.
+    """
+    db = await get_db()
+    
+    # helper for counting
+    async def count(query):
+        return await db.projects.count_documents(query)
+        
+    stats = {
+        "total": await count({}),
+        "pending": await count({"status": STATUS_PENDING}),
+        "active": await count({"status": {"$in": [STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION]}}),
+        "finished": await count({"status": STATUS_FINISHED}),
+        "denied": await count({"status": {"$in": [STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT]}})
+    }
+    return stats
+
+
 # --- PAYMENT OPERATIONS ---
 
 
