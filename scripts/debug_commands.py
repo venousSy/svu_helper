@@ -54,7 +54,9 @@ async def debug_commands():
         ]
 
         admin_commands = student_commands + [
-            BotCommand(command="admin", description="🛠 Admin Panel")
+            BotCommand(command="admin", description="🛠 Admin Panel"),
+            BotCommand(command="maintenance_on", description="🛑 Enable Maint."),
+            BotCommand(command="maintenance_off", description="✅ Disable Maint.")
         ]
 
         await bot.set_my_commands(student_commands, scope=BotCommandScopeDefault())
