@@ -1,6 +1,7 @@
+import logging
 import os
 import sys
-import logging
+
 from dotenv import load_dotenv
 
 # Initialize logging for the config loader

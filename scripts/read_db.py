@@ -6,6 +6,7 @@ Quickly view all projects stored in the local SQLite database from the terminal.
 
 import sqlite3
 
+
 def read_all_requests():
     # 1. Connect to the database
     conn = sqlite3.connect("bot_requests.db")
@@ -13,7 +14,7 @@ def read_all_requests():
 
     # 2. Select all columns from our 'requests' table
     cursor.execute("SELECT id, user_id, status, subject_name FROM projects")
-    
+
     # 3. Fetch all rows
     rows = cursor.fetchall()
 
@@ -25,6 +26,7 @@ def read_all_requests():
         print(f"{row[0]:<5} | {row[1]:<15} | {row[3]:<10} | {row[2]}")
 
     conn.close()
+
 
 if __name__ == "__main__":
     read_all_requests()
