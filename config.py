@@ -24,10 +24,13 @@ try:
     env_ids = os.getenv("ADMIN_IDS", "")
     ADMIN_IDS = [int(x.strip()) for x in env_ids.split(",") if x.strip()]
 
-    # Fallback/Support for single ADMIN_ID
+    # Fallback/Support for single ADMIN_ID (or legacy variable acting as list)
     if not ADMIN_IDS:
-        single_id = os.getenv("ADMIN_ID")
-        if single_id:
+        single_id = os.getenv("ADMIN_ID", "")
+        # Check if user put a list in ADMIN_ID by mistake
+        if "," in single_id:
+            ADMIN_IDS = [int(x.strip()) for x in single_id.split(",") if x.strip()]
+        elif single_id:
             ADMIN_IDS.append(int(single_id))
 
     if not ADMIN_IDS:
