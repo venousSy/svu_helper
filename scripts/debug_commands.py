@@ -13,9 +13,18 @@ from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefaul
 from dotenv import load_dotenv
 
 # --- CONFIGURATION ---
+# --- CONFIGURATION ---
 load_dotenv()
 API_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
+# Parse ADMIN_IDS
+env_ids = os.getenv("ADMIN_IDS", "")
+ADMIN_IDS = [int(x.strip()) for x in env_ids.split(",") if x.strip()]
+if not ADMIN_IDS:
+    # Fallback
+    sid = os.getenv("ADMIN_ID")
+    if sid:
+        ADMIN_IDS.append(int(sid))
 
 
 async def debug_commands():
@@ -27,16 +36,11 @@ async def debug_commands():
         commands = await bot.get_my_commands()
         print(f"Default commands: {[cmd.command for cmd in commands]}")
 
-        # Get admin commands
-        admin_cmds = await bot.get_my_commands(
-            scope=BotCommandScopeChat(chat_id=ADMIN_ID)
-        )
-        print(f"Admin commands: {[cmd.command for cmd in admin_cmds]}")
-
         # Delete all commands
         print("\n🗑️ Deleting all commands...")
         await bot.delete_my_commands()
-        await bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=ADMIN_ID))
+        for aid in ADMIN_IDS:
+             await bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=aid))
 
         # Set new commands
         print("\n🔄 Setting new commands...")
@@ -54,11 +58,13 @@ async def debug_commands():
         ]
 
         await bot.set_my_commands(student_commands, scope=BotCommandScopeDefault())
-        await bot.set_my_commands(
-            admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID)
-        )
+        
+        for aid in ADMIN_IDS:
+            await bot.set_my_commands(
+                admin_commands, scope=BotCommandScopeChat(chat_id=aid)
+            )
 
-        print("✅ Commands reset successfully!")
+        print(f"✅ Commands reset successfully for Admins: {ADMIN_IDS}!")
 
     except Exception as e:
         print(f"❌ Error: {e}")
