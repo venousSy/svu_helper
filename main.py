@@ -11,6 +11,7 @@ from database import init_db
 from handlers.admin import router as admin_router
 from handlers.client import router as client_router
 from handlers.common import router as common_router
+from middlewares.error_handler import GlobalErrorHandler
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
 if sys.stdout.encoding.lower() != "utf-8":
@@ -35,6 +36,11 @@ logger = logging.getLogger(__name__)
 # --- BOT INITIALIZATION ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+# Register Middleware (Global Error Handler)
+# Apply to both Message and CallbackQuery updates
+dp.message.middleware(GlobalErrorHandler())
+dp.callback_query.middleware(GlobalErrorHandler())
 
 # Register all hander routers
 dp.include_router(common_router)
