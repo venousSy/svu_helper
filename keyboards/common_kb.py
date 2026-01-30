@@ -6,7 +6,9 @@ Reusable UI components like the student main menu.
 
 from aiogram import types
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
-from utils.constants import BTN_NEW_PROJECT, BTN_MY_PROJECTS, BTN_MY_OFFERS
+
+from utils.constants import BTN_MY_OFFERS, BTN_MY_PROJECTS, BTN_NEW_PROJECT
+
 
 def get_student_main_kb() -> types.ReplyKeyboardMarkup:
     """Main persistent menu for students."""

@@ -3,3 +3,8 @@ python-dotenv>=1.0.0
 
 motor
 dnspython
+
+pytest
+pytest-asyncio
+black
+isort
