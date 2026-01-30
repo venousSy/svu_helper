@@ -12,7 +12,7 @@ from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from config import ADMIN_ID
+from config import ADMIN_IDS
 from database import (
     STATUS_ACCEPTED,
     STATUS_REJECTED_PAYMENT,
@@ -88,7 +88,7 @@ logger = logging.getLogger(__name__)
 # --- NAVIGATION HANDLERS ---
 
 
-@router.message(F.text == BTN_CANCEL, F.from_user.id == ADMIN_ID)
+@router.message(F.text == BTN_CANCEL, F.from_user.id.in_(ADMIN_IDS))
 async def admin_cancel_process(message: types.Message, state: FSMContext):
     """Cancels any active admin FSM state."""
     current_state = await state.get_state()
@@ -100,13 +100,13 @@ async def admin_cancel_process(message: types.Message, state: FSMContext):
         await admin_dashboard(message)
 
 
-@router.message(Command("admin"), F.from_user.id == ADMIN_ID)
+@router.message(Command("admin"), F.from_user.id.in_(ADMIN_IDS))
 async def admin_dashboard(message: types.Message):
     """Entry point: Displays the administrative control panel."""
     await message.answer(MSG_ADMIN_DASHBOARD, reply_markup=get_admin_dashboard_kb())
 
 
-@router.callback_query(F.data == "back_to_admin", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "back_to_admin", F.from_user.id.in_(ADMIN_IDS))
 async def back_to_admin(callback: types.CallbackQuery):
     """Returns the user to the main dashboard menu."""
     await callback.message.edit_text(
@@ -116,7 +116,7 @@ async def back_to_admin(callback: types.CallbackQuery):
     )
 
 
-@router.message(Command("stats"), F.from_user.id == ADMIN_ID)
+@router.message(Command("stats"), F.from_user.id.in_(ADMIN_IDS))
 async def admin_stats_handler(message: types.Message):
     """Displays project statistics."""
     stats = await get_statistics()
@@ -135,7 +135,7 @@ async def admin_stats_handler(message: types.Message):
 # --- DATA VIEW HANDLERS ---
 
 
-@router.callback_query(F.data == "view_all_master", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "view_all_master", F.from_user.id.in_(ADMIN_IDS))
 async def view_all_master(callback: types.CallbackQuery):
     """Fetches and displays a categorized report of every project in the database."""
     projects = await get_all_projects_categorized()
@@ -146,7 +146,7 @@ async def view_all_master(callback: types.CallbackQuery):
     )
 
 
-@router.callback_query(F.data == "view_pending", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "view_pending", F.from_user.id.in_(ADMIN_IDS))
 async def admin_view_pending(callback: types.CallbackQuery):
     """Lists all projects awaiting admin review with management deep-links."""
     pending = await get_pending_projects()
@@ -158,7 +158,7 @@ async def admin_view_pending(callback: types.CallbackQuery):
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
 
 
-@router.callback_query(F.data == "view_accepted", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "view_accepted", F.from_user.id.in_(ADMIN_IDS))
 async def admin_view_accepted(callback: types.CallbackQuery):
     """Lists active/ongoing projects that are ready for final submission."""
     accepted = await get_accepted_projects()
@@ -169,7 +169,7 @@ async def admin_view_accepted(callback: types.CallbackQuery):
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
 
 
-@router.callback_query(F.data == "view_history", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "view_history", F.from_user.id.in_(ADMIN_IDS))
 async def admin_view_history(callback: types.CallbackQuery):
     """Displays a read-only log of finished or denied projects."""
     history = await get_history_projects()
@@ -180,7 +180,7 @@ async def admin_view_history(callback: types.CallbackQuery):
     )
 
 
-@router.callback_query(F.data == "view_payments", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "view_payments", F.from_user.id.in_(ADMIN_IDS))
 async def admin_view_payments(callback: types.CallbackQuery):
     """Displays a log of all payments (Pending, Accepted, Rejected)."""
     payments = await get_all_payments()
@@ -191,7 +191,7 @@ async def admin_view_payments(callback: types.CallbackQuery):
     )
 
 
-@router.callback_query(F.data.startswith("view_receipt_"), F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("view_receipt_"), F.from_user.id.in_(ADMIN_IDS))
 async def admin_view_receipt(callback: types.CallbackQuery, bot):
     """Fetches and sends the actual receipt file for a specific payment."""
     payment_id = callback.data.split("_")[2]
@@ -217,21 +217,23 @@ async def admin_view_receipt(callback: types.CallbackQuery, bot):
         await callback.answer()
     except Exception:
         # Fallback if it's a photo ID that send_document doesn't like
-        await bot.send_photo(ADMIN_ID, file_id, caption=caption, parse_mode="Markdown")
+        for admin_id in ADMIN_IDS:
+             if admin_id == callback.from_user.id:
+                  await bot.send_photo(admin_id, file_id, caption=caption, parse_mode="Markdown")
         await callback.answer()
 
 
 # --- GLOBAL COMMUNICATION ---
 
 
-@router.callback_query(F.data == "admin_broadcast", F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data == "admin_broadcast", F.from_user.id.in_(ADMIN_IDS))
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
     """Initiates the broadcast FSM flow."""
     await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_broadcast)
 
 
-@router.message(AdminStates.waiting_for_broadcast, F.from_user.id == ADMIN_ID)
+@router.message(AdminStates.waiting_for_broadcast, F.from_user.id.in_(ADMIN_IDS))
 async def execute_broadcast(message: types.Message, state: FSMContext, bot):
     """Sends a mass message to all unique users found in the database."""
     users = await get_all_users()
@@ -256,7 +258,7 @@ async def execute_broadcast(message: types.Message, state: FSMContext, bot):
 @router.callback_query(
     F.data.startswith("manage_"),
     ~(F.data.contains("accepted")),
-    F.from_user.id == ADMIN_ID,
+    F.from_user.id.in_(ADMIN_IDS),
 )
 async def view_project_details(callback: types.CallbackQuery):
     """Displays detailed project specs and original file for admin review."""
@@ -304,7 +306,7 @@ async def view_project_details(callback: types.CallbackQuery):
         )
 
 
-@router.callback_query(F.data.startswith("make_offer_"), F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("make_offer_"), F.from_user.id.in_(ADMIN_IDS))
 async def start_offer_flow(callback: types.CallbackQuery, state: FSMContext):
     """Starts a step-by-step FSM to collect price and delivery data."""
     proj_id = callback.data.split("_")[2]
@@ -315,7 +317,7 @@ async def start_offer_flow(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_price)
 
 
-@router.message(AdminStates.waiting_for_price, F.from_user.id == ADMIN_ID)
+@router.message(AdminStates.waiting_for_price, F.from_user.id.in_(ADMIN_IDS))
 async def process_price(message: types.Message, state: FSMContext):
     """Stores price and requests delivery date."""
     price_text = message.text.strip()
@@ -336,7 +338,7 @@ async def process_price(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
-@router.message(AdminStates.waiting_for_delivery, F.from_user.id == ADMIN_ID)
+@router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(ADMIN_IDS))
 async def process_delivery(message: types.Message, state: FSMContext):
     """Stores delivery date and asks if extra notes are needed."""
     delivery_text = message.text.strip()
@@ -356,7 +358,7 @@ async def process_delivery(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_notes_decision)
 
 
-@router.message(AdminStates.waiting_for_notes_decision, F.from_user.id == ADMIN_ID)
+@router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(ADMIN_IDS))
 async def process_notes_decision(message: types.Message, state: FSMContext, bot):
     """Branches FSM based on whether the admin wants to add custom notes."""
     if message.text == BTN_YES:  # Updated to match Arabic button
@@ -368,7 +370,7 @@ async def process_notes_decision(message: types.Message, state: FSMContext, bot)
         await finalize_and_send_offer(message, state, bot, notes_text=MSG_NO_NOTES)
 
 
-@router.message(AdminStates.waiting_for_notes_text, F.from_user.id == ADMIN_ID)
+@router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(ADMIN_IDS))
 async def process_notes_text(message: types.Message, state: FSMContext, bot):
     """Captures final notes and triggers the student notification."""
     await finalize_and_send_offer(message, state, bot, notes_text=message.text)
@@ -422,7 +424,7 @@ async def finalize_and_send_offer(
 
 
 @router.callback_query(
-    F.data.startswith("manage_accepted_"), F.from_user.id == ADMIN_ID
+    F.data.startswith("manage_accepted_"), F.from_user.id.in_(ADMIN_IDS)
 )
 async def manage_accepted_project(callback: types.CallbackQuery, state: FSMContext):
     """Prepares FSM to receive the final project file from the admin."""
@@ -435,7 +437,7 @@ async def manage_accepted_project(callback: types.CallbackQuery, state: FSMConte
     await callback.answer()
 
 
-@router.message(AdminStates.waiting_for_finished_work, F.from_user.id == ADMIN_ID)
+@router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(ADMIN_IDS))
 async def process_finished_work(message: types.Message, state: FSMContext, bot):
     """Transfers the final work from admin to student and marks project as 'Finished'."""
     data = await state.get_data()
@@ -471,7 +473,7 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
 # --- PAYMENT WORKFLOW ---
 
 
-@router.callback_query(F.data.startswith("confirm_pay_"), F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("confirm_pay_"), F.from_user.id.in_(ADMIN_IDS))
 async def confirm_payment(callback: types.CallbackQuery, bot):
     """Transitions project from 'Verification' to 'Accepted' (Ongoing)."""
     payment_id = callback.data.split("_")[2]
@@ -506,7 +508,7 @@ async def confirm_payment(callback: types.CallbackQuery, bot):
     )
 
 
-@router.callback_query(F.data.startswith("reject_pay_"), F.from_user.id == ADMIN_ID)
+@router.callback_query(F.data.startswith("reject_pay_"), F.from_user.id.in_(ADMIN_IDS))
 async def reject_payment(callback: types.CallbackQuery, bot):
     """Marks project as payment-failed and notifies the student."""
     payment_id = callback.data.split("_")[2]
@@ -544,7 +546,7 @@ async def reject_payment(callback: types.CallbackQuery, bot):
 async def handle_deny(callback: types.CallbackQuery, bot):
     """General denial handler for both Admin rejection and Student cancellation."""
     proj_id = callback.data.split("_")[1]
-    if callback.from_user.id == ADMIN_ID:
+    if callback.from_user.id in ADMIN_IDS:
         await update_project_status(proj_id, STATUS_DENIED_ADMIN)
         res = await get_project_by_id(proj_id)
         if res:
@@ -553,8 +555,9 @@ async def handle_deny(callback: types.CallbackQuery, bot):
             )
     else:
         await update_project_status(proj_id, STATUS_DENIED_STUDENT)
-        await bot.send_message(
-            ADMIN_ID, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)
-        )
+        for admin_id in ADMIN_IDS:
+             await bot.send_message(
+                admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)
+            )
 
     await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))

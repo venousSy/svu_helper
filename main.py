@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 
 # Internal Project Imports
-from config import ADMIN_ID, BOT_TOKEN, LOG_FILE
+from config import ADMIN_IDS, BOT_TOKEN, LOG_FILE
 from database import init_db
 from handlers.admin import router as admin_router
 from handlers.client import router as client_router
@@ -79,12 +79,13 @@ async def main():
             student_commands, scope=types.BotCommandScopeDefault()
         )
 
-        # Apply admin commands only to admin
-        await bot.set_my_commands(
-            admin_commands, scope=types.BotCommandScopeChat(chat_id=ADMIN_ID)
-        )
+        # Apply admin commands only to admins
+        for admin_id in ADMIN_IDS:
+            await bot.set_my_commands(
+                admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id)
+            )
 
-        logger.info(f"🚀 Bot online. Admin ID: {ADMIN_ID}")
+        logger.info(f"🚀 Bot online. Admin IDs: {ADMIN_IDS}")
 
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
