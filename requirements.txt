@@ -8,3 +8,4 @@ pytest
 pytest-asyncio
 black
 isort
+sentry-sdk

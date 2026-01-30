@@ -241,6 +241,23 @@ async def get_statistics() -> Dict[str, int]:
     return stats
 
 
+async def get_maintenance_mode() -> bool:
+    """Checks if the bot is in maintenance mode."""
+    db = await get_db()
+    doc = await db.settings.find_one({"_id": "global_config"})
+    return doc.get("maintenance_mode", False) if doc else False
+
+
+async def set_maintenance_mode(status: bool) -> None:
+    """Enables or disables maintenance mode."""
+    db = await get_db()
+    await db.settings.update_one(
+        {"_id": "global_config"},
+        {"$set": {"maintenance_mode": status}},
+        upsert=True
+    )
+
+
 # --- PAYMENT OPERATIONS ---
 
 
