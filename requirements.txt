@@ -9,3 +9,8 @@ pytest-asyncio
 black
 isort
 sentry-sdk
+
+# API Dependencies
+fastapi
+uvicorn
+python-multipart
