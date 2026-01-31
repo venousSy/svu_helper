@@ -37,5 +37,35 @@ services:
     depends_on:
       - mongo
 
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: svu_helper_api
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - BOT_TOKEN=${BOT_TOKEN}
+    depends_on:
+      - mongo
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: svu_helper_web
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+
 volumes:
   mongo_data:
