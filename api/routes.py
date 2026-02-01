@@ -13,13 +13,25 @@ from database import (
     STATUS_FINISHED
 )
 from api.schemas import OfferRequest, ProjectStatus
+from bson import ObjectId
 
 router = APIRouter()
+
+def serialize_mongo(obj):
+    """Recursively convert ObjectId to str."""
+    if isinstance(obj, list):
+        return [serialize_mongo(i) for i in obj]
+    if isinstance(obj, dict):
+        return {k: serialize_mongo(v) for k, v in obj.items()}
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    return obj
 
 @router.get("/projects")
 async def list_projects():
     """Get all projects categorized by status."""
-    return await get_all_projects_categorized()
+    data = await get_all_projects_categorized()
+    return serialize_mongo(data)
 
 @router.get("/projects/{project_id}")
 async def get_project(project_id: int):
@@ -27,7 +39,7 @@ async def get_project(project_id: int):
     project = await get_project_by_id(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    return serialize_mongo(project)
 
 @router.post("/projects/{project_id}/offer")
 async def send_offer(project_id: int, offer: OfferRequest):
