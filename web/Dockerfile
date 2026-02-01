@@ -8,4 +8,5 @@ RUN npm install
 COPY web/ .
 
 EXPOSE 3000
-CMD ["npm", "run", "dev", "--", "--host"]
+# Start Vite on the assigned PORT (Railway requirement)
+CMD sh -c "npm run dev -- --host --port ${PORT:-3000}"
