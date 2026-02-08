@@ -161,10 +161,18 @@ async def process_details(message: types.Message, state: FSMContext, bot):
         await state.clear()
 
 
-@router.callback_query(F.data.startswith("accept_"))
-async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext):
+from keyboards.callbacks import MenuCallback, ProjectCallback
+
+# ... (imports)
+
+@router.callback_query(ProjectCallback.filter(F.action == "accept"))
+async def student_accept_offer(
+    callback: types.CallbackQuery, 
+    state: FSMContext, 
+    callback_data: ProjectCallback
+):
     """Student clicks 'Accept' on the offer."""
-    proj_id = callback.data.split("_")[1]
+    proj_id = callback_data.id
 
     # Store the project ID in FSM so we know which project the receipt belongs to
     await state.update_data(active_pay_proj_id=proj_id)
@@ -179,7 +187,7 @@ async def student_accept_offer(callback: types.CallbackQuery, state: FSMContext)
     await callback.answer()
 
 
-@router.callback_query(F.data == "cancel_payment_upload")
+@router.callback_query(MenuCallback.filter(F.action == "cancel_pay"))
 async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContext):
     """Cancels the payment upload and returns the user to safety."""
     await state.clear()
@@ -188,80 +196,14 @@ async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContex
     )
     await callback.answer()
 
+# ... (process_payment_proof, view_projects, view_offers)
 
-@router.message(ProjectOrder.waiting_for_payment_proof, F.photo | F.document)
-async def process_payment_proof(message: types.Message, state: FSMContext, bot):
-    """Student sends the receipt; we relay it to the Admin for verification."""
-    data = await state.get_data()
-    proj_id = data.get("active_pay_proj_id")
-
-    # Identify the file
-    file_id, _ = get_file_id(message)
-
-    try:
-        # 1. Save to Payment Registry
-        payment_id = await add_payment(proj_id, message.from_user.id, file_id)
-
-        # 2. Update Project Status
-        await update_project_status(proj_id, STATUS_AWAITING_VERIFICATION)
-
-        # 3. Notify Student
-        await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
-
-        # 4. Notify Admin (WITH PAYMENT ID)
-        for admin_id in ADMIN_IDS:
-            await bot.send_message(
-                admin_id,
-                f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
-                parse_mode="Markdown",
-            )
-            await bot.send_photo(
-                admin_id,
-                file_id,
-                caption=f"verify_pay_{payment_id}",
-                reply_markup=get_payment_verify_kb(payment_id),
-            )
-
-        await state.clear()
-    except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).error(f"Payment upload failed: {e}", exc_info=True)
-        await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
-        await state.clear()
-
-
-# --- PROJECT STATUS LOOKUP ---
-
-
-@router.message(Command("my_projects"))
-async def view_projects(message: types.Message):
-    """
-    Retrieves and displays a list of all projects owned by the user.
-    Uses centralized formatting for consistent UI/UX.
-    """
-    projects = await get_user_projects(message.from_user.id)
-
-    # Generate the formatted response (handles empty lists internally)
-    response = format_student_projects(projects)
-    await message.answer(response, parse_mode="Markdown")
-
-
-@router.message(Command("my_offers"))
-async def view_offers(message: types.Message):
-    """Shows the student all projects where an admin has sent an offer."""
-    offers = await get_student_offers(message.from_user.id)
-    text = format_offer_list(offers)
-
-    # Use new keyboard
-    markup = get_offers_list_kb(offers)
-
-    await message.answer(text, parse_mode="Markdown", reply_markup=markup)
-
-
-@router.callback_query(F.data.startswith("view_offer_"))
-async def show_specific_offer(callback: types.CallbackQuery):
-    proj_id = callback.data.split("_")[2]
+@router.callback_query(ProjectCallback.filter(F.action == "view_offer"))
+async def show_specific_offer(
+    callback: types.CallbackQuery,
+    callback_data: ProjectCallback
+):
+    proj_id = callback_data.id
 
     # Query the new columns!
     res = await get_project_by_id(proj_id)

@@ -8,14 +8,22 @@ from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
+from keyboards.callbacks import MenuCallback, ProjectCallback
+
 def get_offer_actions_kb(proj_id: int) -> types.InlineKeyboardMarkup:
     """Buttons for student to accept or deny an offer."""
     builder = InlineKeyboardBuilder()
     builder.row(
-        types.InlineKeyboardButton(text="✅ قبول", callback_data=f"accept_{proj_id}")
+        types.InlineKeyboardButton(
+            text="✅ قبول",
+            callback_data=ProjectCallback(action="accept", id=proj_id).pack(),
+        )
     )  # Accept
     builder.row(
-        types.InlineKeyboardButton(text="❌ رفض", callback_data=f"deny_{proj_id}")
+        types.InlineKeyboardButton(
+            text="❌ رفض",
+            callback_data=ProjectCallback(action="deny", id=proj_id).pack(),
+        )
     )  # Deny
     return builder.as_markup()
 
@@ -32,7 +40,7 @@ def get_offers_list_kb(offers):
         builder.row(
             types.InlineKeyboardButton(
                 text=f"عرض العرض #{p_id}",  # View Offer
-                callback_data=f"view_offer_{p_id}",
+                callback_data=ProjectCallback(action="view_offer", id=p_id).pack(),
             )
         )
     return builder.as_markup()
@@ -43,7 +51,8 @@ def get_cancel_payment_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         types.InlineKeyboardButton(
-            text="❌ إلغاء", callback_data="cancel_payment_upload"
+            text="❌ إلغاء", 
+            callback_data=MenuCallback(action="cancel_pay").pack()
         )
     )
     return builder.as_markup()
