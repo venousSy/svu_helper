@@ -196,7 +196,77 @@ async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContex
     )
     await callback.answer()
 
-# ... (process_payment_proof, view_projects, view_offers)
+
+@router.message(ProjectOrder.waiting_for_payment_proof, F.photo | F.document)
+async def process_payment_proof(message: types.Message, state: FSMContext, bot):
+    """Student sends the receipt; we relay it to the Admin for verification."""
+    data = await state.get_data()
+    proj_id = data.get("active_pay_proj_id")
+
+    # Identify the file
+    file_id, _ = get_file_id(message)
+
+    try:
+        # 1. Save to Payment Registry
+        payment_id = await add_payment(proj_id, message.from_user.id, file_id)
+
+        # 2. Update Project Status
+        await update_project_status(proj_id, STATUS_AWAITING_VERIFICATION)
+
+        # 3. Notify Student
+        await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
+
+        # 4. Notify Admin (WITH PAYMENT ID)
+        for admin_id in ADMIN_IDS:
+            await bot.send_message(
+                admin_id,
+                f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
+                parse_mode="Markdown",
+            )
+            await bot.send_photo(
+                admin_id,
+                file_id,
+                caption=f"verify_pay_{payment_id}",
+                reply_markup=get_payment_verify_kb(payment_id),
+            )
+
+        await state.clear()
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).error(f"Payment upload failed: {e}", exc_info=True)
+        await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
+        await state.clear()
+
+
+from utils.constants import BTN_MY_PROJECTS, BTN_MY_OFFERS
+
+
+@router.message(F.text == BTN_MY_PROJECTS)
+@router.message(Command("my_projects"))
+async def view_projects(message: types.Message):
+    """
+    Retrieves and displays a list of all projects owned by the user.
+    Uses centralized formatting for consistent UI/UX.
+    """
+    projects = await get_user_projects(message.from_user.id)
+
+    # Generate the formatted response (handles empty lists internally)
+    response = format_student_projects(projects)
+    await message.answer(response, parse_mode="Markdown")
+
+
+@router.message(F.text == BTN_MY_OFFERS)
+@router.message(Command("my_offers"))
+async def view_offers(message: types.Message):
+    """Shows the student all projects where an admin has sent an offer."""
+    offers = await get_student_offers(message.from_user.id)
+    text = format_offer_list(offers)
+
+    # Use new keyboard
+    markup = get_offers_list_kb(offers)
+
+    await message.answer(text, parse_mode="Markdown", reply_markup=markup)
 
 @router.callback_query(ProjectCallback.filter(F.action == "view_offer"))
 async def show_specific_offer(
