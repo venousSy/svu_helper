@@ -82,6 +82,8 @@ async def init_db():
 # --- PROJECT OPERATIONS ---
 
 
+from utils.models import Project, Payment
+
 async def add_project(
     user_id: int,
     username: str,
@@ -97,20 +99,22 @@ async def add_project(
     # Get next auto-increment ID
     project_id = await Database.get_next_sequence("project_id")
 
-    document = {
-        "id": project_id,
-        "user_id": user_id,
-        "username": username,
-        "user_full_name": user_full_name,
-        "subject_name": subject,
-        "tutor_name": tutor,
-        "deadline": deadline,
-        "details": details,
-        "file_id": file_id,
-        "status": STATUS_PENDING,
-        "price": None,
-        "delivery_date": None,
-    }
+    # Validate with Pydantic Model
+    project_model = Project(
+        id=project_id,
+        user_id=user_id,
+        username=username,
+        user_full_name=user_full_name,
+        subject_name=subject,
+        tutor_name=tutor,
+        deadline=deadline,
+        details=details,
+        file_id=file_id,
+        # status and others have defaults
+    )
+
+    # Dump to dict for MongoDB
+    document = project_model.model_dump()
 
     await db.projects.insert_one(document)
     return project_id
@@ -130,6 +134,7 @@ async def get_user_projects(user_id: int) -> List[Dict[str, Any]]:
 
 async def update_project_status(project_id: int, new_status: str) -> None:
     db = await get_db()
+    # Simple validation could be added here if needed
     await db.projects.update_one(
         {"id": int(project_id)}, {"$set": {"status": new_status}}
     )
@@ -266,13 +271,16 @@ async def add_payment(project_id: int, user_id: int, file_id: str) -> int:
 
     payment_id = await Database.get_next_sequence("payment_id")
 
-    document = {
-        "id": payment_id,
-        "project_id": int(project_id),
-        "user_id": user_id,
-        "file_id": file_id,
-        "status": "pending",  # pending, accepted, rejected
-    }
+    # Validate with Pydantic Model
+    payment_model = Payment(
+        id=payment_id,
+        project_id=int(project_id),
+        user_id=user_id,
+        file_id=file_id,
+        status="pending"
+    )
+
+    document = payment_model.model_dump()
 
     await db.payments.insert_one(document)
     return payment_id
