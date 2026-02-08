@@ -9,6 +9,7 @@ from keyboards.admin_kb import get_cancel_kb
 from keyboards.callbacks import MenuCallback
 from states import AdminStates
 from utils.constants import MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS
+from utils.broadcaster import Broadcaster
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -24,16 +25,19 @@ async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
 async def execute_broadcast(message: types.Message, state: FSMContext, bot):
     """Sends a mass message to all unique users found in the database."""
     users = await get_all_users()
-    count = 0
-    for u_id in users:
-        try:
-            await bot.send_message(u_id, f"🔔 **إعلان هام:**\n\n{message.text}")
-            count += 1
-            await asyncio.sleep(0.05)  # Prevent Telegram flood limit (30 msg/sec)
-        except Exception as e:
-            logger.warning(f"Failed to broadcast to {u_id}: {e}")
-            continue  # Skip users who blocked the bot
+    
+    # Notify admin process started for large lists
+    status_msg = await message.answer("🔄 **جاري عملية الأرسال...**")
+    
+    broadcaster = Broadcaster(bot)
+    full_text = f"🔔 **إعلان هام:**\n\n{message.text}"
+    
+    # Run the broadcast concurrently
+    # This might take some time depending on user count
+    success_count = await broadcaster.broadcast(users, full_text)
+    
+    await status_msg.delete()
     await message.answer(
-        MSG_BROADCAST_SUCCESS.format(count), reply_markup=types.ReplyKeyboardRemove()
+        MSG_BROADCAST_SUCCESS.format(success_count), reply_markup=types.ReplyKeyboardRemove()
     )
     await state.clear()

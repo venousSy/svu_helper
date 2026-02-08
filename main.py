@@ -25,18 +25,13 @@ if sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
+# ... imports
+from utils.logger import setup_logger
+
+# ... (imports)
+
 # --- LOGGING CONFIGURATION ---
-# Configure formatting for both console and file logs
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(
-    level=logging.INFO,
-    format=log_format,
-    handlers=[
-        logging.StreamHandler(sys.stdout),  # Console output
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),  # Persistent file log
-    ],
-)
-logger = logging.getLogger(__name__)
+logger = setup_logger()
 
 # --- SENTRY INITIALIZATION ---
 if SENTRY_DSN:
