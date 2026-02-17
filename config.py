@@ -1,52 +1,53 @@
-import logging
-import os
-import sys
 
-from dotenv import load_dotenv
+import logging
+import sys
+from typing import List, Optional
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Initialize logging for the config loader
 logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file
-load_dotenv()
+class Settings(BaseSettings):
+    # Bot Configuration
+    BOT_TOKEN: str = Field(..., description="Telegram Bot Token")
+    
+    # Admin Configuration
+    ADMIN_IDS: List[int] = Field(..., description="List of Admin IDs")
+    
+    # Database Configuration
+    MONGO_URI: str = Field(..., description="MongoDB Connection URI")
+    DB_NAME: str = Field(default="svu_helper_bot", description="Database Name")
+    
+    # Sentry Configuration
+    SENTRY_DSN: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+    
+    # Logging Configuration
+    LOG_FILE: str = Field(default="bot.log", description="Log file path")
 
-# --- BOT CONFIGURATION ---
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    logger.critical("❌ BOT_TOKEN is missing in environment variables!")
-    print("\nCRITICAL ERROR: BOT_TOKEN not found in .env file.")
-    print("Please check your .env configuration.\n")
-    sys.exit(1)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
-# Administrative IDs
+    @field_validator("ADMIN_IDS", mode="before")
+    @classmethod
+    def parse_admin_ids(cls, v):
+        if isinstance(v, str):
+            # Handle comma-separated string
+            return [int(x.strip()) for x in v.split(",") if x.strip()]
+        elif isinstance(v, int):
+            # Handle single integer
+            return [v]
+        return v
+
+# Instantiate settings
+# This will raise pydantic.ValidationError if configuration is missing
 try:
-    # Try loading list first (ADMIN_IDS=123,456)
-    env_ids = os.getenv("ADMIN_IDS", "")
-    ADMIN_IDS = [int(x.strip()) for x in env_ids.split(",") if x.strip()]
-
-    # Fallback/Support for single ADMIN_ID (or legacy variable acting as list)
-    if not ADMIN_IDS:
-        single_id = os.getenv("ADMIN_ID", "")
-        # Check if user put a list in ADMIN_ID by mistake
-        if "," in single_id:
-            ADMIN_IDS = [int(x.strip()) for x in single_id.split(",") if x.strip()]
-        elif single_id:
-            ADMIN_IDS.append(int(single_id))
-
-    if not ADMIN_IDS:
-        raise ValueError("No valid admin IDs found in ADMIN_IDS or ADMIN_ID.")
-        
-except ValueError as e:
-    logger.critical(f"❌ Invalid Admin Configuration: {e}")
-    print("\nCRITICAL ERROR: ADMIN_IDS (comma-separated) or ADMIN_ID is required in .env file.")
-    sys.exit(1)
-
-MONGO_URI = os.getenv("MONGO_URI")
-
-# Sentry Configuration
-SENTRY_DSN = os.getenv("SENTRY_DSN")
-
-# --- FILE PATHS ---
-# --- FILE PATHS ---
-# DB_NAME removed as part of MongoDB migration
-LOG_FILE = "bot.log"
+    settings = Settings()
+except Exception as e:
+    # We log it but we re-raise so the app (or test) fails loudly but traced
+    logger.critical(f"❌ Configuration Error: {e}")
+    raise

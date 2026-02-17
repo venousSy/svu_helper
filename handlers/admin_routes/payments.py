@@ -1,25 +1,21 @@
 from aiogram import Router, F, types
+import logging
 
-from config import ADMIN_IDS
-from database import (
-    get_payment_by_id,
-    get_project_by_id,
-    update_payment_status,
-    update_project_status,
-)
+from config import settings
+from database.repositories import ProjectRepository, PaymentRepository
 from keyboards.callbacks import PaymentCallback
 from utils.constants import (
     MSG_PAYMENT_CONFIRMED_ADMIN,
     MSG_PAYMENT_CONFIRMED_CLIENT,
     MSG_PAYMENT_REJECTED_ADMIN,
-    STATUS_ACCEPTED,
-    STATUS_OFFERED,
 )
+from utils.enums import ProjectStatus, PaymentStatus
 from utils.formatters import escape_md
 
 router = Router()
+logger = logging.getLogger(__name__)
 
-@router.callback_query(PaymentCallback.filter(F.action == "view_receipt"), F.from_user.id.in_(ADMIN_IDS))
+@router.callback_query(PaymentCallback.filter(F.action == "view_receipt"), F.from_user.id.in_(settings.ADMIN_IDS))
 async def admin_view_receipt(
     callback: types.CallbackQuery, 
     bot,
@@ -27,7 +23,7 @@ async def admin_view_receipt(
 ):
     """Fetches and sends the actual receipt file for a specific payment."""
     payment_id = callback_data.id
-    payment = await get_payment_by_id(payment_id)
+    payment = await PaymentRepository.get_payment(payment_id)
 
     if not payment:
         await callback.answer("⚠️ File not found.", show_alert=True)
@@ -42,15 +38,16 @@ async def admin_view_receipt(
             callback.from_user.id, file_id, caption=caption, parse_mode="Markdown"
         )
         await callback.answer()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to send document for payment {payment_id}: {e}")
         # Fallback if it's a photo ID that send_document doesn't like
-        for admin_id in ADMIN_IDS:
+        for admin_id in settings.ADMIN_IDS:
              if admin_id == callback.from_user.id:
                   await bot.send_photo(admin_id, file_id, caption=caption, parse_mode="Markdown")
         await callback.answer()
 
 
-@router.callback_query(PaymentCallback.filter(F.action == "confirm"), F.from_user.id.in_(ADMIN_IDS))
+@router.callback_query(PaymentCallback.filter(F.action == "confirm"), F.from_user.id.in_(settings.ADMIN_IDS))
 async def confirm_payment(
     callback: types.CallbackQuery, 
     bot,
@@ -60,7 +57,7 @@ async def confirm_payment(
     payment_id = callback_data.id
 
     # 1. Get Payment Info
-    payment = await get_payment_by_id(payment_id)
+    payment = await PaymentRepository.get_payment(payment_id)
     if not payment:
         await callback.answer("⚠️ Payment not found!", show_alert=True)
         return
@@ -68,12 +65,12 @@ async def confirm_payment(
     proj_id = payment["project_id"]
 
     # 2. Update Payment -> Accepted
-    await update_payment_status(payment_id, "accepted")
+    await PaymentRepository.update_status(payment_id, PaymentStatus.ACCEPTED)
 
     # 3. Update Project -> Accepted
-    await update_project_status(proj_id, STATUS_ACCEPTED)
+    await ProjectRepository.update_status(proj_id, ProjectStatus.ACCEPTED)
 
-    res = await get_project_by_id(proj_id)
+    res = await ProjectRepository.get_project_by_id(proj_id)
     if res:
         subject = escape_md(res["subject_name"])
         await bot.send_message(
@@ -89,7 +86,7 @@ async def confirm_payment(
     )
 
 
-@router.callback_query(PaymentCallback.filter(F.action == "reject"), F.from_user.id.in_(ADMIN_IDS))
+@router.callback_query(PaymentCallback.filter(F.action == "reject"), F.from_user.id.in_(settings.ADMIN_IDS))
 async def reject_payment(
     callback: types.CallbackQuery, 
     bot,
@@ -98,20 +95,20 @@ async def reject_payment(
     """Marks project as payment-failed and notifies the student."""
     payment_id = callback_data.id
 
-    payment = await get_payment_by_id(payment_id)
+    payment = await PaymentRepository.get_payment(payment_id)
     if not payment:
         return
 
     proj_id = payment["project_id"]
 
     # 1. Update Payment -> Rejected
-    await update_payment_status(payment_id, "rejected")
+    await PaymentRepository.update_status(payment_id, PaymentStatus.REJECTED)
 
     # 2. Update Project -> Offered (Reset so they can try again)
     # We do NOT kill the project. We let them re-upload.
-    await update_project_status(proj_id, STATUS_OFFERED)
+    await ProjectRepository.update_status(proj_id, ProjectStatus.OFFERED)
 
-    res = await get_project_by_id(proj_id)
+    res = await ProjectRepository.get_project_by_id(proj_id)
     if res:
         # Custom reject message telling them to try again
         await bot.send_message(

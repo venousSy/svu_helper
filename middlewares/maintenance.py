@@ -4,8 +4,8 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 
-from config import ADMIN_IDS
-from database import get_maintenance_mode
+from config import settings
+from database.repositories import SettingsRepository
 
 class MaintenanceMiddleware(BaseMiddleware):
     """
@@ -23,11 +23,11 @@ class MaintenanceMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         # Allow admins to bypass
-        if event.from_user.id in ADMIN_IDS:
+        if event.from_user.id in settings.ADMIN_IDS:
             return await handler(event, data)
 
         # Check DB status
-        if await get_maintenance_mode():
+        if await SettingsRepository.get_maintenance_mode():
             await event.answer("⚠️ **النظام تحت الصيانة حالياً.**\nالرجاء المحاولة لاحقاً.")
             return None # Stop processing
 
