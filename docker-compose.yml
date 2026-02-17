@@ -7,12 +7,12 @@ services:
     restart: always
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
-      - ADMIN_ID=${ADMIN_ID}
+      - ADMIN_IDS=${ADMIN_IDS}
       - MONGO_URI=mongodb://mongo:27017
     depends_on:
       - mongo
     volumes:
-      - .:/app  # Mounts current directory for hot-reloading (optional, good for dev)
+      - .:/app # Mounts current directory for hot-reloading (optional, good for dev)
 
   mongo:
     image: mongo:latest
@@ -46,6 +46,7 @@ services:
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_IDS=${ADMIN_IDS}
     depends_on:
       - mongo
     ports:
