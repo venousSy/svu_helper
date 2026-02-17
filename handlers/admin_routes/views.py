@@ -1,4 +1,7 @@
 from aiogram import Router, F, types
+import logging
+
+logger = logging.getLogger(__name__)
 
 from config import settings
 from database.repositories import ProjectRepository, PaymentRepository
@@ -18,7 +21,7 @@ from utils.formatters import (
 
 router = Router()
 
-@router.callback_query(MenuCallback.filter(F.action == "view_all_master"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(MenuCallback.filter(F.action == "view_all_master"), F.from_user.id.in_(settings.admin_ids))
 async def view_all_master(callback: types.CallbackQuery):
     """Fetches and displays a categorized report of every project in the database."""
     projects = await ProjectRepository.get_all_categorized()
@@ -29,7 +32,7 @@ async def view_all_master(callback: types.CallbackQuery):
     )
 
 
-@router.callback_query(MenuCallback.filter(F.action == "view_pending"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(MenuCallback.filter(F.action == "view_pending"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_pending(callback: types.CallbackQuery):
     """Lists all projects awaiting admin review with management deep-links."""
     pending = await ProjectRepository.get_pending()
@@ -40,7 +43,7 @@ async def admin_view_pending(callback: types.CallbackQuery):
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
 
 
-@router.callback_query(MenuCallback.filter(F.action == "view_accepted"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(MenuCallback.filter(F.action == "view_accepted"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_accepted(callback: types.CallbackQuery):
     """Lists active/ongoing projects that are ready for final submission."""
     accepted = await ProjectRepository.get_accepted()
@@ -51,7 +54,7 @@ async def admin_view_accepted(callback: types.CallbackQuery):
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
 
 
-@router.callback_query(MenuCallback.filter(F.action == "view_history"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(MenuCallback.filter(F.action == "view_history"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_history(callback: types.CallbackQuery):
     """Displays a read-only log of finished or denied projects."""
     history = await ProjectRepository.get_history()
@@ -62,7 +65,7 @@ async def admin_view_history(callback: types.CallbackQuery):
     )
 
 
-@router.callback_query(MenuCallback.filter(F.action == "view_payments"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(MenuCallback.filter(F.action == "view_payments"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_payments(callback: types.CallbackQuery):
     """Displays a log of all payments (Pending, Accepted, Rejected)."""
     payments = await PaymentRepository.get_all()

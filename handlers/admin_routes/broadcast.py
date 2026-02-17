@@ -21,7 +21,7 @@ async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_broadcast)
 
 
-@router.message(AdminStates.waiting_for_broadcast, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(AdminStates.waiting_for_broadcast, F.from_user.id.in_(settings.admin_ids))
 async def execute_broadcast(message: types.Message, state: FSMContext, bot):
     """Sends a mass message to all unique users found in the database."""
     try:

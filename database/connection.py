@@ -3,6 +3,8 @@ import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 # Use a default DB name if not specified in URI, or fall back to 'svu_helper_db'
 DB_NAME = settings.DB_NAME
 
@@ -17,7 +19,7 @@ class Database:
     async def connect(cls):
         """Initializes the MongoDB connection."""
         cls.db = cls.client[DB_NAME]
-        logging.info(f"🔌 Connected to MongoDB: {DB_NAME}")
+        logger.info(f"🔌 Connected to MongoDB: {DB_NAME}")
 
         # Ensure indexes
         # Projects

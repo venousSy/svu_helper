@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 @router.callback_query(
     ProjectCallback.filter(F.action == "manage"),
-    F.from_user.id.in_(settings.ADMIN_IDS),
+    F.from_user.id.in_(settings.admin_ids),
 )
 async def view_project_details(
     callback: types.CallbackQuery, 
@@ -90,7 +90,7 @@ async def view_project_details(
         )
 
 
-@router.callback_query(ProjectCallback.filter(F.action == "make_offer"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(ProjectCallback.filter(F.action == "make_offer"), F.from_user.id.in_(settings.admin_ids))
 async def start_offer_flow(
     callback: types.CallbackQuery, 
     state: FSMContext, 
@@ -105,7 +105,7 @@ async def start_offer_flow(
     await state.set_state(AdminStates.waiting_for_price)
 
 
-@router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.admin_ids))
 async def process_price(message: types.Message, state: FSMContext):
     """Stores price and requests delivery date."""
     price_text = message.text.strip()
@@ -126,7 +126,7 @@ async def process_price(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
-@router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(settings.admin_ids))
 async def process_delivery(message: types.Message, state: FSMContext):
     """Stores delivery date and asks if extra notes are needed."""
     delivery_text = message.text.strip()
@@ -145,7 +145,7 @@ async def process_delivery(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_notes_decision)
 
 
-@router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_decision(message: types.Message, state: FSMContext, bot):
     """Branches FSM based on whether the admin wants to add custom notes."""
     if message.text == BTN_YES:
@@ -157,7 +157,7 @@ async def process_notes_decision(message: types.Message, state: FSMContext, bot)
         await finalize_and_send_offer(message, state, bot, notes_text=MSG_NO_NOTES)
 
 
-@router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_text(message: types.Message, state: FSMContext, bot):
     """Captures final notes and triggers the student notification."""
     await finalize_and_send_offer(message, state, bot, notes_text=message.text)
@@ -211,7 +211,7 @@ async def finalize_and_send_offer(
 
 @router.callback_query(
     ProjectCallback.filter(F.action == "manage_accepted"), 
-    F.from_user.id.in_(settings.ADMIN_IDS)
+    F.from_user.id.in_(settings.admin_ids)
 )
 async def manage_accepted_project(
     callback: types.CallbackQuery, 
@@ -228,7 +228,7 @@ async def manage_accepted_project(
     await callback.answer()
 
 
-@router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(settings.admin_ids))
 async def process_finished_work(message: types.Message, state: FSMContext, bot):
     """Transfers the final work from admin to student and marks project as 'Finished'."""
     data = await state.get_data()
@@ -269,7 +269,7 @@ async def handle_deny(
 ):
     """General denial handler for both Admin rejection and Student cancellation."""
     proj_id = callback_data.id
-    if callback.from_user.id in settings.ADMIN_IDS:
+    if callback.from_user.id in settings.admin_ids:
         await ProjectRepository.update_status(proj_id, ProjectStatus.DENIED_ADMIN)
         res = await ProjectRepository.get_project_by_id(proj_id)
         if res:
@@ -278,7 +278,7 @@ async def handle_deny(
             )
     else:
         await ProjectRepository.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
-        for admin_id in ADMIN_IDS:
+        for admin_id in settings.admin_ids:
              await bot.send_message(
                 admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)
             )

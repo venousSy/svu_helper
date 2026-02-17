@@ -23,7 +23,7 @@ class MaintenanceMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         # Allow admins to bypass
-        if event.from_user.id in settings.ADMIN_IDS:
+        if event.from_user.id in settings.admin_ids:
             return await handler(event, data)
 
         # Check DB status

@@ -15,7 +15,7 @@ from utils.formatters import escape_md
 router = Router()
 logger = logging.getLogger(__name__)
 
-@router.callback_query(PaymentCallback.filter(F.action == "view_receipt"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(PaymentCallback.filter(F.action == "view_receipt"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_receipt(
     callback: types.CallbackQuery, 
     bot,
@@ -41,13 +41,13 @@ async def admin_view_receipt(
     except Exception as e:
         logger.warning(f"Failed to send document for payment {payment_id}: {e}")
         # Fallback if it's a photo ID that send_document doesn't like
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids:
              if admin_id == callback.from_user.id:
                   await bot.send_photo(admin_id, file_id, caption=caption, parse_mode="Markdown")
         await callback.answer()
 
 
-@router.callback_query(PaymentCallback.filter(F.action == "confirm"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(PaymentCallback.filter(F.action == "confirm"), F.from_user.id.in_(settings.admin_ids))
 async def confirm_payment(
     callback: types.CallbackQuery, 
     bot,
@@ -86,7 +86,7 @@ async def confirm_payment(
     )
 
 
-@router.callback_query(PaymentCallback.filter(F.action == "reject"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(PaymentCallback.filter(F.action == "reject"), F.from_user.id.in_(settings.admin_ids))
 async def reject_payment(
     callback: types.CallbackQuery, 
     bot,
