@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     BOT_TOKEN: str = Field(..., description="Telegram Bot Token")
     
     # Admin Configuration
-    ADMIN_IDS: List[int] = Field(..., description="List of Admin IDs")
+    # We read as string to handle comma-separated values safely
+    ADMIN_IDS_RAW: str = Field(..., alias="ADMIN_IDS", description="List of Admin IDs (comma-separated)")
     
     # Database Configuration
     MONGO_URI: str = Field(..., description="MongoDB Connection URI")
@@ -32,16 +33,14 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    @field_validator("ADMIN_IDS", mode="before")
-    @classmethod
-    def parse_admin_ids(cls, v):
-        if isinstance(v, str):
-            # Handle comma-separated string
-            return [int(x.strip()) for x in v.split(",") if x.strip()]
-        elif isinstance(v, int):
-            # Handle single integer
-            return [v]
-        return v
+    @property
+    def admin_ids(self) -> List[int]:
+        """Parses the comma-separated ADMIN_IDS string into a list of integers."""
+        try:
+            return [int(x.strip()) for x in self.ADMIN_IDS_RAW.split(",") if x.strip()]
+        except ValueError:
+            logger.error(f"Failed to parse ADMIN_IDS: {self.ADMIN_IDS_RAW}")
+            return []
 
 # Instantiate settings
 # This will raise pydantic.ValidationError if configuration is missing

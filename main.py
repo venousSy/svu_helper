@@ -99,12 +99,12 @@ async def main():
         )
 
         # Apply admin commands only to admins
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids:
             await bot.set_my_commands(
                 admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id)
             )
 
-        logger.info(f"🚀 Bot online. Admin IDs: {settings.ADMIN_IDS}")
+        logger.info(f"🚀 Bot online. Admin IDs: {settings.admin_ids}")
 
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)

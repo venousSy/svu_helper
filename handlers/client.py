@@ -131,7 +131,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
             user_name=full_name,
             username=username,
         )
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids:
             await bot.send_message(
                 admin_id,
                 admin_text,
@@ -207,7 +207,7 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
         await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
 
         # 4. Notify Admin (WITH PAYMENT ID)
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids:
             await bot.send_message(
                 admin_id,
                 f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
