@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from api.routes import router
-from database import init_db
+from database.connection import init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
