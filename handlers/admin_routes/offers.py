@@ -2,12 +2,8 @@ import logging
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 
-from config import ADMIN_IDS
-from database import (
-    get_project_by_id,
-    update_offer_details,
-    update_project_status,
-)
+from config import settings
+from database.repositories import ProjectRepository
 from keyboards.admin_kb import (
     get_cancel_kb,
     get_manage_project_kb,
@@ -31,11 +27,8 @@ from utils.constants import (
     MSG_PROJECT_DETAILS_HEADER,
     MSG_UPLOAD_FINISHED_WORK,
     MSG_WORK_FINISHED_ALERT,
-    STATUS_DENIED_ADMIN,
-    STATUS_DENIED_STUDENT,
-    STATUS_FINISHED,
-    STATUS_OFFERED,
 )
+from utils.enums import ProjectStatus
 from utils.formatters import escape_md
 from utils.helpers import get_file_id
 
@@ -46,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 @router.callback_query(
     ProjectCallback.filter(F.action == "manage"),
-    F.from_user.id.in_(ADMIN_IDS),
+    F.from_user.id.in_(settings.ADMIN_IDS),
 )
 async def view_project_details(
     callback: types.CallbackQuery, 
@@ -54,7 +47,7 @@ async def view_project_details(
 ):
     """Displays detailed project specs and original file for admin review."""
     proj_id = callback_data.id
-    project = await get_project_by_id(proj_id)
+    project = await ProjectRepository.get_project_by_id(proj_id)
     if not project:
         return
 
@@ -97,7 +90,7 @@ async def view_project_details(
         )
 
 
-@router.callback_query(ProjectCallback.filter(F.action == "make_offer"), F.from_user.id.in_(ADMIN_IDS))
+@router.callback_query(ProjectCallback.filter(F.action == "make_offer"), F.from_user.id.in_(settings.ADMIN_IDS))
 async def start_offer_flow(
     callback: types.CallbackQuery, 
     state: FSMContext, 
@@ -112,7 +105,7 @@ async def start_offer_flow(
     await state.set_state(AdminStates.waiting_for_price)
 
 
-@router.message(AdminStates.waiting_for_price, F.from_user.id.in_(ADMIN_IDS))
+@router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.ADMIN_IDS))
 async def process_price(message: types.Message, state: FSMContext):
     """Stores price and requests delivery date."""
     price_text = message.text.strip()
@@ -133,7 +126,7 @@ async def process_price(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
-@router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(ADMIN_IDS))
+@router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(settings.ADMIN_IDS))
 async def process_delivery(message: types.Message, state: FSMContext):
     """Stores delivery date and asks if extra notes are needed."""
     delivery_text = message.text.strip()
@@ -152,7 +145,7 @@ async def process_delivery(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_notes_decision)
 
 
-@router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(ADMIN_IDS))
+@router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(settings.ADMIN_IDS))
 async def process_notes_decision(message: types.Message, state: FSMContext, bot):
     """Branches FSM based on whether the admin wants to add custom notes."""
     if message.text == BTN_YES:
@@ -164,7 +157,7 @@ async def process_notes_decision(message: types.Message, state: FSMContext, bot)
         await finalize_and_send_offer(message, state, bot, notes_text=MSG_NO_NOTES)
 
 
-@router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(ADMIN_IDS))
+@router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.ADMIN_IDS))
 async def process_notes_text(message: types.Message, state: FSMContext, bot):
     """Captures final notes and triggers the student notification."""
     await finalize_and_send_offer(message, state, bot, notes_text=message.text)
@@ -176,12 +169,12 @@ async def finalize_and_send_offer(
     """Compiles all collected data into a structured offer and sends it to the student."""
     data = await state.get_data()
     proj_id = data["offer_proj_id"]
-    res = await get_project_by_id(proj_id)
+    res = await ProjectRepository.get_project_by_id(proj_id)
 
     try:
         if res:
-            await update_offer_details(proj_id, data["price"], data["delivery"])
-            await update_project_status(proj_id, STATUS_OFFERED)
+            await ProjectRepository.update_offer(proj_id, data["price"], data["delivery"])
+            await ProjectRepository.update_status(proj_id, ProjectStatus.OFFERED)
             user_id = res["user_id"]
             subject = escape_md(res["subject_name"])
 
@@ -218,7 +211,7 @@ async def finalize_and_send_offer(
 
 @router.callback_query(
     ProjectCallback.filter(F.action == "manage_accepted"), 
-    F.from_user.id.in_(ADMIN_IDS)
+    F.from_user.id.in_(settings.ADMIN_IDS)
 )
 async def manage_accepted_project(
     callback: types.CallbackQuery, 
@@ -235,12 +228,12 @@ async def manage_accepted_project(
     await callback.answer()
 
 
-@router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(ADMIN_IDS))
+@router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(settings.ADMIN_IDS))
 async def process_finished_work(message: types.Message, state: FSMContext, bot):
     """Transfers the final work from admin to student and marks project as 'Finished'."""
     data = await state.get_data()
     proj_id = data.get("finish_proj_id")
-    res = await get_project_by_id(proj_id)
+    res = await ProjectRepository.get_project_by_id(proj_id)
 
     if res:
         u_id = res["user_id"]
@@ -259,7 +252,7 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
         else:
             await bot.send_message(u_id, message.text)
 
-        await update_project_status(proj_id, STATUS_FINISHED)
+        await ProjectRepository.update_status(proj_id, ProjectStatus.FINISHED)
         await message.answer(
             MSG_FINISHED_CONFIRM.format(proj_id),
             reply_markup=types.ReplyKeyboardRemove(),
@@ -276,15 +269,15 @@ async def handle_deny(
 ):
     """General denial handler for both Admin rejection and Student cancellation."""
     proj_id = callback_data.id
-    if callback.from_user.id in ADMIN_IDS:
-        await update_project_status(proj_id, STATUS_DENIED_ADMIN)
-        res = await get_project_by_id(proj_id)
+    if callback.from_user.id in settings.ADMIN_IDS:
+        await ProjectRepository.update_status(proj_id, ProjectStatus.DENIED_ADMIN)
+        res = await ProjectRepository.get_project_by_id(proj_id)
         if res:
             await bot.send_message(
                 res["user_id"], MSG_PROJECT_DENIED_CLIENT.format(proj_id)
             )
     else:
-        await update_project_status(proj_id, STATUS_DENIED_STUDENT)
+        await ProjectRepository.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
         for admin_id in ADMIN_IDS:
              await bot.send_message(
                 admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)

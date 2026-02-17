@@ -5,21 +5,15 @@ Manages the student-facing Finite State Machine (FSM) for project submissions
 and handles status inquiries for existing requests.
 """
 
+import logging
 from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import ADMIN_IDS
-from database import (
-    STATUS_AWAITING_VERIFICATION,
-    add_payment,
-    add_project,
-    get_project_by_id,
-    get_student_offers,
-    get_user_projects,
-    update_project_status,
-)
+from config import settings
+from database.repositories import ProjectRepository, PaymentRepository
+from utils.enums import ProjectStatus
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
 from keyboards.client_kb import (
     get_cancel_payment_kb,
@@ -39,7 +33,6 @@ from utils.constants import (
     MSG_OFFER_DETAILS,
     MSG_PROJECT_SUBMITTED,
     MSG_RECEIPT_RECEIVED,
-    STATUS_OFFERED,
 )
 from utils.formatters import (
     escape_md,
@@ -51,6 +44,7 @@ from utils.helpers import get_file_id
 
 # Initialize router for student-related events
 router = Router()
+logger = logging.getLogger(__name__)
 
 # --- PROJECT SUBMISSION FLOW (FSM) ---
 
@@ -113,7 +107,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
 
     # Commit project to database and retrieve the auto-generated ID
     try:
-        project_id = await add_project(
+        project_id = await ProjectRepository.add_project(
             user_id=user.id,
             username=username,
             user_full_name=full_name,
@@ -137,7 +131,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
             user_name=full_name,
             username=username,
         )
-        for admin_id in ADMIN_IDS:
+        for admin_id in settings.ADMIN_IDS:
             await bot.send_message(
                 admin_id,
                 admin_text,
@@ -149,11 +143,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
         await state.clear()
 
     except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).error(
-            f"Failed to submit project: {e}", exc_info=True
-        )
+        logger.error(f"Failed to submit project: {e}", exc_info=True)
         await message.answer(
             "⚠️ حدث خطأ أثناء حفظ المشروع. حاول مرة أخرى لاحقاً.",
             reply_markup=types.ReplyKeyboardRemove(),
@@ -208,16 +198,16 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
 
     try:
         # 1. Save to Payment Registry
-        payment_id = await add_payment(proj_id, message.from_user.id, file_id)
+        payment_id = await PaymentRepository.add_payment(proj_id, message.from_user.id, file_id)
 
         # 2. Update Project Status
-        await update_project_status(proj_id, STATUS_AWAITING_VERIFICATION)
+        await ProjectRepository.update_status(proj_id, ProjectStatus.AWAITING_VERIFICATION)
 
         # 3. Notify Student
         await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
 
         # 4. Notify Admin (WITH PAYMENT ID)
-        for admin_id in ADMIN_IDS:
+        for admin_id in settings.ADMIN_IDS:
             await bot.send_message(
                 admin_id,
                 f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
@@ -232,9 +222,7 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
 
         await state.clear()
     except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).error(f"Payment upload failed: {e}", exc_info=True)
+        logger.error(f"Payment upload failed: {e}", exc_info=True)
         await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
         await state.clear()
 
@@ -249,7 +237,7 @@ async def view_projects(message: types.Message):
     Retrieves and displays a list of all projects owned by the user.
     Uses centralized formatting for consistent UI/UX.
     """
-    projects = await get_user_projects(message.from_user.id)
+    projects = await ProjectRepository.get_user_projects(message.from_user.id)
 
     # Generate the formatted response (handles empty lists internally)
     response = format_student_projects(projects)
@@ -260,7 +248,7 @@ async def view_projects(message: types.Message):
 @router.message(Command("my_offers"))
 async def view_offers(message: types.Message):
     """Shows the student all projects where an admin has sent an offer."""
-    offers = await get_student_offers(message.from_user.id)
+    offers = await ProjectRepository.get_student_offers(message.from_user.id)
     text = format_offer_list(offers)
 
     # Use new keyboard
@@ -276,7 +264,7 @@ async def show_specific_offer(
     proj_id = callback_data.id
 
     # Query the new columns!
-    res = await get_project_by_id(proj_id)
+    res = await ProjectRepository.get_project_by_id(proj_id)
 
     if res:
         subject = escape_md(res["subject_name"])

@@ -8,8 +8,8 @@ from aiogram import Bot, Dispatcher, types
 # Internal Project Imports
 import sentry_sdk
 
-from config import ADMIN_IDS, BOT_TOKEN, LOG_FILE, SENTRY_DSN
-from database import init_db, mongo_client
+from config import settings
+from database.connection import init_db, mongo_client
 from handlers.admin_routes import router as admin_router
 from handlers.client import router as client_router
 from handlers.common import router as common_router
@@ -34,9 +34,9 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 # --- SENTRY INITIALIZATION ---
-if SENTRY_DSN:
+if settings.SENTRY_DSN:
     sentry_sdk.init(
-        dsn=SENTRY_DSN,
+        dsn=settings.SENTRY_DSN,
         traces_sample_rate=0.1,  # Sample 10% of transactions for performance
         profiles_sample_rate=0.1,
     )
@@ -46,7 +46,7 @@ else:
 
 
 # --- BOT INITIALIZATION ---
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=settings.BOT_TOKEN)
 
 # Use MongoDB for persistent storage
 storage = MongoStorage(mongo_client)
@@ -99,12 +99,12 @@ async def main():
         )
 
         # Apply admin commands only to admins
-        for admin_id in ADMIN_IDS:
+        for admin_id in settings.ADMIN_IDS:
             await bot.set_my_commands(
                 admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id)
             )
 
-        logger.info(f"🚀 Bot online. Admin IDs: {ADMIN_IDS}")
+        logger.info(f"🚀 Bot online. Admin IDs: {settings.ADMIN_IDS}")
 
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)

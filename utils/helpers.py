@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 
 from aiogram import Bot, types
 
-from config import ADMIN_IDS
+from config import settings
 
 
 def get_file_id(message: types.Message) -> Tuple[Optional[str], Optional[str]]:
@@ -22,7 +22,7 @@ async def notify_admins(bot: Bot, text: str, reply_markup=None, parse_mode="Mark
     """
     Sends a message to the defined administrator(s).
     """
-    for admin_id in ADMIN_IDS:
+    for admin_id in settings.ADMIN_IDS:
         try:
             await bot.send_message(
                 chat_id=admin_id,
