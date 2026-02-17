@@ -14,7 +14,7 @@ from utils.broadcaster import Broadcaster
 router = Router()
 logger = logging.getLogger(__name__)
 
-@router.callback_query(MenuCallback.filter(F.action == "admin_broadcast"), F.from_user.id.in_(settings.ADMIN_IDS))
+@router.callback_query(MenuCallback.filter(F.action == "admin_broadcast"), F.from_user.id.in_(settings.admin_ids))
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
     """Initiates the broadcast FSM flow."""
     await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_cancel_kb())
