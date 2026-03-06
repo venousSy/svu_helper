@@ -29,46 +29,39 @@ def format_project_list(projects, title="📂 قائمة المشاريع"):
 
     text = f"**{title}**\n━━━━━━━━━━━━━━━━━━\n"
     for project in projects:
-        # Check if it IS a dictionary (new style) or tuple (old style/fallback)
-        if isinstance(project, dict):
-            p_id = project["id"]
-            subject = project["subject_name"]
+        p_id = project["id"]
+        subject = project["subject_name"]
 
-            # Add user info if available
-            user_info = ""
-            if "user_full_name" in project and project["user_full_name"]:
-                name = escape_md(project["user_full_name"])
-                u_id = project.get("user_id")
-                username = (
-                    f" (@{escape_md(project['username'])})"
-                    if project.get("username")
-                    else ""
-                )
+        # Add user info if available
+        user_info = ""
+        if "user_full_name" in project and project["user_full_name"]:
+            name = escape_md(project["user_full_name"])
+            u_id = project.get("user_id")
+            username = (
+                f" (@{escape_md(project['username'])})"
+                if project.get("username")
+                else ""
+            )
 
-                # Link user if u_id is present
-                if u_id:
-                    user_info = f"\n   👤 [{name}](tg://user?id={u_id}){username}"
-                else:
-                    user_info = f"\n   👤 {name}{username}"
+            # Link user if u_id is present
+            if u_id:
+                user_info = f"\n   👤 [{name}](tg://user?id={u_id}){username}"
+            else:
+                user_info = f"\n   👤 {name}{username}"
 
-            # Add Tutor and Deadline if available
-            extra_info = ""
-            if "tutor_name" in project and project["tutor_name"]:
-                tutor = escape_md(project["tutor_name"])
-                extra_info += f"\n   👨‍🏫 المدرس: {tutor}"
+        # Add Tutor and Deadline if available
+        extra_info = ""
+        if "tutor_name" in project and project["tutor_name"]:
+            tutor = escape_md(project["tutor_name"])
+            extra_info += f"\n   👨‍🏫 المدرس: {tutor}"
 
-            if "deadline" in project and project["deadline"]:
-                deadline = escape_md(project["deadline"])
-                extra_info += f" | 📅 الموعد: {deadline}"
+        if "deadline" in project and project["deadline"]:
+            deadline = escape_md(project["deadline"])
+            extra_info += f" | 📅 الموعد: {deadline}"
 
-            user_info += extra_info
+        user_info += extra_info
 
-        else:
-            p_id = project[0]
-            subject = escape_md(project[1])
-            user_info = ""
-
-        text += f"• #{p_id}: {escape_md(subject) if isinstance(project, dict) else subject}{user_info}\n"
+        text += f"• #{p_id}: {escape_md(subject)}{user_info}\n"
     return text.strip()
 
 
@@ -100,12 +93,9 @@ def format_project_history(projects):
 
     text = "📜 **سجل المشاريع:**\n━━━━━━━━━━━━━━━━━━\n"
     for project in projects:
-        if isinstance(project, dict):
-            p_id = project["id"]
-            subject = project["subject_name"]
-            status = project["status"]
-        else:
-            p_id, subject, status = project
+        p_id = project["id"]
+        subject = project["subject_name"]
+        status = project["status"]
 
         icon = "🏁" if status == STATUS_FINISHED else "❌"
         text += f"{icon} #{p_id} | {escape_md(subject)} ({status})\n"
@@ -137,31 +127,25 @@ def format_master_report(categorized_data: dict) -> str:
             continue
 
         for item in projects:
-            if isinstance(item, dict):
-                p_id = item["id"]
-                sub = escape_md(item["subject_name"])
+            p_id = item["id"]
+            sub = escape_md(item["subject_name"])
 
-                # Construct User Info
-                u_id = item.get("user_id")
-                name = escape_md(item.get("user_full_name") or "مجهول")
-                username = escape_md(item.get("username"))
+            # Construct User Info
+            u_id = item.get("user_id")
+            name = escape_md(item.get("user_full_name") or "مجهول")
+            username = escape_md(item.get("username"))
 
-                user_link = f"[{name}](tg://user?id={u_id})"
-                if username:
-                    user_link += f" (@{username})"
+            user_link = f"[{name}](tg://user?id={u_id})"
+            if username:
+                user_link += f" (@{username})"
 
-                # Determine "extra" based on available keys
-                if "tutor_name" in item:
-                    extra = f"المدرس: {escape_md(item['tutor_name'])}"
-                elif "status" in item:
-                    extra = f"الحالة: {item['status']}"
-                else:
-                    extra = ""
+            # Determine "extra" based on available keys
+            if "tutor_name" in item:
+                extra = f"المدرس: {escape_md(item['tutor_name'])}"
+            elif "status" in item:
+                extra = f"الحالة: {item['status']}"
             else:
-                p_id = item[0]
-                sub = escape_md(item[1])
-                extra = escape_md(item[2]) if len(item) > 2 else ""
-                user_link = "المستخدم: مجهول"
+                extra = ""
 
             text += f"└ #{p_id}: {sub}\n   👤 {user_link}\n   ℹ️ {extra}\n"
 
@@ -178,12 +162,9 @@ def format_student_projects(projects):
 
     response = "📋 **حالة مشاريعك:**\n━━━━━━━━━━━━━━━━━━\n\n"
     for project in projects:
-        if isinstance(project, dict):
-            p_id = project["id"]
-            subject = project["subject_name"]
-            status = project["status"]
-        else:
-            p_id, subject, status = project
+        p_id = project["id"]
+        subject = project["subject_name"]
+        status = project["status"]
 
         # Map statuses to emojis
         if status == STATUS_PENDING:
@@ -211,12 +192,9 @@ def format_offer_list(offers: list) -> str:
 
     text = "🎁 **العروض المعلقة**\n" + "━" * 15 + "\n"
     for offer in offers:
-        if isinstance(offer, dict):
-            p_id = offer["id"]
-            sub = escape_md(offer["subject_name"])
-            tutor = escape_md(offer["tutor_name"])
-        else:
-            p_id, sub, tutor = offer
+        p_id = offer["id"]
+        sub = escape_md(offer["subject_name"])
+        tutor = escape_md(offer["tutor_name"])
 
         text += f"📍 **المشروع #{p_id}**: {sub}\n└ _المدرس: {tutor}_\n\n"
 

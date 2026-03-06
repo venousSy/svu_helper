@@ -1,15 +1,9 @@
-"""
-Client Handler Module
-=====================
-Manages the student-facing Finite State Machine (FSM) for project submissions
-and handles status inquiries for existing requests.
-"""
-
 import logging
 from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.exceptions import TelegramAPIError
 
 from config import settings
 from database.repositories import ProjectRepository, PaymentRepository
@@ -45,6 +39,14 @@ from utils.helpers import get_file_id
 # Initialize router for student-related events
 router = Router()
 logger = logging.getLogger(__name__)
+
+from middlewares.throttling import ThrottlingMiddleware
+router.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
+
+# Constants for File Validation
+MAX_FILE_SIZE_MB = 15
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+ALLOWED_DOCUMENT_MIMES = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
 
 # --- PROJECT SUBMISSION FLOW (FSM) ---
 
@@ -90,10 +92,15 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     Finalizes the FSM flow.
     Extracts media or text, saves to DB, and alerts the administrator.
     """
+    # Validation Check before accepting
+    if message.document:
+        if message.document.file_size > MAX_FILE_SIZE_BYTES:
+            await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
+            return
+
     # Retrieve all data collected during the FSM lifecycle
     data = await state.get_data()
 
-    # Logic: Prioritize document, then photo. Fallback to None if text-only.
     # Logic: Prioritize document, then photo. Fallback to None if text-only.
     file_id, _ = get_file_id(message)
 
@@ -120,7 +127,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
 
         # Provide immediate feedback to the student
         await message.answer(
-            MSG_PROJECT_SUBMITTED.format(project_id), parse_mode="Markdown"
+            MSG_PROJECT_SUBMITTED.format(project_id), parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove()
         )
 
         admin_text = format_admin_notification(
@@ -132,12 +139,15 @@ async def process_details(message: types.Message, state: FSMContext, bot):
             username=username,
         )
         for admin_id in settings.admin_ids:
-            await bot.send_message(
-                admin_id,
-                admin_text,
-                parse_mode="Markdown",
-                reply_markup=get_new_project_alert_kb(project_id),
-            )
+            try:
+                await bot.send_message(
+                    admin_id,
+                    admin_text,
+                    parse_mode="Markdown",
+                    reply_markup=get_new_project_alert_kb(project_id),
+                )
+            except TelegramAPIError as e:
+                logger.error(f"Failed to notify admin {admin_id}: {e}")
 
         # Clear FSM state to allow new commands
         await state.clear()
@@ -190,6 +200,15 @@ async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContex
 @router.message(ProjectOrder.waiting_for_payment_proof, F.photo | F.document)
 async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     """Student sends the receipt; we relay it to the Admin for verification."""
+    # Validation
+    if message.document:
+        if message.document.file_size > MAX_FILE_SIZE_BYTES:
+            await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
+            return
+        if message.document.mime_type not in ALLOWED_DOCUMENT_MIMES and "image" not in message.document.mime_type:
+             await message.answer("⚠️ الرجاء رفع صورة أو ملف PDF/Word كإثبات للدفع.")
+             return
+
     data = await state.get_data()
     proj_id = data.get("active_pay_proj_id")
 
@@ -208,17 +227,20 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
 
         # 4. Notify Admin (WITH PAYMENT ID)
         for admin_id in settings.admin_ids:
-            await bot.send_message(
-                admin_id,
-                f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
-                parse_mode="Markdown",
-            )
-            await bot.send_photo(
-                admin_id,
-                file_id,
-                caption=f"verify_pay_{payment_id}",
-                reply_markup=get_payment_verify_kb(payment_id),
-            )
+            try:
+                await bot.send_message(
+                    admin_id,
+                    f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
+                    parse_mode="Markdown",
+                )
+                await bot.send_photo(
+                    admin_id,
+                    file_id,
+                    caption=f"verify_pay_{payment_id}",
+                    reply_markup=get_payment_verify_kb(payment_id),
+                )
+            except TelegramAPIError as e:
+                logger.error(f"Failed to send payment receipt {payment_id} to admin {admin_id}: {e}")
 
         await state.clear()
     except Exception as e:
@@ -237,7 +259,11 @@ async def view_projects(message: types.Message):
     Retrieves and displays a list of all projects owned by the user.
     Uses centralized formatting for consistent UI/UX.
     """
-    projects = await ProjectRepository.get_user_projects(message.from_user.id)
+    # Fetch all except OFFERED which has its own menu
+    projects = await ProjectRepository.get_projects_by_status(
+        [ProjectStatus.PENDING, ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION, ProjectStatus.FINISHED, ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT, ProjectStatus.REJECTED_PAYMENT],
+        user_id=message.from_user.id
+    )
 
     # Generate the formatted response (handles empty lists internally)
     response = format_student_projects(projects)
@@ -248,7 +274,7 @@ async def view_projects(message: types.Message):
 @router.message(Command("my_offers"))
 async def view_offers(message: types.Message):
     """Shows the student all projects where an admin has sent an offer."""
-    offers = await ProjectRepository.get_student_offers(message.from_user.id)
+    offers = await ProjectRepository.get_projects_by_status([ProjectStatus.OFFERED], user_id=message.from_user.id)
     text = format_offer_list(offers)
 
     # Use new keyboard

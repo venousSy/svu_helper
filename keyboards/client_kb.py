@@ -32,10 +32,7 @@ def get_offers_list_kb(offers):
     """Buttons to view specific offers from a list."""
     builder = InlineKeyboardBuilder()
     for item in offers:
-        if isinstance(item, dict):
-            p_id = item["id"]
-        else:
-            p_id = item[0]
+        p_id = item["id"]
 
         builder.row(
             types.InlineKeyboardButton(
