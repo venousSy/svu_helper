@@ -35,7 +35,7 @@ async def view_all_master(callback: types.CallbackQuery):
 @router.callback_query(MenuCallback.filter(F.action == "view_pending"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_pending(callback: types.CallbackQuery):
     """Lists all projects awaiting admin review with management deep-links."""
-    pending = await ProjectRepository.get_pending()
+    pending = await ProjectRepository.get_projects_by_status([ProjectStatus.PENDING])
     text = format_project_list(pending, "📊 مشاريع قيد الانتظار")
 
     markup = get_pending_projects_kb(pending)
@@ -46,7 +46,7 @@ async def admin_view_pending(callback: types.CallbackQuery):
 @router.callback_query(MenuCallback.filter(F.action == "view_accepted"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_accepted(callback: types.CallbackQuery):
     """Lists active/ongoing projects that are ready for final submission."""
-    accepted = await ProjectRepository.get_accepted()
+    accepted = await ProjectRepository.get_projects_by_status([ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION])
     text = format_project_list(accepted, "🚀 مشاريع جارية")
 
     markup = get_accepted_projects_kb(accepted)
@@ -57,7 +57,7 @@ async def admin_view_accepted(callback: types.CallbackQuery):
 @router.callback_query(MenuCallback.filter(F.action == "view_history"), F.from_user.id.in_(settings.admin_ids))
 async def admin_view_history(callback: types.CallbackQuery):
     """Displays a read-only log of finished or denied projects."""
-    history = await ProjectRepository.get_history()
+    history = await ProjectRepository.get_projects_by_status([ProjectStatus.FINISHED, ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT, ProjectStatus.REJECTED_PAYMENT])
     await callback.message.edit_text(
         format_project_history(history),
         parse_mode="Markdown",

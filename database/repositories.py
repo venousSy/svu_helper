@@ -54,15 +54,19 @@ class ProjectRepository:
         )
 
     @staticmethod
-    async def get_pending() -> List[Dict[str, Any]]:
+    async def get_projects_by_status(statuses: List[str], user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Generic method to fetch projects by a list of statuses.
+        Can optionally filter by a specific student.
+        """
         db = Database.db
-        return await db.projects.find({"status": ProjectStatus.PENDING}).to_list(length=None)
-        
-    @staticmethod
-    async def get_student_offers(user_id: int) -> List[Dict[str, Any]]:
-        db = Database.db
-        return await db.projects.find({"user_id": user_id, "status": ProjectStatus.OFFERED}).to_list(length=None)
-        
+        query = {"status": {"$in": statuses}}
+        if user_id is not None:
+            query["user_id"] = user_id
+            
+        cursor = db.projects.find(query)
+        return await cursor.to_list(length=None)
+
     @staticmethod
     async def update_offer(proj_id: int, price: str, delivery: str) -> None:
         db = Database.db
@@ -72,38 +76,13 @@ class ProjectRepository:
         )
 
     @staticmethod
-    async def get_accepted() -> List[Dict[str, Any]]:
-        db = Database.db
-        return await db.projects.find({"status": ProjectStatus.ACCEPTED}).to_list(length=None)
-
-    @staticmethod
-    async def get_history() -> List[Dict[str, Any]]:
-        db = Database.db
-        return await db.projects.find({
-            "status": {
-                "$in": [
-                    ProjectStatus.FINISHED,
-                    ProjectStatus.DENIED_ADMIN,
-                    ProjectStatus.DENIED_STUDENT,
-                    ProjectStatus.REJECTED_PAYMENT,
-                ]
-            }
-        }).to_list(length=None)
-        
-    @staticmethod
     async def get_all_categorized() -> Dict[str, List[Dict[str, Any]]]:
         db = Database.db
-        # This logic was in get_all_projects_categorized
-        # We can implement it here or reuse existing methods if careful
         
-        pending = await db.projects.find({"status": ProjectStatus.PENDING}).to_list(length=None)
-        ongoing = await db.projects.find(
-            {"status": {"$in": [ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION]}}
-        ).to_list(length=None)
-        history = await db.projects.find(
-            {"status": {"$in": [ProjectStatus.FINISHED, ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT, ProjectStatus.REJECTED_PAYMENT]}}
-        ).to_list(length=None)
-        offered = await db.projects.find({"status": ProjectStatus.OFFERED}).to_list(length=None)
+        pending = await ProjectRepository.get_projects_by_status([ProjectStatus.PENDING])
+        ongoing = await ProjectRepository.get_projects_by_status([ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION])
+        history = await ProjectRepository.get_projects_by_status([ProjectStatus.FINISHED, ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT, ProjectStatus.REJECTED_PAYMENT])
+        offered = await ProjectRepository.get_projects_by_status([ProjectStatus.OFFERED])
         
         return {
             "New / Pending": pending,
@@ -156,15 +135,23 @@ class StatsRepository:
     @staticmethod
     async def get_stats() -> Dict[str, int]:
         db = Database.db
-        async def count(query):
-            return await db.projects.count_documents(query)
-            
+        import asyncio
+
+        # Gather all count operations to execute concurrently
+        results = await asyncio.gather(
+            db.projects.count_documents({}),
+            db.projects.count_documents({"status": ProjectStatus.PENDING}),
+            db.projects.count_documents({"status": {"$in": [ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION]}}),
+            db.projects.count_documents({"status": ProjectStatus.FINISHED}),
+            db.projects.count_documents({"status": {"$in": [ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT]}})
+        )
+
         stats = {
-            "total": await count({}),
-            "pending": await count({"status": ProjectStatus.PENDING}),
-            "active": await count({"status": {"$in": [ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION]}}),
-            "finished": await count({"status": ProjectStatus.FINISHED}),
-            "denied": await count({"status": {"$in": [ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT]}})
+            "total": results[0],
+            "pending": results[1],
+            "active": results[2],
+            "finished": results[3],
+            "denied": results[4]
         }
         return stats
 

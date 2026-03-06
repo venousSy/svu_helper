@@ -22,7 +22,7 @@ async def notify_admins(bot: Bot, text: str, reply_markup=None, parse_mode="Mark
     """
     Sends a message to the defined administrator(s).
     """
-    for admin_id in settings.ADMIN_IDS:
+    for admin_id in settings.admin_ids:
         try:
             await bot.send_message(
                 chat_id=admin_id,

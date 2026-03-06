@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 
-from aiogram import Bot, Dispatcher, types
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 
 # Internal Project Imports
@@ -53,9 +53,8 @@ storage = MongoStorage(mongo_client)
 dp = Dispatcher(storage=storage)
 
 # Register Middleware
-# Order matters: Maintenance -> Throttling -> Error Handler
+# Order matters: Maintenance -> Error Handler
 dp.message.middleware(MaintenanceMiddleware())
-dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5))  # 0.5s limit
 dp.message.middleware(GlobalErrorHandler())
 dp.callback_query.middleware(GlobalErrorHandler())
 
@@ -63,6 +62,26 @@ dp.callback_query.middleware(GlobalErrorHandler())
 dp.include_router(common_router)
 dp.include_router(client_router)
 dp.include_router(admin_router)
+
+
+# --- KEEP-ALIVE WEB SERVER FOR RAILWAY ---
+async def handle_ping(request):
+    return web.Response(text="Bot is running!")
+
+async def start_keepalive_server():
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    app.router.add_get("/health", handle_ping)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"🌐 Keep-alive server started on port {port}")
+    return runner
 
 
 # --- MAIN ENTRY POINT ---
@@ -107,12 +126,21 @@ async def main():
         logger.info(f"🚀 Bot online. Admin IDs: {settings.admin_ids}")
 
         await bot.delete_webhook(drop_pending_updates=True)
+        
+        # Start keep-alive web server for Railway
+        runner = await start_keepalive_server()
+        
         await dp.start_polling(bot)
 
     except Exception as e:
         logger.error(f"⚠️ Error: {e}", exc_info=True)
     finally:
         await bot.session.close()
+        try:
+            if 'runner' in locals() and runner:
+                await runner.cleanup()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

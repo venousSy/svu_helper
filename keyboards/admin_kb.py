@@ -67,13 +67,8 @@ def get_back_btn(callback_data: str = None) -> InlineKeyboardBuilder:
 def get_pending_projects_kb(pending_projects):
     builder = get_back_btn()
     for item in pending_projects:
-        # Handle dict (new) or tuple (old/fallback)
-        if isinstance(item, dict):
-            p_id = item["id"]
-            subject = item.get("subject_name", "")
-        else:
-            p_id = item[0]
-            subject = item[1] if len(item) > 1 else ""
+        p_id = item["id"]
+        subject = item.get("subject_name", "")
 
         btn_text = f"📂 إدارة #{p_id}"
         if subject:
@@ -91,12 +86,8 @@ def get_pending_projects_kb(pending_projects):
 def get_accepted_projects_kb(accepted_projects):
     builder = get_back_btn()
     for item in accepted_projects:
-        if isinstance(item, dict):
-            p_id = item["id"]
-            subject = item.get("subject_name", "")
-        else:
-            p_id = item[0]
-            subject = item[1] if len(item) > 1 else ""
+        p_id = item["id"]
+        subject = item.get("subject_name", "")
 
         btn_text = f"📤 إنهاء #{p_id}"
         if subject:
