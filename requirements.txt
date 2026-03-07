@@ -12,8 +12,3 @@ black
 isort
 flake8
 sentry-sdk
-
-# API Dependencies
-fastapi
-uvicorn
-python-multipart
