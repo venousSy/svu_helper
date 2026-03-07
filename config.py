@@ -27,10 +27,6 @@ class Settings(BaseSettings):
     # Logging Configuration
     LOG_FILE: str = Field(default="bot.log", description="Log file path")
 
-    # API Security Configuration
-    ADMIN_API_KEY: str = Field(default="dev-secret-key-change-me-in-prod", description="API Key for Admin endpoints")
-    FRONTEND_CORS_URL: str = Field(default="http://localhost:3000", description="Allowed CORS origin for frontend")
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
