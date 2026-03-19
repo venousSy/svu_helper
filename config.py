@@ -2,6 +2,7 @@
 import logging
 import sys
 from typing import List, Optional
+import functools
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,7 +34,7 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    @property
+    @functools.cached_property
     def admin_ids(self) -> List[int]:
         """Parses the comma-separated ADMIN_IDS string into a list of integers."""
         try:

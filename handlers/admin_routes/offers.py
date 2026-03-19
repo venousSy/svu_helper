@@ -249,8 +249,17 @@ async def process_finished_work(message: types.Message, state: FSMContext, bot):
             await bot.send_document(u_id, file_id, caption=message.caption)
         elif file_type == "photo":
             await bot.send_photo(u_id, file_id, caption=message.caption)
+        elif file_type == "video":
+            await bot.send_video(u_id, file_id, caption=message.caption)
+        elif file_type == "audio":
+            await bot.send_audio(u_id, file_id, caption=message.caption)
+        elif file_type == "voice":
+            await bot.send_voice(u_id, file_id, caption=message.caption)
         else:
-            await bot.send_message(u_id, message.text)
+            if message.text:
+                await bot.send_message(u_id, message.text)
+            else:
+                await bot.send_message(u_id, "✅ تم رفع ملف بدون رسالة نصية.")
 
         await ProjectRepository.update_status(proj_id, ProjectStatus.FINISHED)
         await message.answer(
