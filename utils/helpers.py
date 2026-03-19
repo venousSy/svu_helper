@@ -8,13 +8,19 @@ from config import settings
 def get_file_id(message: types.Message) -> Tuple[Optional[str], Optional[str]]:
     """
     Extracts the best quality file_id from a message.
-    Returns: (file_id, file_type ['photo'|'document'|None])
+    Returns: (file_id, file_type ['photo'|'document'|'video'|'audio'|'voice'|None])
     """
     if message.document:
         return message.document.file_id, "document"
     elif message.photo:
         # message.photo is a list of PhotoSize, last one is the largest
         return message.photo[-1].file_id, "photo"
+    elif message.video:
+        return message.video.file_id, "video"
+    elif message.audio:
+        return message.audio.file_id, "audio"
+    elif message.voice:
+        return message.voice.file_id, "voice"
     return None, None
 
 

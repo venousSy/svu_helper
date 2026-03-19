@@ -65,7 +65,7 @@ def get_back_btn(callback_data: str = None) -> InlineKeyboardBuilder:
 
 
 def get_pending_projects_kb(pending_projects):
-    builder = get_back_btn()
+    builder = InlineKeyboardBuilder()
     for item in pending_projects:
         p_id = item["id"]
         subject = item.get("subject_name", "")
@@ -80,11 +80,12 @@ def get_pending_projects_kb(pending_projects):
                 callback_data=ProjectCallback(action="manage", id=p_id).pack()
             )
         )
+    builder.row(types.InlineKeyboardButton(text="⬅️ رجوع", callback_data=MenuCallback(action="back_to_admin").pack()))
     return builder.as_markup()
 
 
 def get_accepted_projects_kb(accepted_projects):
-    builder = get_back_btn()
+    builder = InlineKeyboardBuilder()
     for item in accepted_projects:
         p_id = item["id"]
         subject = item.get("subject_name", "")
@@ -99,6 +100,7 @@ def get_accepted_projects_kb(accepted_projects):
                 callback_data=ProjectCallback(action="manage_accepted", id=p_id).pack()
             )
         )  # Finish
+    builder.row(types.InlineKeyboardButton(text="⬅️ رجوع", callback_data=MenuCallback(action="back_to_admin").pack()))
     return builder.as_markup()
 
 
@@ -172,7 +174,7 @@ def get_new_project_alert_kb(p_id):
 
 def get_payment_history_kb(payments):
     """Generates buttons for each payment to view its receipt."""
-    builder = get_back_btn()
+    builder = InlineKeyboardBuilder()
 
     # Show last 10 payments to avoid button clutter
     recent_payments = payments[:10]
@@ -186,4 +188,5 @@ def get_payment_history_kb(payments):
             )
         )
 
+    builder.row(types.InlineKeyboardButton(text="⬅️ رجوع", callback_data=MenuCallback(action="back_to_admin").pack()))
     return builder.as_markup()

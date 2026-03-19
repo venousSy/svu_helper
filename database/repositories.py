@@ -135,24 +135,28 @@ class StatsRepository:
     @staticmethod
     async def get_stats() -> Dict[str, int]:
         db = Database.db
-        import asyncio
-
-        # Gather all count operations to execute concurrently
-        results = await asyncio.gather(
-            db.projects.count_documents({}),
-            db.projects.count_documents({"status": ProjectStatus.PENDING}),
-            db.projects.count_documents({"status": {"$in": [ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION]}}),
-            db.projects.count_documents({"status": ProjectStatus.FINISHED}),
-            db.projects.count_documents({"status": {"$in": [ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT]}})
-        )
-
-        stats = {
-            "total": results[0],
-            "pending": results[1],
-            "active": results[2],
-            "finished": results[3],
-            "denied": results[4]
-        }
+        
+        pipeline = [
+            {"$facet": {
+                "total": [{"$count": "count"}],
+                "pending": [{"$match": {"status": ProjectStatus.PENDING}}, {"$count": "count"}],
+                "active": [{"$match": {"status": {"$in": [ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION]}}}, {"$count": "count"}],
+                "finished": [{"$match": {"status": ProjectStatus.FINISHED}}, {"$count": "count"}],
+                "denied": [{"$match": {"status": {"$in": [ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT]}}}, {"$count": "count"}]
+            }}
+        ]
+        
+        cursor = db.projects.aggregate(pipeline)
+        result = await cursor.to_list(length=1)
+        
+        stats = {"total": 0, "pending": 0, "active": 0, "finished": 0, "denied": 0}
+        
+        if result and result[0]:
+            facets = result[0]
+            for key in stats.keys():
+                if facets.get(key) and len(facets[key]) > 0:
+                    stats[key] = facets[key][0]["count"]
+                    
         return stats
 
 class SettingsRepository:
