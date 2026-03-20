@@ -56,7 +56,8 @@ async def view_project_details(
     tutor = escape_md(project["tutor_name"])
     dead = escape_md(project["deadline"])
     details = escape_md(project["details"])
-    file_id = project["file_id"]
+    file_id = project.get("file_id")
+    file_type = project.get("file_type")
 
     # User Info Construction
     u_id = project["user_id"]
@@ -80,14 +81,47 @@ async def view_project_details(
 
     # Handle original file display
     if file_id:
-        await callback.message.answer_document(
-            file_id, caption=text, parse_mode="Markdown", reply_markup=markup
-        )
-        await callback.message.delete()
+        # Telegram Caption Limit is 1024 characters.
+        if len(text) > 1024:
+            # Send file separately, then send text
+            header = f"📁 **المشروع #{p_id}** (التفاصيل في الرسالة التالية)"
+            await _send_media_correctly(callback, file_id, file_type, header, markup=None)
+            await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
+            await callback.message.delete()
+        else:
+            # Send everything together
+            await _send_media_correctly(callback, file_id, file_type, text, markup=markup)
+            await callback.message.delete()
     else:
         await callback.message.edit_text(
             text, parse_mode="Markdown", reply_markup=markup
         )
+
+async def _send_media_correctly(callback, file_id, file_type, caption, markup):
+    """Helper to send media using the correct method and fallback for legacy records."""
+    methods = {
+         "photo": callback.message.answer_photo,
+         "video": callback.message.answer_video,
+         "document": callback.message.answer_document,
+         "audio": callback.message.answer_audio,
+         "voice": callback.message.answer_voice
+    }
+
+    if file_type and file_type in methods:
+         await methods[file_type](file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
+         return
+
+    # Fallback/Legacy: Try methods in order
+    for method in [callback.message.answer_photo, callback.message.answer_document, callback.message.answer_video]:
+        try:
+            await method(file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
+            return
+        except Exception:
+            continue
+
+    # Final fallback if all else fails
+    await callback.message.answer_document(file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
+
 
 
 @router.callback_query(ProjectCallback.filter(F.action == "make_offer"), F.from_user.id.in_(settings.admin_ids))

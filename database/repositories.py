@@ -15,6 +15,7 @@ class ProjectRepository:
         deadline: str,
         details: str,
         file_id: Optional[str],
+        file_type: Optional[str],
     ) -> int:
         db = Database.db
         project_id = await Database.get_next_sequence("project_id")
@@ -29,6 +30,7 @@ class ProjectRepository:
             deadline=deadline,
             details=details,
             file_id=file_id,
+            file_type=file_type,
         )
 
         document = project_model.model_dump()
