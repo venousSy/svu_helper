@@ -68,13 +68,14 @@ async def view_project_details(
     if username:
         user_line += f" (@{username})"
 
+    # Removed double asterisks (**) which can be invalid in Telegram Markdown V1 and cause unexpected parsing crashes.
     text = (
         MSG_PROJECT_DETAILS_HEADER.format(p_id) + "\n"
         f"{user_line}\n"
-        f"**المادة:** {sub}\n"
-        f"**المدرس:** {tutor}\n"
-        f"**الموعد:** {dead}\n"
-        f"**التفاصيل:** {details}"
+        f"*المادة:* {sub}\n"
+        f"*المدرس:* {tutor}\n"
+        f"*الموعد:* {dead}\n"
+        f"*التفاصيل:* {details}"
     )
 
     markup = get_manage_project_kb(p_id)
@@ -84,21 +85,27 @@ async def view_project_details(
         # Telegram Caption Limit is 1024 characters.
         if len(text) > 1024:
             # Send file separately, then send text
-            header = f"📁 **المشروع #{p_id}** (التفاصيل في الرسالة التالية)"
-            await _send_media_correctly(callback, file_id, file_type, header, markup=None)
-            await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
+            header = f"📁 *المشروع #{p_id}* (التفاصيل في الرسالة التالية)"
+            await _send_media_safely(callback, file_id, file_type, header, markup=None)
+            try:
+                await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
+            except Exception:
+                await callback.message.answer(text, parse_mode=None, reply_markup=markup) # Fallback if Markdown fails
             await callback.message.delete()
         else:
             # Send everything together
-            await _send_media_correctly(callback, file_id, file_type, text, markup=markup)
-            await callback.message.delete()
+            success = await _send_media_safely(callback, file_id, file_type, text, markup=markup)
+            if success:
+                await callback.message.delete()
     else:
-        await callback.message.edit_text(
-            text, parse_mode="Markdown", reply_markup=markup
-        )
+        try:
+            await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
+        except Exception:
+            await callback.message.edit_text(text, parse_mode=None, reply_markup=markup)
 
-async def _send_media_correctly(callback, file_id, file_type, caption, markup):
-    """Helper to send media using the correct method and fallback for legacy records."""
+
+async def _send_media_safely(callback, file_id, file_type, caption, markup) -> bool:
+    """Helper to send media using the correct method and extremely safe fallback mechanisms."""
     methods = {
          "photo": callback.message.answer_photo,
          "video": callback.message.answer_video,
@@ -107,20 +114,38 @@ async def _send_media_correctly(callback, file_id, file_type, caption, markup):
          "voice": callback.message.answer_voice
     }
 
+    # 1. Try intended type with Markdown
     if file_type and file_type in methods:
-         await methods[file_type](file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
-         return
+        try:
+            await methods[file_type](file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
+            return True
+        except Exception as e:
+            # If Markdown broke, try without it
+            try:
+                await methods[file_type](file_id, caption=caption, parse_mode=None, reply_markup=markup)
+                return True
+            except Exception:
+                pass # Proceed to legacy fallback
 
-    # Fallback/Legacy: Try methods in order
+    # 2. Legacy fallback: Try discovering the method
     for method in [callback.message.answer_photo, callback.message.answer_document, callback.message.answer_video]:
         try:
             await method(file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
-            return
+            return True
         except Exception:
-            continue
+            try:
+                await method(file_id, caption=caption, parse_mode=None, reply_markup=markup)
+                return True
+            except Exception:
+                continue
 
-    # Final fallback if all else fails
-    await callback.message.answer_document(file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
+    # 3. Ultimate fallback (no fail)
+    try:
+         await callback.message.answer_document(file_id, caption="⚠️ لم نتمكن من عرض التفاصيل (مشكلة في صيغة الرسالة).", reply_markup=markup)
+         return True
+    except Exception as e:
+         await callback.answer(f"Error: {str(e)}", show_alert=True)
+         return False
 
 
 
