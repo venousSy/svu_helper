@@ -13,6 +13,7 @@ class Project(BaseModel):
     deadline: str
     details: str
     file_id: Optional[str] = None
+    file_type: Optional[str] = None
     status: ProjectStatus = Field(default=ProjectStatus.PENDING)
     price: Optional[str] = None
     delivery_date: Optional[str] = None

@@ -24,6 +24,21 @@ def get_file_id(message: types.Message) -> Tuple[Optional[str], Optional[str]]:
     return None, None
 
 
+def get_file_size(message: types.Message) -> Optional[int]:
+    """Extracts the file size from a message object, regardless of media type."""
+    if message.document:
+        return message.document.file_size
+    elif message.photo:
+        return message.photo[-1].file_size
+    elif message.video:
+        return message.video.file_size
+    elif message.audio:
+        return message.audio.file_size
+    elif message.voice:
+        return message.voice.file_size
+    return None
+
+
 async def notify_admins(bot: Bot, text: str, reply_markup=None, parse_mode="Markdown"):
     """
     Sends a message to the defined administrator(s).

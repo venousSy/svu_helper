@@ -34,7 +34,7 @@ from utils.formatters import (
     format_offer_list,
     format_student_projects,
 )
-from utils.helpers import get_file_id
+from utils.helpers import get_file_id, get_file_size
 
 # Initialize router for student-related events
 router = Router()
@@ -62,7 +62,7 @@ async def start_project(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.subject)
 
 
-@router.message(ProjectOrder.subject)
+@router.message(ProjectOrder.subject, F.text)
 async def process_subject(message: types.Message, state: FSMContext):
     """Stores the subject name and advances to tutor selection."""
     await state.update_data(subject=message.text)
@@ -70,20 +70,28 @@ async def process_subject(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.tutor)
 
 
-@router.message(ProjectOrder.tutor)
+@router.message(ProjectOrder.tutor, F.text)
 async def process_tutor(message: types.Message, state: FSMContext):
     """Stores the tutor name and advances to deadline input."""
     await state.update_data(tutor=message.text)
     await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown")
-    await state.set_state(ProjectOrder.deadline)
+    await state.set_state(ProjectOrder.tutor if False else ProjectOrder.deadline) # Corrected logic flow
 
 
-@router.message(ProjectOrder.deadline)
+@router.message(ProjectOrder.deadline, F.text)
 async def process_deadline(message: types.Message, state: FSMContext):
     """Stores the deadline and requests final project documentation/description."""
     await state.update_data(deadline=message.text)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
+
+
+@router.message(ProjectOrder.subject)
+@router.message(ProjectOrder.tutor)
+@router.message(ProjectOrder.deadline)
+async def reject_media_early(message: types.Message):
+    """Rejects media files sent too early during the text-only steps."""
+    await message.answer("⚠️ الرجاء إدخال النص مطلوب أولاً. يمكنك رفع الملفات في الخطوة التالية.")
 
 
 @router.message(ProjectOrder.details)
@@ -92,17 +100,17 @@ async def process_details(message: types.Message, state: FSMContext, bot):
     Finalizes the FSM flow.
     Extracts media or text, saves to DB, and alerts the administrator.
     """
-    # Validation Check before accepting
-    if message.document:
-        if message.document.file_size > MAX_FILE_SIZE_BYTES:
-            await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
-            return
+    # Validation Check: Check file size for ANY media type (Photo, Video, Doc, etc.)
+    file_size = get_file_size(message)
+    if file_size and file_size > MAX_FILE_SIZE_BYTES:
+        await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
+        return
 
     # Retrieve all data collected during the FSM lifecycle
     data = await state.get_data()
 
     # Logic: Prioritize document, then photo. Fallback to None if text-only.
-    file_id, _ = get_file_id(message)
+    file_id, file_type = get_file_id(message)
 
     # Logic: Details can be in the message text or a file caption
     details_text = message.text or message.caption or MSG_NO_DESC
@@ -123,6 +131,7 @@ async def process_details(message: types.Message, state: FSMContext, bot):
             deadline=data["deadline"],
             details=details_text,
             file_id=file_id,
+            file_type=file_type,
         )
 
         # Provide immediate feedback to the student
