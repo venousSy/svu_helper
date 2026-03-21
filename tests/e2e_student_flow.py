@@ -2,6 +2,10 @@ import asyncio
 import os
 import sys
 
+# Force UTF-8 for Windows console emojis
+if sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding='utf-8')
+
 # Load environment variables (from svu_helper's .env)
 from dotenv import load_dotenv
 load_dotenv()
@@ -78,7 +82,7 @@ async def run_student_tests():
         await asyncio.sleep(2)
         
         msg = (await client.get_messages(BOT_USERNAME, limit=1))[0]
-        if "الموعد" not in msg.text:
+        if "التسليم" not in msg.text and "Deadline" not in msg.text:
             print(f"❌ TEST 2 FAILED: Expected Deadline prompt, got: {msg.text}")
             return
             
@@ -110,7 +114,4 @@ async def run_student_tests():
         await client.disconnect()
 
 if __name__ == '__main__':
-    # Fix for weird "Event loop is closed" errors on Windows occasionally
-    if sys.platform == 'win32':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_student_tests())
