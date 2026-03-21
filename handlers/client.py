@@ -221,8 +221,8 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
     data = await state.get_data()
     proj_id = data.get("active_pay_proj_id")
 
-    # Identify the file
-    file_id, _ = get_file_id(message)
+    # Identify the file (keep file_type to choose send method correctly)
+    file_id, file_type = get_file_id(message)
 
     try:
         # 1. Save to Payment Registry
