@@ -242,12 +242,20 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
                     f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
                     parse_mode="Markdown",
                 )
-                await bot.send_photo(
-                    admin_id,
-                    file_id,
-                    caption=f"verify_pay_{payment_id}",
-                    reply_markup=get_payment_verify_kb(payment_id),
-                )
+                if file_type == "photo":
+                    await bot.send_photo(
+                        admin_id,
+                        file_id,
+                        caption=f"verify_pay_{payment_id}",
+                        reply_markup=get_payment_verify_kb(payment_id),
+                    )
+                else:
+                    await bot.send_document(
+                        admin_id,
+                        file_id,
+                        caption=f"verify_pay_{payment_id}",
+                        reply_markup=get_payment_verify_kb(payment_id),
+                    )
             except TelegramAPIError as e:
                 logger.error(f"Failed to send payment receipt {payment_id} to admin {admin_id}: {e}")
 
