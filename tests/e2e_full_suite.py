@@ -192,7 +192,7 @@ async def run_full_suite():
 
         # Admin: Catch receipt and confirm
         print("  [Admin] Waiting for Payment Verification Alert...")
-        admin_receipt = await wait_for_message(admin, ["إيصال دفع", "Payment"], timeout=15)
+        admin_receipt = await wait_for_message(admin, ["verify_pay"], timeout=15)
         
         print("  [Admin] Clicking 'Confirm Payment'...")
         await click_inline_button(admin, admin_receipt, "تأكيد الدفع")
@@ -200,7 +200,7 @@ async def run_full_suite():
 
         # Student: Receive Final Confirmation
         print("  [Student] Waiting for Approved Payment Notification...")
-        await wait_for_message(student, ["تهانينا", "تأكيد الدفعة"], timeout=15)
+        await wait_for_message(student, ["تم تأكيد الدفع", "بدأ العمل"], timeout=15)
         print("  ✅ Student received confirmation that project is Active!")
 
         print("\n🏆🏆 ALL E2E SUITE TESTS COMPLETED FLAWLESSLY! 🏆🏆")
