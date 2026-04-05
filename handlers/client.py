@@ -52,6 +52,12 @@ ALLOWED_DOCUMENT_MIMES = ["application/pdf", "application/vnd.openxmlformats-off
 # --- PROJECT SUBMISSION FLOW (FSM) ---
 
 
+@router.callback_query(MenuCallback.filter(F.action == "new_project"))
+async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer(MSG_ASK_SUBJECT, parse_mode="Markdown")
+    await state.set_state(ProjectOrder.subject)
+    await callback.answer()
+
 @router.message(F.text == BTN_NEW_PROJECT)
 @router.message(Command("new_project"))
 async def start_project(message: types.Message, state: FSMContext):
@@ -284,6 +290,16 @@ async def process_payment_proof(message: types.Message, state: FSMContext, bot):
 from utils.constants import BTN_MY_PROJECTS, BTN_MY_OFFERS
 
 
+@router.callback_query(MenuCallback.filter(F.action == "my_projects"))
+async def cb_view_projects(callback: types.CallbackQuery):
+    projects = await ProjectRepository.get_projects_by_status(
+        [ProjectStatus.PENDING, ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION, ProjectStatus.FINISHED, ProjectStatus.DENIED_ADMIN, ProjectStatus.DENIED_STUDENT, ProjectStatus.REJECTED_PAYMENT],
+        user_id=callback.from_user.id
+    )
+    response = format_student_projects(projects)
+    await callback.message.answer(response, parse_mode="Markdown")
+    await callback.answer()
+
 @router.message(F.text == BTN_MY_PROJECTS)
 @router.message(Command("my_projects"))
 async def view_projects(message: types.Message):
@@ -301,6 +317,14 @@ async def view_projects(message: types.Message):
     response = format_student_projects(projects)
     await message.answer(response, parse_mode="Markdown")
 
+
+@router.callback_query(MenuCallback.filter(F.action == "my_offers"))
+async def cb_view_offers(callback: types.CallbackQuery):
+    offers = await ProjectRepository.get_projects_by_status([ProjectStatus.OFFERED], user_id=callback.from_user.id)
+    text = format_offer_list(offers)
+    markup = get_offers_list_kb(offers)
+    await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
+    await callback.answer()
 
 @router.message(F.text == BTN_MY_OFFERS)
 @router.message(Command("my_offers"))
