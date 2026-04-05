@@ -14,6 +14,7 @@ from keyboards.client_kb import (
     get_offer_actions_kb,
     get_offers_list_kb,
 )
+from keyboards.callbacks import MenuCallback, ProjectCallback
 from states import ProjectOrder
 from utils.constants import (
     MSG_ASK_DEADLINE,
