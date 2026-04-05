@@ -5,7 +5,7 @@ Manages universal bot commands like /start, /help, and /cancel,
 as well as basic main menu navigation logic.
 """
 
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
@@ -19,7 +19,7 @@ from utils.constants import (
     MSG_WELCOME,
 )
 from keyboards.common_kb import get_student_main_kb
-
+from keyboards.callbacks import MenuCallback
 # --- ROUTER INITIALIZATION ---
 router = Router()
 
@@ -34,6 +34,11 @@ async def welcome(message: types.Message):
 async def help_command(message: types.Message):
     """Provides help information to the user."""
     await message.answer(MSG_HELP, reply_markup=types.ReplyKeyboardRemove())
+
+@router.callback_query(MenuCallback.filter(F.action == "help"))
+async def cb_help(callback: types.CallbackQuery):
+    await callback.message.answer(MSG_HELP)
+    await callback.answer()
 
 
 @router.message(Command("cancel"))
