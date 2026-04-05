@@ -23,3 +23,13 @@ __pycache__/
 # Node
 node_modules/
 web/node_modules/
+
+# Local Sessions
+*.session
+*.session-journal
+
+# Mock Data
+mock_image.jpg
+
+# Agent Stuff
+.agents/

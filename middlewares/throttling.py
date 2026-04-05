@@ -21,11 +21,14 @@ class ThrottlingMiddleware(BaseMiddleware):
         event: Message,
         data: Dict[str, Any],
     ) -> Any:
-        # Only throttle Message events (not callbacks, usually)
-        if not isinstance(event, Message):
-            return await handler(event, data)
+        from aiogram.types import CallbackQuery
 
-        user_id = event.from_user.id
+        if isinstance(event, Message):
+            user_id = event.from_user.id
+        elif isinstance(event, CallbackQuery):
+            user_id = event.from_user.id
+        else:
+            return await handler(event, data)
         current_time = time.time()
         
         last_time = self.last_seen.get(user_id, 0)
