@@ -345,6 +345,10 @@ async def handle_deny(
                 res["user_id"], MSG_PROJECT_DENIED_CLIENT.format(proj_id)
             )
     else:
+        project = await ProjectRepository.get_project_by_id(proj_id)
+        if not project or project["user_id"] != callback.from_user.id:
+            return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
+            
         await ProjectRepository.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
         for admin_id in settings.admin_ids:
              await bot.send_message(

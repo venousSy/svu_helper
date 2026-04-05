@@ -65,6 +65,8 @@ async def start_project(message: types.Message, state: FSMContext):
 @router.message(ProjectOrder.subject, F.text)
 async def process_subject(message: types.Message, state: FSMContext):
     """Stores the subject name and advances to tutor selection."""
+    if len(message.text) > 150:
+        return await message.answer("⚠️ اسم المادة طويل جداً. الحد الأقصى 150 حرف.")
     await state.update_data(subject=message.text)
     await message.answer(MSG_ASK_TUTOR, parse_mode="Markdown")
     await state.set_state(ProjectOrder.tutor)
@@ -73,6 +75,8 @@ async def process_subject(message: types.Message, state: FSMContext):
 @router.message(ProjectOrder.tutor, F.text)
 async def process_tutor(message: types.Message, state: FSMContext):
     """Stores the tutor name and advances to deadline input."""
+    if len(message.text) > 150:
+        return await message.answer("⚠️ اسم المدرس طويل جداً. الحد الأقصى 150 حرف.")
     await state.update_data(tutor=message.text)
     await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown")
     await state.set_state(ProjectOrder.tutor if False else ProjectOrder.deadline) # Corrected logic flow
@@ -81,6 +85,8 @@ async def process_tutor(message: types.Message, state: FSMContext):
 @router.message(ProjectOrder.deadline, F.text)
 async def process_deadline(message: types.Message, state: FSMContext):
     """Stores the deadline and requests final project documentation/description."""
+    if len(message.text) > 50:
+        return await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
     await state.update_data(deadline=message.text)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
@@ -114,6 +120,9 @@ async def process_details(message: types.Message, state: FSMContext, bot):
 
     # Logic: Details can be in the message text or a file caption
     details_text = message.text or message.caption or MSG_NO_DESC
+
+    if len(details_text) > 3000:
+        return await message.answer("⚠️ التفاصيل طويلة جداً. الحد الأقصى 3000 حرف.")
 
     # Capture user details
     user = message.from_user
@@ -182,6 +191,10 @@ async def student_accept_offer(
 ):
     """Student clicks 'Accept' on the offer."""
     proj_id = callback_data.id
+
+    project = await ProjectRepository.get_project_by_id(proj_id)
+    if not project or project["user_id"] != callback.from_user.id:
+        return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
 
     # Store the project ID in FSM so we know which project the receipt belongs to
     await state.update_data(active_pay_proj_id=proj_id)
@@ -308,6 +321,9 @@ async def show_specific_offer(
 
     # Query the new columns!
     res = await ProjectRepository.get_project_by_id(proj_id)
+
+    if not res or res["user_id"] != callback.from_user.id:
+        return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
 
     if res:
         subject = escape_md(res["subject_name"])
