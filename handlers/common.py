@@ -18,6 +18,7 @@ from utils.constants import (
     MSG_NO_ACTIVE_PROCESS,
     MSG_WELCOME,
 )
+from keyboards.common_kb import get_student_main_kb
 
 # --- ROUTER INITIALIZATION ---
 router = Router()
@@ -26,7 +27,7 @@ router = Router()
 @router.message(Command("start"))
 async def welcome(message: types.Message):
     """Greets the user and provides basic instructions."""
-    await message.answer(MSG_WELCOME, reply_markup=types.ReplyKeyboardRemove())
+    await message.answer(MSG_WELCOME, reply_markup=get_student_main_kb())
 
 
 @router.message(Command("help"))
