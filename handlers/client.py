@@ -23,6 +23,7 @@ from utils.constants import (
     MSG_NO_DESC,
     MSG_NO_OFFERS,
     MSG_NO_PROJECTS,
+    BTN_NEW_PROJECT,
     MSG_OFFER_ACCEPTED,
     MSG_OFFER_DETAILS,
     MSG_PROJECT_SUBMITTED,
@@ -51,6 +52,7 @@ ALLOWED_DOCUMENT_MIMES = ["application/pdf", "application/vnd.openxmlformats-off
 # --- PROJECT SUBMISSION FLOW (FSM) ---
 
 
+@router.message(F.text == BTN_NEW_PROJECT)
 @router.message(Command("new_project"))
 async def start_project(message: types.Message, state: FSMContext):
     """
