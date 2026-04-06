@@ -35,12 +35,13 @@ async def wait_for_message(client, expected_text, timeout=15, error_msg="Timeout
     last_msg = "None"
     for _ in range(timeout):
         try:
-            msgs = await client.get_messages(BOT_USERNAME, limit=1)
+            msgs = await client.get_messages(BOT_USERNAME, limit=3)
             if msgs:
-                last_msg = msgs[0].text or msgs[0].caption or "Empty message"
-                content = msgs[0].text or msgs[0].caption or ""
-                if content and any(word in content for word in expected_text):
-                    return msgs[0]
+                last_msg = msgs[0].text or "Empty message"
+                for msg in msgs:
+                    content = msg.text or ""
+                    if content and any(word in content for word in expected_text):
+                        return msg
         except Exception as e:
             if "database is locked" not in str(e):
                 print(f"  Ignored minor API error: {e}")
@@ -255,6 +256,95 @@ async def run_full_suite():
         await wait_for_message(student, ["E2E broadcast test"], timeout=15)
         print("  ✅ Student received the broadcast message!")
     await run_test("TEST 9: Admin Broadcast System", test_broadcast())
+
+    # --- TEST 10: HELP COMMAND ---
+    async def test_help():
+        await student.send_message(BOT_USERNAME, "/help")
+        await wait_for_message(student, ["الأوامر", "المتاحة"])
+        print("  ✅ /help responded without error.")
+    await run_test("TEST 10: Help Command", test_help())
+
+    # --- TEST 11: STUDENT DENY OFFER ---
+    async def test_student_deny_offer():
+        await submit_project(student, subject="Student Deny Offer")
+        await admin_make_offer(admin)
+        offer_msg = await wait_for_message(student, ["عرض جديد"], timeout=15)
+        
+        # Student denies the offer
+        await click_inline_button(student, offer_msg, "رفض")
+        print("  ✅ Student clicked Deny offer.")
+        
+        # Student gets confirmation of closure
+        await wait_for_message(student, ["تم إغلاق", "رفض"], timeout=15)
+        
+        # Admin gets notification that student denied it
+        await wait_for_message(admin, ["تم رفض العرض", "الطالب"], timeout=15)
+        print("  ✅ Admin notified of student denial.")
+    await run_test("TEST 11: Student Deny Offer", test_student_deny_offer())
+
+    # --- TEST 12: ADMIN SUBMIT FINISHED WORK ---
+    async def test_submit_finished_work():
+        await submit_project(student, subject="Finish Work Subject")
+        await admin_make_offer(admin)
+        
+        offer_msg = await wait_for_message(student, ["عرض جديد"], timeout=15)
+        await click_inline_button(student, offer_msg, "قبول")
+        await wait_for_message(student, ["إيصال"])
+        
+        with open("dummy_receipt_fin.pdf", "w", encoding="utf-8") as f:
+            f.write("Dummy receipt")
+        await student.send_file(BOT_USERNAME, "dummy_receipt_fin.pdf")
+        os.remove("dummy_receipt_fin.pdf")
+        await wait_for_message(student, ["استلام الإيصال"], timeout=15)
+        
+        receipt_msg = await wait_for_message(admin, ["verify_pay"], timeout=15)
+        await click_inline_button(admin, receipt_msg, "تأكيد الدفع")
+        await wait_for_message(student, ["تأكيد الدفع", "بدأ العمل"], timeout=15)
+        
+        # Project is ACCEPTED (Active). Admin needs to submit work.
+        await admin.send_message(BOT_USERNAME, "/admin")
+        dashboard = await wait_for_message(admin, ["لوحة تحكم"])
+        await click_inline_button(admin, dashboard, "مقبولة/جارية")
+        
+        active_list = await wait_for_message(admin, ["مشاريع جارية", "🚀"], timeout=15)
+        await click_inline_button(admin, active_list, "إنهاء")
+        
+        # Admin is waiting for finished work upload
+        upload_prompt = await wait_for_message(admin, ["رفع الملف النهائي", "النهائي"], timeout=15)
+        
+        with open("dummy_final_work.pdf", "w", encoding="utf-8") as f:
+            f.write("This is the final delivered work.")
+        await admin.send_file(BOT_USERNAME, "dummy_final_work.pdf")
+        os.remove("dummy_final_work.pdf")
+        
+        # Project finished msgs
+        await wait_for_message(admin, ["إنهاء", "تم تسليم"], timeout=15)
+        print("  ✅ Admin submitted final work.")
+        
+        await wait_for_message(student, ["النهائي", "جاهز", "تم الانتهاء"], timeout=15)
+        print("  ✅ Student received final work!")
+        
+    await run_test("TEST 12: Admin Submit Finished Work", test_submit_finished_work())
+
+    # --- TEST 13: ADMIN REPORTS ---
+    async def test_admin_reports():
+        await admin.send_message(BOT_USERNAME, "/admin")
+        dashboard = await wait_for_message(admin, ["لوحة تحكم"])
+        
+        await click_inline_button(admin, dashboard, "سجل المشاريع")
+        await wait_for_message(admin, ["التاريخ", "سجل", "انتهى"], timeout=15)
+        print("  ✅ Viewed Project History.")
+        
+        await admin.send_message(BOT_USERNAME, "/admin")
+        dashboard2 = await wait_for_message(admin, ["لوحة تحكم"])
+        
+        # The button "سجل المدفوعات" might not exist if using another text, let's look at views.py
+        # Actually it's 'view_payments' action. In admin_kb.py: "سجل المدفوعات".
+        await click_inline_button(admin, dashboard2, "سجل المدفوعات")
+        await wait_for_message(admin, ["دفعات", "المدفوعات", "لا يوجد"], timeout=15)
+        print("  ✅ Viewed Payments History.")
+        
+    await run_test("TEST 13: Admin Viewing Reports", test_admin_reports())
 
     # --- RESULTS SUMMARY ---
     print("\n" + "="*50)
