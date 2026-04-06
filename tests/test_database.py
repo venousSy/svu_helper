@@ -29,6 +29,7 @@ async def test_add_project():
         deadline="2024-01-01",
         details="Details",
         file_id="file_123",
+        file_type="document",
     )
 
     assert project_id == 101
