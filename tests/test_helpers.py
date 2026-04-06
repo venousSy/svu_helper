@@ -36,6 +36,9 @@ def test_get_file_id_none():
     message = MagicMock()
     message.document = None
     message.photo = None
+    message.video = None
+    message.audio = None
+    message.voice = None
 
     file_id, file_type = get_file_id(message)
     assert file_id is None
