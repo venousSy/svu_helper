@@ -1,6 +1,6 @@
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from database.connection import Database
 from database.repositories import StatsRepository
 from utils.enums import ProjectStatus
@@ -10,15 +10,16 @@ async def test_get_statistics():
     # Setup Mock DB
     mock_db = AsyncMock()
     
-    # Mock count_documents to return different values based on the query
-    async def mock_count_side_effect(query):
-        if query == {}: return 10
-        if query == {"status": ProjectStatus.PENDING}: return 3
-        if "active" in str(query) or ProjectStatus.ACCEPTED in str(query): return 4
-        if query == {"status": ProjectStatus.FINISHED}: return 2
-        return 1 # Default for denied/others
-
-    mock_db.projects.count_documents.side_effect = mock_count_side_effect
+    # Mock the aggregation pipeline result
+    mock_cursor = AsyncMock()
+    mock_cursor.to_list.return_value = [{
+        "total": [{"count": 10}],
+        "pending": [{"count": 3}],
+        "active": [{"count": 4}],
+        "finished": [{"count": 2}],
+        "denied": [{"count": 1}]
+    }]
+    mock_db.projects.aggregate = MagicMock(return_value=mock_cursor)
     
     Database.db = mock_db
     
