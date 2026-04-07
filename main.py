@@ -16,6 +16,7 @@ from handlers.common import router as common_router
 from middlewares.error_handler import GlobalErrorHandler
 from middlewares.maintenance import MaintenanceMiddleware
 from middlewares.throttling import ThrottlingMiddleware
+from middlewares.db_injection import DbInjectionMiddleware
 from utils.storage import MongoStorage
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
@@ -53,7 +54,9 @@ storage = MongoStorage(mongo_client)
 dp = Dispatcher(storage=storage)
 
 # Register Middleware
-# Order matters: Maintenance -> Error Handler
+# Order matters: DB Injection -> Maintenance -> Error Handler
+dp.message.middleware(DbInjectionMiddleware())
+dp.callback_query.middleware(DbInjectionMiddleware())
 dp.message.middleware(MaintenanceMiddleware())
 dp.message.middleware(GlobalErrorHandler())
 dp.callback_query.middleware(GlobalErrorHandler())
