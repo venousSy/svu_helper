@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from config import settings
-from database.repositories import StatsRepository, SettingsRepository
+from infrastructure.repositories import SettingsRepository, StatsRepository
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,14 +13,17 @@ from utils.constants import BTN_CANCEL, MSG_ADMIN_DASHBOARD, MSG_CANCELLED
 
 router = Router()
 
+
 @router.message(F.text == BTN_CANCEL, F.from_user.id.in_(settings.admin_ids))
-async def admin_cancel_process(message: types.Message, state: FSMContext):
+async def admin_cancel_process(
+    message: types.Message, state: FSMContext
+):
     """Cancels any active admin FSM state."""
     current_state = await state.get_state()
     if current_state:
         await state.clear()
         await message.answer(MSG_CANCELLED, reply_markup=types.ReplyKeyboardRemove())
-        await admin_dashboard(message)  # Return to dashboard
+        await admin_dashboard(message)
     else:
         await admin_dashboard(message)
 
@@ -31,7 +34,10 @@ async def admin_dashboard(message: types.Message):
     await message.answer(MSG_ADMIN_DASHBOARD, reply_markup=get_admin_dashboard_kb())
 
 
-@router.callback_query(MenuCallback.filter(F.action == "back_to_admin"), F.from_user.id.in_(settings.admin_ids))
+@router.callback_query(
+    MenuCallback.filter(F.action == "back_to_admin"),
+    F.from_user.id.in_(settings.admin_ids),
+)
 async def back_to_admin(callback: types.CallbackQuery):
     """Returns the user to the main dashboard menu."""
     await callback.message.edit_text(
@@ -42,9 +48,11 @@ async def back_to_admin(callback: types.CallbackQuery):
 
 
 @router.message(Command("stats"), F.from_user.id.in_(settings.admin_ids))
-async def admin_stats_handler(message: types.Message):
+async def admin_stats_handler(
+    message: types.Message, stats_repo: StatsRepository
+):
     """Displays project statistics."""
-    stats = await StatsRepository.get_stats()
+    stats = await stats_repo.get_stats()
     text = (
         "📊 **إحصائيات البوت**\n"
         "━━━━━━━━━━━━━━━━━━\n"
@@ -58,16 +66,20 @@ async def admin_stats_handler(message: types.Message):
 
 
 @router.message(Command("maintenance_on"), F.from_user.id.in_(settings.admin_ids))
-async def admin_maintenance_on(message: types.Message):
+async def admin_maintenance_on(
+    message: types.Message, settings_repo: SettingsRepository
+):
     """Enables maintenance mode."""
-    await SettingsRepository.set_maintenance_mode(True)
+    await settings_repo.set_maintenance_mode(True)
     logger.warning(f"Maintenance mode ENABLED by admin {message.from_user.id}")
     await message.answer("🛑 **تم تفعيل وضع الصيانة.**\nلن يتمكن المستخدمون من استخدام البوت.")
 
 
 @router.message(Command("maintenance_off"), F.from_user.id.in_(settings.admin_ids))
-async def admin_maintenance_off(message: types.Message):
+async def admin_maintenance_off(
+    message: types.Message, settings_repo: SettingsRepository
+):
     """Disables maintenance mode."""
-    await SettingsRepository.set_maintenance_mode(False)
+    await settings_repo.set_maintenance_mode(False)
     logger.warning(f"Maintenance mode DISABLED by admin {message.from_user.id}")
     await message.answer("✅ **تم إيقاف وضع الصيانة.**\nالبوت متاح للجميع الآن.")
