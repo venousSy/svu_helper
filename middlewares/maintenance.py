@@ -5,11 +5,12 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 from config import settings
-from database.repositories import SettingsRepository
+
 
 class MaintenanceMiddleware(BaseMiddleware):
     """
     Blocks usage for non-admins when global maintenance mode is on.
+    Reads settings_repo from the data dict injected by DbInjectionMiddleware.
     """
 
     async def __call__(
@@ -18,17 +19,17 @@ class MaintenanceMiddleware(BaseMiddleware):
         event: Message,
         data: Dict[str, Any],
     ) -> Any:
-        # Only check Messages
         if not isinstance(event, Message):
             return await handler(event, data)
 
-        # Allow admins to bypass
         if event.from_user.id in settings.admin_ids:
             return await handler(event, data)
 
-        # Check DB status
-        if await SettingsRepository.get_maintenance_mode():
-            await event.answer("⚠️ **النظام تحت الصيانة حالياً.**\nالرجاء المحاولة لاحقاً.")
-            return None # Stop processing
+        settings_repo = data.get("settings_repo")
+        if settings_repo and await settings_repo.get_maintenance_mode():
+            await event.answer(
+                "⚠️ **النظام تحت الصيانة حالياً.**\nالرجاء المحاولة لاحقاً."
+            )
+            return None
 
         return await handler(event, data)
