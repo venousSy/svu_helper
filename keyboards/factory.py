@@ -1,0 +1,332 @@
+"""
+Keyboard Factory
+================
+Single point of truth for all bot keyboards.
+
+All button labels are sourced from utils.constants (which itself reads
+from locales/ar.json), keeping the UI text in one locale-aware place.
+Handlers should import from this module instead of calling helper
+functions in admin_kb / client_kb / common_kb directly.
+
+The individual keyboard-builder modules (admin_kb.py, client_kb.py,
+common_kb.py) delegate to this factory so that callers external to the
+keyboards package require no changes during the transition.
+"""
+
+from aiogram import types
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+
+from keyboards.callbacks import MenuCallback, PaymentCallback, ProjectCallback
+from utils.constants import (
+    BTN_BACK,
+    BTN_CANCEL,
+    BTN_MY_OFFERS,
+    BTN_MY_PROJECTS,
+    BTN_NEW_PROJECT,
+    BTN_NO,
+    BTN_YES,
+)
+
+# ---------------------------------------------------------------------------
+# Additional button constants that were previously hard-coded inline
+# ---------------------------------------------------------------------------
+# Admin dashboard buttons
+_BTN_VIEW_ALL = "📑 قائمة المشاريع الكاملة"
+_BTN_VIEW_PENDING = "📊 مشاريع قيد الانتظار"
+_BTN_VIEW_ACCEPTED = "✅ مشاريع مقبولة/جارية"
+_BTN_VIEW_HISTORY = "📜 سجل المشاريع"
+_BTN_VIEW_PAYMENTS = "💰 سجل المدفوعات"
+_BTN_BROADCAST = "📢 إرسال إعلان"
+
+# Shared action buttons
+_BTN_BACK_ICON = "⬅️ رجوع"
+_BTN_SEND_OFFER = "💰 إرسال عرض"
+_BTN_REJECT = "❌ رفض"
+_BTN_CONFIRM_PAYMENT = "✅ تأكيد الدفع"
+_BTN_REJECT_PAYMENT = "❌ رفض الدفع"
+_BTN_ACCEPT_OFFER = "✅ قبول"
+_BTN_DENY_OFFER = "❌ رفض"
+_BTN_CANCEL_PAY = "❌ إلغاء"
+_BTN_FINISH_PROJECT = "📤 إنهاء"
+_BTN_MANAGE_PROJECT = "📂 إدارة"
+_BTN_VIEW_RECEIPT = "📄 عرض الإيصال"
+
+
+class KeyboardFactory:
+    """Centralised builder for every keyboard used in the bot."""
+
+    # -----------------------------------------------------------------------
+    # Student keyboards
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def student_main() -> types.InlineKeyboardMarkup:
+        """Inline main menu for students."""
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_NEW_PROJECT,
+            callback_data=MenuCallback(action="new_project").pack(),
+        )
+        builder.button(
+            text=BTN_MY_PROJECTS,
+            callback_data=MenuCallback(action="my_projects").pack(),
+        )
+        builder.button(
+            text=BTN_MY_OFFERS,
+            callback_data=MenuCallback(action="my_offers").pack(),
+        )
+        builder.button(
+            text="ℹ️ المساعدة",
+            callback_data=MenuCallback(action="help").pack(),
+        )
+        builder.adjust(1)
+        return builder.as_markup()
+
+    @staticmethod
+    def offer_actions(proj_id: int) -> types.InlineKeyboardMarkup:
+        """Accept / Deny buttons shown to students on a pending offer."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_ACCEPT_OFFER,
+                callback_data=ProjectCallback(action="accept", id=proj_id).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_DENY_OFFER,
+                callback_data=ProjectCallback(action="deny", id=proj_id).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def offers_list(offers: list) -> types.InlineKeyboardMarkup:
+        """Inline list of all pending offers for easy navigation."""
+        builder = InlineKeyboardBuilder()
+        for item in offers:
+            p_id = item["id"]
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=f"عرض العرض #{p_id}",
+                    callback_data=ProjectCallback(action="view_offer", id=p_id).pack(),
+                )
+            )
+        return builder.as_markup()
+
+    @staticmethod
+    def cancel_payment() -> types.InlineKeyboardMarkup:
+        """Cancel button shown during payment upload flow."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_CANCEL_PAY,
+                callback_data=MenuCallback(action="cancel_pay").pack(),
+            )
+        )
+        return builder.as_markup()
+
+    # -----------------------------------------------------------------------
+    # Admin keyboards
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def admin_dashboard() -> types.InlineKeyboardMarkup:
+        """Main administrative control panel keyboard."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_VIEW_ALL,
+                callback_data=MenuCallback(action="view_all_master").pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_VIEW_PENDING,
+                callback_data=MenuCallback(action="view_pending").pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_VIEW_ACCEPTED,
+                callback_data=MenuCallback(action="view_accepted").pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_VIEW_HISTORY,
+                callback_data=MenuCallback(action="view_history").pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_VIEW_PAYMENTS,
+                callback_data=MenuCallback(action="view_payments").pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BROADCAST,
+                callback_data=MenuCallback(action="admin_broadcast").pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def back(callback_data: str = None) -> InlineKeyboardBuilder:
+        """Returns an InlineKeyboardBuilder seeded with a 'Back' button."""
+        if callback_data is None:
+            callback_data = MenuCallback(action="back_to_admin").pack()
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON, callback_data=callback_data
+            )
+        )
+        return builder
+
+    @staticmethod
+    def pending_projects(pending_projects: list) -> types.InlineKeyboardMarkup:
+        """List of pending projects, each with a manage deep-link."""
+        builder = InlineKeyboardBuilder()
+        for item in pending_projects:
+            p_id = item["id"]
+            subject = item.get("subject_name", "")
+            btn_text = f"{_BTN_MANAGE_PROJECT} #{p_id}"
+            if subject:
+                btn_text += f": {subject}"
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=btn_text,
+                    callback_data=ProjectCallback(action="manage", id=p_id).pack(),
+                )
+            )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(action="back_to_admin").pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def accepted_projects(accepted_projects: list) -> types.InlineKeyboardMarkup:
+        """List of ongoing/accepted projects, each with a finish deep-link."""
+        builder = InlineKeyboardBuilder()
+        for item in accepted_projects:
+            p_id = item["id"]
+            subject = item.get("subject_name", "")
+            btn_text = f"{_BTN_FINISH_PROJECT} #{p_id}"
+            if subject:
+                btn_text += f": {subject}"
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=btn_text,
+                    callback_data=ProjectCallback(
+                        action="manage_accepted", id=p_id
+                    ).pack(),
+                )
+            )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(action="back_to_admin").pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def manage_project(p_id: int) -> types.InlineKeyboardMarkup:
+        """Send Offer / Reject buttons for a specific pending project."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_SEND_OFFER,
+                callback_data=ProjectCallback(action="make_offer", id=p_id).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_REJECT,
+                callback_data=ProjectCallback(action="deny", id=p_id).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(action="view_pending").pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def payment_verify(payment_id: int) -> types.InlineKeyboardMarkup:
+        """Confirm / Reject payment buttons sent alongside a receipt."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_CONFIRM_PAYMENT,
+                callback_data=PaymentCallback(action="confirm", id=payment_id).pack(),
+            ),
+            types.InlineKeyboardButton(
+                text=_BTN_REJECT_PAYMENT,
+                callback_data=PaymentCallback(action="reject", id=payment_id).pack(),
+            ),
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def notes_decision() -> types.ReplyKeyboardMarkup:
+        """Yes / No reply keyboard used when admin is asked about notes."""
+        builder = ReplyKeyboardBuilder()
+        builder.button(text=BTN_YES)
+        builder.button(text=BTN_NO)
+        builder.adjust(2)
+        return builder.as_markup(resize_keyboard=True)
+
+    @staticmethod
+    def cancel() -> types.ReplyKeyboardMarkup:
+        """Single-button cancel reply keyboard used during FSM flows."""
+        builder = ReplyKeyboardBuilder()
+        builder.button(text=BTN_CANCEL)
+        return builder.as_markup(resize_keyboard=True)
+
+    @staticmethod
+    def new_project_alert(p_id: int) -> types.InlineKeyboardMarkup:
+        """Send Offer / Reject shortcuts in the admin new-project notification."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_SEND_OFFER,
+                callback_data=ProjectCallback(action="make_offer", id=p_id).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_REJECT,
+                callback_data=ProjectCallback(action="deny", id=p_id).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def payment_history(payments: list) -> types.InlineKeyboardMarkup:
+        """Links to view receipts for the 10 most-recent payments."""
+        builder = InlineKeyboardBuilder()
+        for pay in payments[:10]:
+            p_id = pay["id"]
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=f"{_BTN_VIEW_RECEIPT} #{p_id}",
+                    callback_data=PaymentCallback(
+                        action="view_receipt", id=p_id
+                    ).pack(),
+                )
+            )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(action="back_to_admin").pack(),
+            )
+        )
+        return builder.as_markup()
