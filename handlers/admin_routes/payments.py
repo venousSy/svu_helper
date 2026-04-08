@@ -1,9 +1,9 @@
-from aiogram import Router, F, types
 import logging
+from aiogram import Router, F, types
 
+from application.payment_service import ConfirmPaymentService, RejectPaymentService
 from config import settings
-from domain.enums import ProjectStatus, PaymentStatus
-from infrastructure.repositories import ProjectRepository, PaymentRepository
+from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.callbacks import PaymentCallback
 from utils.constants import (
     MSG_PAYMENT_CONFIRMED_ADMIN,
@@ -29,25 +29,21 @@ async def admin_view_receipt(
     """Fetches and sends the actual receipt file for a specific payment."""
     payment_id = callback_data.id
     payment = await payment_repo.get_payment(payment_id)
-
     if not payment:
-        await callback.answer("⚠️ File not found.", show_alert=True)
-        return
+        return await callback.answer("⚠️ File not found.", show_alert=True)
 
     file_id = payment["file_id"]
     status = payment["status"]
     caption = f"📄 **Detail View: Payment #{payment_id}**\nStatus: {status}"
-
     try:
-        await bot.send_document(
-            callback.from_user.id, file_id, caption=caption, parse_mode="Markdown"
-        )
+        await bot.send_document(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
         await callback.answer()
     except Exception as e:
         logger.warning(f"Failed to send document for payment {payment_id}: {e}")
-        for admin_id in settings.admin_ids:
-            if admin_id == callback.from_user.id:
-                await bot.send_photo(admin_id, file_id, caption=caption, parse_mode="Markdown")
+        try:
+            await bot.send_photo(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
+        except Exception:
+            pass
         await callback.answer()
 
 
@@ -62,29 +58,21 @@ async def confirm_payment(
     payment_repo: PaymentRepository,
     project_repo: ProjectRepository,
 ):
-    """Transitions project from 'Verification' to 'Accepted'."""
+    """ConfirmPaymentService does the DB work; handler sends notifications."""
     payment_id = callback_data.id
-    payment = await payment_repo.get_payment(payment_id)
-    if not payment:
-        await callback.answer("⚠️ Payment not found!", show_alert=True)
-        return
+    try:
+        result = await ConfirmPaymentService(project_repo, payment_repo).execute(payment_id)
+    except ValueError as e:
+        return await callback.answer(f"⚠️ {e}", show_alert=True)
 
-    proj_id = payment["project_id"]
-    await payment_repo.update_status(payment_id, PaymentStatus.ACCEPTED)
-    await project_repo.update_status(proj_id, ProjectStatus.ACCEPTED)
-
-    res = await project_repo.get_project_by_id(proj_id)
-    if res:
-        subject = escape_md(res["subject_name"])
-        await bot.send_message(
-            res["user_id"],
-            MSG_PAYMENT_CONFIRMED_CLIENT.format(subject),
-            parse_mode="Markdown",
-        )
-
+    await bot.send_message(
+        result.user_id,
+        MSG_PAYMENT_CONFIRMED_CLIENT.format(escape_md(result.subject)),
+        parse_mode="Markdown",
+    )
     await callback.message.edit_caption(
-        caption=MSG_PAYMENT_CONFIRMED_ADMIN.format(proj_id)
-        + f"\n(Payment #{payment_id} Accepted)",
+        caption=MSG_PAYMENT_CONFIRMED_ADMIN.format(result.proj_id)
+        + f"\n(Payment #{result.payment_id} Accepted)",
         parse_mode="Markdown",
     )
 
@@ -100,26 +88,21 @@ async def reject_payment(
     payment_repo: PaymentRepository,
     project_repo: ProjectRepository,
 ):
-    """Marks project as payment-failed and notifies the student."""
+    """RejectPaymentService resets the project; handler notifies the student."""
     payment_id = callback_data.id
-    payment = await payment_repo.get_payment(payment_id)
-    if not payment:
-        return
+    try:
+        result = await RejectPaymentService(project_repo, payment_repo).execute(payment_id)
+    except ValueError as e:
+        return await callback.answer(f"⚠️ {e}", show_alert=True)
 
-    proj_id = payment["project_id"]
-    await payment_repo.update_status(payment_id, PaymentStatus.REJECTED)
-    await project_repo.update_status(proj_id, ProjectStatus.OFFERED)
-
-    res = await project_repo.get_project_by_id(proj_id)
-    if res:
+    if result.user_id:
         await bot.send_message(
-            res["user_id"],
+            result.user_id,
             "❌ **تم رفض عملية الدفع.**\nالرجاء التأكد من الإيصال وإعادة المحاولة من قائمة 'عروضي'.",
             parse_mode="Markdown",
         )
-
     await callback.message.edit_caption(
-        caption=MSG_PAYMENT_REJECTED_ADMIN.format(proj_id)
-        + f"\n(Payment #{payment_id} Rejected)",
+        caption=MSG_PAYMENT_REJECTED_ADMIN.format(result.proj_id)
+        + f"\n(Payment #{result.payment_id} Rejected)",
         parse_mode="Markdown",
     )

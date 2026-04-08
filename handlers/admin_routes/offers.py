@@ -2,14 +2,15 @@ import logging
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 
-from config import settings
-from domain.enums import ProjectStatus
-from infrastructure.repositories import ProjectRepository
-from keyboards.admin_kb import (
-    get_cancel_kb,
-    get_manage_project_kb,
-    get_notes_decision_kb,
+from application.offer_service import (
+    DenyProjectService,
+    FinishProjectService,
+    GetProjectDetailService,
+    SendOfferService,
 )
+from config import settings
+from infrastructure.repositories import ProjectRepository
+from keyboards.admin_kb import get_cancel_kb, get_manage_project_kb, get_notes_decision_kb
 from keyboards.client_kb import get_offer_actions_kb
 from keyboards.callbacks import ProjectCallback
 from states import AdminStates
@@ -35,8 +36,7 @@ from utils.helpers import get_file_id
 router = Router()
 logger = logging.getLogger(__name__)
 
-# --- PROJECT MANAGEMENT & OFFER FLOW ---
-
+# ── PROJECT DETAIL VIEW ─────────────────────────────────────────────────────
 
 @router.callback_query(
     ProjectCallback.filter(F.action == "manage"),
@@ -47,50 +47,35 @@ async def view_project_details(
     callback_data: ProjectCallback,
     project_repo: ProjectRepository,
 ):
-    """Displays detailed project specs and original file for admin review."""
-    proj_id = callback_data.id
-    project = await project_repo.get_project_by_id(proj_id)
-    if not project:
+    detail = await GetProjectDetailService(project_repo).execute(callback_data.id)
+    if not detail:
         return
 
-    p_id = project["id"]
-    sub = escape_md(project["subject_name"])
-    tutor = escape_md(project["tutor_name"])
-    dead = escape_md(project["deadline"])
-    details = escape_md(project["details"])
-    file_id = project.get("file_id")
-    file_type = project.get("file_type")
-
-    u_id = project["user_id"]
-    name = escape_md(project["user_full_name"] or "Unknown")
-    username = escape_md(project["username"])
-
-    user_line = f"👤 [{name}](tg://user?id={u_id})"
-    if username:
-        user_line += f" (@{username})"
+    user_line = f"👤 [{escape_md(detail.user_full_name)}](tg://user?id={detail.user_id})"
+    if detail.username:
+        user_line += f" (@{escape_md(detail.username)})"
 
     text = (
-        MSG_PROJECT_DETAILS_HEADER.format(p_id) + "\n"
+        MSG_PROJECT_DETAILS_HEADER.format(detail.proj_id) + "\n"
         f"{user_line}\n"
-        f"*المادة:* {sub}\n"
-        f"*المدرس:* {tutor}\n"
-        f"*الموعد:* {dead}\n"
-        f"*التفاصيل:* {details}"
+        f"*المادة:* {escape_md(detail.subject)}\n"
+        f"*المدرس:* {escape_md(detail.tutor)}\n"
+        f"*الموعد:* {escape_md(detail.deadline)}\n"
+        f"*التفاصيل:* {escape_md(detail.details)}"
     )
+    markup = get_manage_project_kb(detail.proj_id)
 
-    markup = get_manage_project_kb(p_id)
-
-    if file_id:
+    if detail.file_id:
         if len(text) > 1024:
-            header = f"📁 *المشروع #{p_id}* (التفاصيل في الرسالة التالية)"
-            await _send_media_safely(callback, file_id, file_type, header, markup=None)
+            header = f"📁 *المشروع #{detail.proj_id}* (التفاصيل في الرسالة التالية)"
+            await _send_media_safely(callback, detail.file_id, detail.file_type, header, markup=None)
             try:
                 await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
             except Exception:
                 await callback.message.answer(text, parse_mode=None, reply_markup=markup)
             await callback.message.delete()
         else:
-            success = await _send_media_safely(callback, file_id, file_type, text, markup=markup)
+            success = await _send_media_safely(callback, detail.file_id, detail.file_type, text, markup=markup)
             if success:
                 await callback.message.delete()
     else:
@@ -101,7 +86,7 @@ async def view_project_details(
 
 
 async def _send_media_safely(callback, file_id, file_type, caption, markup) -> bool:
-    """Helper to send media with safe multi-level fallback."""
+    """Sends a media file with robust multi-level fallback."""
     methods = {
         "photo": callback.message.answer_photo,
         "video": callback.message.answer_video,
@@ -109,7 +94,6 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
         "audio": callback.message.answer_audio,
         "voice": callback.message.answer_voice,
     }
-
     if file_type and file_type in methods:
         try:
             await methods[file_type](file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
@@ -120,7 +104,6 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
                 return True
             except Exception:
                 pass
-
     for method in [callback.message.answer_photo, callback.message.answer_document, callback.message.answer_video]:
         try:
             await method(file_id, caption=caption, parse_mode="Markdown", reply_markup=markup)
@@ -131,7 +114,6 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
                 return True
             except Exception:
                 continue
-
     try:
         await callback.message.answer_document(
             file_id,
@@ -144,34 +126,28 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
         return False
 
 
+# ── OFFER FLOW (FSM) ────────────────────────────────────────────────────────
+
 @router.callback_query(
     ProjectCallback.filter(F.action == "make_offer"),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def start_offer_flow(
-    callback: types.CallbackQuery,
-    state: FSMContext,
-    callback_data: ProjectCallback,
+    callback: types.CallbackQuery, state: FSMContext, callback_data: ProjectCallback
 ):
-    """Starts a step-by-step FSM to collect price and delivery data."""
     proj_id = callback_data.id
     await state.update_data(offer_proj_id=proj_id)
-    await callback.message.answer(
-        MSG_ASK_PRICE.format(proj_id), reply_markup=get_cancel_kb()
-    )
+    await callback.message.answer(MSG_ASK_PRICE.format(proj_id), reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_price)
 
 
 @router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.admin_ids))
 async def process_price(message: types.Message, state: FSMContext):
-    """Stores price and requests delivery date."""
     price_text = message.text.strip()
     if not price_text:
-        await message.answer("⚠️ الرجاء إدخال سعر صالح.")
-        return
+        return await message.answer("⚠️ الرجاء إدخال سعر صالح.")
     if len(price_text) > 50:
-        await message.answer("⚠️ النص طويل جداً. الرجاء إدخال سعر مختصر (مثلاً: 50,000 ل.س).")
-        return
+        return await message.answer("⚠️ النص طويل جداً. الرجاء إدخال سعر مختصر (مثلاً: 50,000 ل.س).")
     await state.update_data(price=price_text)
     await message.answer(MSG_ASK_DELIVERY, reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_delivery)
@@ -179,14 +155,11 @@ async def process_price(message: types.Message, state: FSMContext):
 
 @router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(settings.admin_ids))
 async def process_delivery(message: types.Message, state: FSMContext):
-    """Stores delivery date and asks if extra notes are needed."""
     delivery_text = message.text.strip()
     if not delivery_text:
-        await message.answer("⚠️ الرجاء إدخال موعد صالح.")
-        return
+        return await message.answer("⚠️ الرجاء إدخال موعد صالح.")
     if len(delivery_text) > 50:
-        await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
-        return
+        return await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
     await state.update_data(delivery=delivery_text)
     await message.answer(MSG_ASK_NOTES, reply_markup=get_notes_decision_kb())
     await state.set_state(AdminStates.waiting_for_notes_decision)
@@ -194,158 +167,125 @@ async def process_delivery(message: types.Message, state: FSMContext):
 
 @router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_decision(
-    message: types.Message,
-    state: FSMContext,
-    bot,
-    project_repo: ProjectRepository,
+    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
 ):
-    """Branches FSM based on whether the admin wants to add custom notes."""
     if message.text == BTN_YES:
         await message.answer(MSG_ASK_NOTES_TEXT, reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(AdminStates.waiting_for_notes_text)
     else:
-        await finalize_and_send_offer(message, state, bot, project_repo, notes_text=MSG_NO_NOTES)
+        await _finalize_offer(message, state, bot, project_repo, notes=MSG_NO_NOTES)
 
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_text(
-    message: types.Message,
-    state: FSMContext,
-    bot,
-    project_repo: ProjectRepository,
+    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
 ):
-    """Captures final notes and triggers the student notification."""
-    await finalize_and_send_offer(message, state, bot, project_repo, notes_text=message.text)
+    await _finalize_offer(message, state, bot, project_repo, notes=message.text)
 
 
-async def finalize_and_send_offer(
-    message: types.Message,
-    state: FSMContext,
-    bot,
-    project_repo: ProjectRepository,
-    notes_text: str,
-):
-    """Compiles all collected data and sends the offer to the student."""
+async def _finalize_offer(message, state, bot, project_repo, notes: str):
+    """Calls SendOfferService and relays the offer to the student."""
     data = await state.get_data()
     proj_id = data["offer_proj_id"]
-    res = await project_repo.get_project_by_id(proj_id)
-
     try:
-        if res:
-            await project_repo.update_offer(proj_id, data["price"], data["delivery"])
-            await project_repo.update_status(proj_id, ProjectStatus.OFFERED)
-            user_id = res["user_id"]
-            subject = escape_md(res["subject_name"])
-
-            price = escape_md(data["price"])
-            delivery = escape_md(data["delivery"])
-            notes = escape_md(notes_text)
-
-            offer_text = (
-                f"🎁 **عرض جديد لمشروع: {subject}!**\n━━━━━━━━━━━━━\n"
-                f"💰 **السعر:** {price}\n📅 **التسليم:** {delivery}\n"
-                f"📝 **ملاحظات:** {notes}\n━━━━━━━━━━━━━"
-            )
-
-            markup = get_offer_actions_kb(proj_id)
-            await bot.send_message(
-                user_id, offer_text, parse_mode="Markdown", reply_markup=markup
-            )
-            await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
-
+        result = await SendOfferService(project_repo).execute(
+            proj_id=proj_id,
+            price=data["price"],
+            delivery=data["delivery"],
+            notes=notes,
+        )
+        offer_text = (
+            f"🎁 **عرض جديد لمشروع: {escape_md(result.subject)}!**\n━━━━━━━━━━━━━\n"
+            f"💰 **السعر:** {escape_md(result.price)}\n"
+            f"📅 **التسليم:** {escape_md(result.delivery)}\n"
+            f"📝 **ملاحظات:** {escape_md(result.notes)}\n━━━━━━━━━━━━━"
+        )
+        await bot.send_message(
+            result.user_id, offer_text, parse_mode="Markdown",
+            reply_markup=get_offer_actions_kb(result.proj_id),
+        )
+        await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
     except Exception as e:
         logger.error(f"Failed to send offer for #{proj_id}: {e}", exc_info=True)
-        await message.answer(
-            "⚠️ حدث خطأ أثناء إرسال العرض.", reply_markup=types.ReplyKeyboardRemove()
-        )
+        await message.answer("⚠️ حدث خطأ أثناء إرسال العرض.", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
 
 
-# --- WORK LIFECYCLE MANAGEMENT ---
-
+# ── WORK LIFECYCLE ──────────────────────────────────────────────────────────
 
 @router.callback_query(
     ProjectCallback.filter(F.action == "manage_accepted"),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def manage_accepted_project(
-    callback: types.CallbackQuery,
-    state: FSMContext,
-    callback_data: ProjectCallback,
+    callback: types.CallbackQuery, state: FSMContext, callback_data: ProjectCallback
 ):
-    """Prepares FSM to receive the final project file from the admin."""
     proj_id = callback_data.id
     await state.update_data(finish_proj_id=proj_id)
     await state.set_state(AdminStates.waiting_for_finished_work)
-    await callback.message.answer(
-        MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=get_cancel_kb()
-    )
+    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=get_cancel_kb())
     await callback.answer()
 
 
 @router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(settings.admin_ids))
 async def process_finished_work(
-    message: types.Message,
-    state: FSMContext,
-    bot,
-    project_repo: ProjectRepository,
+    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
 ):
-    """Transfers the final work from admin to student and marks it 'Finished'."""
+    """FinishProjectService marks the project done; handler relays the file."""
     data = await state.get_data()
     proj_id = data.get("finish_proj_id")
-    res = await project_repo.get_project_by_id(proj_id)
-
-    if res:
-        u_id = res["user_id"]
-        sub = escape_md(res["subject_name"])
-
+    try:
+        result = await FinishProjectService(project_repo).execute(proj_id)
         await bot.send_message(
-            u_id, MSG_WORK_FINISHED_ALERT.format(sub, proj_id), parse_mode="Markdown"
+            result.user_id,
+            MSG_WORK_FINISHED_ALERT.format(escape_md(result.subject), result.proj_id),
+            parse_mode="Markdown",
         )
-
         file_id, file_type = get_file_id(message)
         if file_type == "document":
-            await bot.send_document(u_id, file_id, caption=message.caption)
+            await bot.send_document(result.user_id, file_id, caption=message.caption)
         elif file_type == "photo":
-            await bot.send_photo(u_id, file_id, caption=message.caption)
+            await bot.send_photo(result.user_id, file_id, caption=message.caption)
         elif file_type == "video":
-            await bot.send_video(u_id, file_id, caption=message.caption)
+            await bot.send_video(result.user_id, file_id, caption=message.caption)
         elif file_type == "audio":
-            await bot.send_audio(u_id, file_id, caption=message.caption)
+            await bot.send_audio(result.user_id, file_id, caption=message.caption)
         elif file_type == "voice":
-            await bot.send_voice(u_id, file_id, caption=message.caption)
+            await bot.send_voice(result.user_id, file_id, caption=message.caption)
         else:
-            if message.text:
-                await bot.send_message(u_id, message.text)
-            else:
-                await bot.send_message(u_id, "✅ تم رفع ملف بدون رسالة نصية.")
-
-        await project_repo.update_status(proj_id, ProjectStatus.FINISHED)
-        await message.answer(
-            MSG_FINISHED_CONFIRM.format(proj_id),
-            reply_markup=types.ReplyKeyboardRemove(),
-        )
-
+            text = message.text or "✅ تم رفع ملف بدون رسالة نصية."
+            await bot.send_message(result.user_id, text)
+        await message.answer(MSG_FINISHED_CONFIRM.format(result.proj_id), reply_markup=types.ReplyKeyboardRemove())
+    except Exception as e:
+        logger.error(f"Failed to finish project #{proj_id}: {e}", exc_info=True)
+        await message.answer("⚠️ حدث خطأ أثناء إنهاء المشروع.")
     await state.clear()
 
 
-@router.callback_query(
-    ProjectCallback.filter(F.action == "deny"),
-    F.from_user.id.in_(settings.admin_ids)
-)
-async def handle_admin_deny(
+# ── DENY (admin + student) ──────────────────────────────────────────────────
+
+@router.callback_query(ProjectCallback.filter(F.action == "deny"))
+async def handle_deny(
     callback: types.CallbackQuery,
     bot,
     callback_data: ProjectCallback,
     project_repo: ProjectRepository,
 ):
-    """Admin rejection handler."""
+    """DenyProjectService handles auth + status transition; handler sends notifications."""
     proj_id = callback_data.id
-    await project_repo.update_status(proj_id, ProjectStatus.DENIED_ADMIN)
-    res = await project_repo.get_project_by_id(proj_id)
-    if res:
-        await bot.send_message(
-            res["user_id"], MSG_PROJECT_DENIED_CLIENT.format(proj_id)
-        )
+    service = DenyProjectService(project_repo)
+
+    try:
+        if callback.from_user.id in settings.admin_ids:
+            result = await service.execute_admin_deny(proj_id)
+            if result.student_user_id:
+                await bot.send_message(result.student_user_id, MSG_PROJECT_DENIED_CLIENT.format(proj_id))
+        else:
+            result = await service.execute_student_deny(proj_id, callback.from_user.id)
+            for admin_id in settings.admin_ids:
+                await bot.send_message(admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id))
+    except PermissionError as e:
+        return await callback.answer(f"⚠️ {e}", show_alert=True)
+
     await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))

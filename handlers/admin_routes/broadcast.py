@@ -2,6 +2,7 @@ import logging
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 
+from application.admin_service import GetAllUserIdsService
 from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.admin_kb import get_cancel_kb
@@ -19,7 +20,6 @@ logger = logging.getLogger(__name__)
     F.from_user.id.in_(settings.admin_ids),
 )
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
-    """Initiates the broadcast FSM flow."""
     await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_cancel_kb())
     await state.set_state(AdminStates.waiting_for_broadcast)
 
@@ -33,17 +33,13 @@ async def execute_broadcast(
     bot,
     project_repo: ProjectRepository,
 ):
-    """Sends a mass message to all unique users found in the database."""
+    """GetAllUserIdsService fetches recipients; handler drives the broadcast loop."""
     try:
-        users = await project_repo.get_all_user_ids()
-
+        users = await GetAllUserIdsService(project_repo).execute()
         status_msg = await message.answer("🔄 **جاري عملية الأرسال...**")
-
-        broadcaster = Broadcaster(bot)
-        full_text = f"🔔 **إعلان هام:**\n\n{message.text}"
-
-        success_count = await broadcaster.broadcast(users, full_text)
-
+        success_count = await Broadcaster(bot).broadcast(
+            users, f"🔔 **إعلان هام:**\n\n{message.text}"
+        )
         await status_msg.delete()
         await message.answer(
             MSG_BROADCAST_SUCCESS.format(success_count),

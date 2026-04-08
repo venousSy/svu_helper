@@ -1,11 +1,15 @@
-from aiogram import Router, F, types
 import logging
+from aiogram import Router, F, types
 
-logger = logging.getLogger(__name__)
-
+from application.admin_service import (
+    GetAllPaymentsService,
+    GetCategorizedProjectsService,
+    GetOngoingProjectsService,
+    GetPendingProjectsService,
+    GetProjectHistoryService,
+)
 from config import settings
-from domain.enums import ProjectStatus
-from infrastructure.repositories import ProjectRepository, PaymentRepository
+from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.admin_kb import (
     get_accepted_projects_kb,
     get_back_btn,
@@ -21,6 +25,7 @@ from utils.formatters import (
 )
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 @router.callback_query(
@@ -30,11 +35,9 @@ router = Router()
 async def view_all_master(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    """Displays a categorized report of every project in the database."""
-    projects = await project_repo.get_all_categorized()
+    projects = await GetCategorizedProjectsService(project_repo).execute()
     await callback.message.edit_text(
-        format_master_report(projects),
-        parse_mode="Markdown",
+        format_master_report(projects), parse_mode="Markdown",
         reply_markup=get_back_btn().as_markup(),
     )
 
@@ -46,11 +49,12 @@ async def view_all_master(
 async def admin_view_pending(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    """Lists all projects awaiting admin review with management deep-links."""
-    pending = await project_repo.get_projects_by_status([ProjectStatus.PENDING])
-    text = format_project_list(pending, "📊 مشاريع قيد الانتظار")
-    markup = get_pending_projects_kb(pending)
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
+    pending = await GetPendingProjectsService(project_repo).execute()
+    await callback.message.edit_text(
+        format_project_list(pending, "📊 مشاريع قيد الانتظار"),
+        parse_mode="Markdown",
+        reply_markup=get_pending_projects_kb(pending),
+    )
 
 
 @router.callback_query(
@@ -60,13 +64,12 @@ async def admin_view_pending(
 async def admin_view_accepted(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    """Lists active/ongoing projects ready for final submission."""
-    accepted = await project_repo.get_projects_by_status(
-        [ProjectStatus.ACCEPTED, ProjectStatus.AWAITING_VERIFICATION]
+    ongoing = await GetOngoingProjectsService(project_repo).execute()
+    await callback.message.edit_text(
+        format_project_list(ongoing, "🚀 مشاريع جارية"),
+        parse_mode="Markdown",
+        reply_markup=get_accepted_projects_kb(ongoing),
     )
-    text = format_project_list(accepted, "🚀 مشاريع جارية")
-    markup = get_accepted_projects_kb(accepted)
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
 
 
 @router.callback_query(
@@ -76,15 +79,7 @@ async def admin_view_accepted(
 async def admin_view_history(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    """Displays a read-only log of finished or denied projects."""
-    history = await project_repo.get_projects_by_status(
-        [
-            ProjectStatus.FINISHED,
-            ProjectStatus.DENIED_ADMIN,
-            ProjectStatus.DENIED_STUDENT,
-            ProjectStatus.REJECTED_PAYMENT,
-        ]
-    )
+    history = await GetProjectHistoryService(project_repo).execute()
     await callback.message.edit_text(
         format_project_history(history),
         parse_mode="Markdown",
@@ -99,8 +94,7 @@ async def admin_view_history(
 async def admin_view_payments(
     callback: types.CallbackQuery, payment_repo: PaymentRepository
 ):
-    """Displays a log of all payments."""
-    payments = await payment_repo.get_all()
+    payments = await GetAllPaymentsService(payment_repo).execute()
     await callback.message.edit_text(
         format_payment_list(payments),
         parse_mode="Markdown",

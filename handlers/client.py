@@ -4,11 +4,15 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
 
-from application.project_service import AddProjectService
+from application.project_service import (
+    AddProjectService,
+    GetOfferDetailService,
+    GetStudentOffersService,
+    GetStudentProjectsService,
+    VerifyProjectOwnershipService,
+)
+from application.payment_service import SubmitPaymentService
 from config import settings
-from domain.entities import _parse_deadline
-from domain.enums import ProjectStatus
-from keyboards.calendar_kb import CalendarCallback, build_calendar
 from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
 from keyboards.client_kb import (
@@ -24,8 +28,6 @@ from utils.constants import (
     MSG_ASK_SUBJECT,
     MSG_ASK_TUTOR,
     MSG_NO_DESC,
-    MSG_NO_OFFERS,
-    MSG_NO_PROJECTS,
     BTN_NEW_PROJECT,
     BTN_MY_PROJECTS,
     BTN_MY_OFFERS,
@@ -33,8 +35,6 @@ from utils.constants import (
     MSG_OFFER_DETAILS,
     MSG_PROJECT_SUBMITTED,
     MSG_RECEIPT_RECEIVED,
-    MSG_PROJECT_CLOSED,
-    MSG_PROJECT_DENIED_STUDENT_TO_ADMIN,
 )
 from utils.formatters import (
     escape_md,
@@ -43,10 +43,11 @@ from utils.formatters import (
     format_student_projects,
 )
 from utils.helpers import get_file_id, get_file_size
+from middlewares.throttling import ThrottlingMiddleware
 
-# Initialize router for student-related events
 router = Router()
 logger = logging.getLogger(__name__)
+router.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
 
 MAX_FILE_SIZE_MB = AddProjectService.MAX_FILE_SIZE_MB
 MAX_FILE_SIZE_BYTES = AddProjectService.MAX_FILE_SIZE_BYTES
@@ -55,8 +56,7 @@ ALLOWED_DOCUMENT_MIMES = [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]
 
-# --- PROJECT SUBMISSION FLOW (FSM) ---
-
+# ── PROJECT SUBMISSION FSM ──────────────────────────────────────────────────
 
 @router.callback_query(MenuCallback.filter(F.action == "new_project"))
 async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
@@ -68,14 +68,12 @@ async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
 @router.message(F.text == BTN_NEW_PROJECT)
 @router.message(Command("new_project"))
 async def start_project(message: types.Message, state: FSMContext):
-    """Entry point for the project submission wizard."""
     await message.answer(MSG_ASK_SUBJECT, parse_mode="Markdown")
     await state.set_state(ProjectOrder.subject)
 
 
 @router.message(ProjectOrder.subject, F.text)
 async def process_subject(message: types.Message, state: FSMContext):
-    """Stores the subject name and advances to tutor selection."""
     if len(message.text) > AddProjectService.MAX_SUBJECT_LENGTH:
         return await message.answer(
             f"⚠️ اسم المادة طويل جداً. الحد الأقصى {AddProjectService.MAX_SUBJECT_LENGTH} حرف."
@@ -87,77 +85,20 @@ async def process_subject(message: types.Message, state: FSMContext):
 
 @router.message(ProjectOrder.tutor, F.text)
 async def process_tutor(message: types.Message, state: FSMContext):
-    """Stores the tutor name and shows the inline calendar for deadline picking."""
     if len(message.text) > AddProjectService.MAX_TUTOR_LENGTH:
         return await message.answer(
             f"⚠️ اسم المدرس طويل جداً. الحد الأقصى {AddProjectService.MAX_TUTOR_LENGTH} حرف."
         )
     await state.update_data(tutor=message.text)
-    await message.answer(
-        MSG_ASK_DEADLINE,
-        parse_mode="Markdown",
-        reply_markup=build_calendar(),
-    )
+    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown")
     await state.set_state(ProjectOrder.deadline)
 
 
-# ── Calendar callback: day selected ──────────────────────────────────────────
-
-@router.callback_query(CalendarCallback.filter(F.action == "day"), ProjectOrder.deadline)
-async def calendar_day_selected(
-    callback: types.CallbackQuery,
-    callback_data: CalendarCallback,
-    state: FSMContext,
-):
-    """User tapped a day on the calendar — store and advance the FSM."""
-    date_str = f"{callback_data.year:04d}-{callback_data.month:02d}-{callback_data.day:02d}"
-    await state.update_data(deadline=date_str)
-    # Replace calendar with a clean confirmation line
-    display = f"{callback_data.day:02d}/{callback_data.month:02d}/{callback_data.year:04d}"
-    await callback.message.edit_text(
-        f"📅 **تاريخ التسليم:** {display}",
-        parse_mode="Markdown",
-    )
-    await callback.answer()
-    await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
-    await state.set_state(ProjectOrder.details)
-
-
-# ── Calendar callback: month navigation ───────────────────────────────────────
-
-@router.callback_query(CalendarCallback.filter(F.action == "nav"), ProjectOrder.deadline)
-async def calendar_nav(
-    callback: types.CallbackQuery,
-    callback_data: CalendarCallback,
-):
-    """User tapped ◀ or ▶ — redraw calendar for the new month."""
-    await callback.message.edit_reply_markup(
-        reply_markup=build_calendar(callback_data.year, callback_data.month)
-    )
-    await callback.answer()
-
-
-# ── Calendar callback: ignore cosmetic cells ──────────────────────────────────
-
-@router.callback_query(CalendarCallback.filter(F.action == "ignore"), ProjectOrder.deadline)
-async def calendar_ignore(callback: types.CallbackQuery):
-    """Cosmetic header/weekday cells — silently acknowledge."""
-    await callback.answer()
-
-
-# ── Text fallback: user typed a date manually ─────────────────────────────────
-
 @router.message(ProjectOrder.deadline, F.text)
-async def process_deadline_text(message: types.Message, state: FSMContext):
-    """Fallback: validate a manually typed date and advance the FSM."""
-    try:
-        normalised = _parse_deadline(message.text)
-    except ValueError as exc:
-        return await message.answer(
-            f"⚠️ {exc}\n"
-            "أو اختر التاريخ مباشرة من التقويم أعلاه 👆"
-        )
-    await state.update_data(deadline=normalised)
+async def process_deadline(message: types.Message, state: FSMContext):
+    if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
+        return await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
+    await state.update_data(deadline=message.text)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
 
@@ -166,7 +107,6 @@ async def process_deadline_text(message: types.Message, state: FSMContext):
 @router.message(ProjectOrder.tutor)
 @router.message(ProjectOrder.deadline)
 async def reject_media_early(message: types.Message):
-    """Rejects media files sent too early during text-only steps."""
     await message.answer(
         "⚠️ الرجاء إدخال النص مطلوب أولاً. يمكنك رفع الملفات في الخطوة التالية."
     )
@@ -179,32 +119,21 @@ async def process_details(
     bot,
     project_repo: ProjectRepository,
 ):
-    """
-    Finalises the FSM flow.
-    Uses AddProjectService for validation + persistence, then alerts admin.
-    """
     file_size = get_file_size(message)
     if file_size and file_size > MAX_FILE_SIZE_BYTES:
-        await message.answer(
-            f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB."
-        )
+        await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
         return
 
     data = await state.get_data()
     file_id, file_type = get_file_id(message)
     details_text = message.text or message.caption or MSG_NO_DESC
-
     user = message.from_user
-    username = user.username
-    full_name = user.full_name
-
-    service = AddProjectService(project_repo)
 
     try:
-        project_id = await service.execute(
+        project_id = await AddProjectService(project_repo).execute(
             user_id=user.id,
-            username=username,
-            user_full_name=full_name,
+            username=user.username,
+            user_full_name=user.full_name,
             subject=data["subject"],
             tutor=data["tutor"],
             deadline=data["deadline"],
@@ -212,36 +141,26 @@ async def process_details(
             file_id=file_id,
             file_type=file_type,
         )
-
         await message.answer(
             MSG_PROJECT_SUBMITTED.format(project_id),
             parse_mode="Markdown",
             reply_markup=types.ReplyKeyboardRemove(),
         )
-
         admin_text = format_admin_notification(
-            project_id,
-            data["subject"],
-            data["deadline"],
-            details_text,
-            user_name=full_name,
-            username=username,
+            project_id, data["subject"], data["deadline"], details_text,
+            user_name=user.full_name, username=user.username,
         )
         for admin_id in settings.admin_ids:
             try:
                 await bot.send_message(
-                    admin_id,
-                    admin_text,
-                    parse_mode="Markdown",
+                    admin_id, admin_text, parse_mode="Markdown",
                     reply_markup=get_new_project_alert_kb(project_id),
                 )
             except TelegramAPIError as e:
                 logger.error(f"Failed to notify admin {admin_id}: {e}")
-
         await state.clear()
 
     except ValueError as e:
-        # Service-level validation failure
         await message.answer(f"⚠️ {e}", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
     except Exception as e:
@@ -253,8 +172,7 @@ async def process_details(
         await state.clear()
 
 
-# --- OFFER ACCEPTANCE & PAYMENT FLOW ---
-
+# ── OFFER ACCEPTANCE & PAYMENT ──────────────────────────────────────────────
 
 @router.callback_query(ProjectCallback.filter(F.action == "accept"))
 async def student_accept_offer(
@@ -263,12 +181,12 @@ async def student_accept_offer(
     callback_data: ProjectCallback,
     project_repo: ProjectRepository,
 ):
-    """Student clicks 'Accept' on the offer."""
+    """Student accepts an offer – validates ownership then enters payment FSM."""
     proj_id = callback_data.id
-
-    project = await project_repo.get_project_by_id(proj_id)
-    if not project or project["user_id"] != callback.from_user.id:
-        return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
+    try:
+        await VerifyProjectOwnershipService(project_repo).execute(proj_id, callback.from_user.id)
+    except PermissionError as e:
+        return await callback.answer(f"⚠️ {e}", show_alert=True)
 
     await state.update_data(active_pay_proj_id=proj_id)
     await callback.message.edit_text(
@@ -279,35 +197,9 @@ async def student_accept_offer(
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
     await callback.answer()
 
-@router.callback_query(ProjectCallback.filter(F.action == "student_deny"))
-async def student_deny_offer(
-    callback: types.CallbackQuery,
-    bot,
-    callback_data: ProjectCallback,
-    project_repo: ProjectRepository,
-):
-    """Student clicks 'Deny' on the offer."""
-    proj_id = callback_data.id
-
-    project = await project_repo.get_project_by_id(proj_id)
-    if not project or project["user_id"] != callback.from_user.id:
-        return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
-
-    await project_repo.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
-    for admin_id in settings.admin_ids:
-        try:
-            await bot.send_message(
-                admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)
-            )
-        except TelegramAPIError as e:
-            logger.error(f"Failed to notify admin {admin_id}: {e}")
-
-    await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
-
 
 @router.callback_query(MenuCallback.filter(F.action == "cancel_pay"))
 async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContext):
-    """Cancels the payment upload and returns the user to safety."""
     await state.clear()
     await callback.message.edit_text(
         "🚫 تم إلغاء عملية الدفع. يمكنك قبول العرض لاحقاً من قائمة 'عروضي'."
@@ -323,32 +215,27 @@ async def process_payment_proof(
     project_repo: ProjectRepository,
     payment_repo: PaymentRepository,
 ):
-    """Student sends receipt; relay it to Admin for verification."""
+    """Student sends receipt – SubmitPaymentService persists it, handler sends notifications."""
     if message.document:
         if message.document.file_size > MAX_FILE_SIZE_BYTES:
-            await message.answer(
-                f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB."
-            )
+            await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
             return
         if (
             message.document.mime_type not in ALLOWED_DOCUMENT_MIMES
             and "image" not in message.document.mime_type
         ):
-            await message.answer(
-                "⚠️ الرجاء رفع صورة أو ملف PDF/Word كإثبات للدفع."
-            )
+            await message.answer("⚠️ الرجاء رفع صورة أو ملف PDF/Word كإثبات للدفع.")
             return
 
     data = await state.get_data()
-    proj_id = data.get("active_pay_proj_id")
     file_id, file_type = get_file_id(message)
 
     try:
-        payment_id = await payment_repo.add_payment(
-            proj_id, message.from_user.id, file_id
-        )
-        await project_repo.update_status(
-            proj_id, ProjectStatus.AWAITING_VERIFICATION
+        result = await SubmitPaymentService(project_repo, payment_repo).execute(
+            proj_id=data.get("active_pay_proj_id"),
+            user_id=message.from_user.id,
+            file_id=file_id,
+            file_type=file_type,
         )
         await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
 
@@ -356,102 +243,67 @@ async def process_payment_proof(
             try:
                 await bot.send_message(
                     admin_id,
-                    f"💰 **إيصال دفع جديد (رقم #{payment_id})**\nللمشروع: #{proj_id}",
+                    f"💰 **إيصال دفع جديد (رقم #{result.payment_id})**\nللمشروع: #{result.proj_id}",
                     parse_mode="Markdown",
                 )
-                if file_type == "photo":
+                if result.file_type == "photo":
                     await bot.send_photo(
-                        admin_id,
-                        file_id,
-                        caption=f"verify_pay_{payment_id}",
-                        reply_markup=get_payment_verify_kb(payment_id),
+                        admin_id, result.file_id,
+                        caption=f"verify_pay_{result.payment_id}",
+                        reply_markup=get_payment_verify_kb(result.payment_id),
                     )
                 else:
                     await bot.send_document(
-                        admin_id,
-                        file_id,
-                        caption=f"verify_pay_{payment_id}",
-                        reply_markup=get_payment_verify_kb(payment_id),
+                        admin_id, result.file_id,
+                        caption=f"verify_pay_{result.payment_id}",
+                        reply_markup=get_payment_verify_kb(result.payment_id),
                     )
             except TelegramAPIError as e:
-                logger.error(
-                    f"Failed to send payment receipt {payment_id} to admin {admin_id}: {e}"
-                )
-
+                logger.error(f"Failed to relay receipt {result.payment_id} to admin {admin_id}: {e}")
         await state.clear()
+
     except Exception as e:
         logger.error(f"Payment upload failed: {e}", exc_info=True)
         await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
         await state.clear()
 
 
-# --- PROJECT / OFFER VIEWS ---
-
+# ── PROJECT / OFFER VIEWS ───────────────────────────────────────────────────
 
 @router.callback_query(MenuCallback.filter(F.action == "my_projects"))
 async def cb_view_projects(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    projects = await project_repo.get_projects_by_status(
-        [
-            ProjectStatus.PENDING,
-            ProjectStatus.ACCEPTED,
-            ProjectStatus.AWAITING_VERIFICATION,
-            ProjectStatus.FINISHED,
-            ProjectStatus.DENIED_ADMIN,
-            ProjectStatus.DENIED_STUDENT,
-            ProjectStatus.REJECTED_PAYMENT,
-        ],
-        user_id=callback.from_user.id,
-    )
-    response = format_student_projects(projects)
-    await callback.message.answer(response, parse_mode="Markdown")
+    projects = await GetStudentProjectsService(project_repo).execute(callback.from_user.id)
+    await callback.message.answer(format_student_projects(projects), parse_mode="Markdown")
     await callback.answer()
 
 
 @router.message(F.text == BTN_MY_PROJECTS)
 @router.message(Command("my_projects"))
 async def view_projects(message: types.Message, project_repo: ProjectRepository):
-    """Retrieves and displays a list of all projects owned by the user."""
-    projects = await project_repo.get_projects_by_status(
-        [
-            ProjectStatus.PENDING,
-            ProjectStatus.ACCEPTED,
-            ProjectStatus.AWAITING_VERIFICATION,
-            ProjectStatus.FINISHED,
-            ProjectStatus.DENIED_ADMIN,
-            ProjectStatus.DENIED_STUDENT,
-            ProjectStatus.REJECTED_PAYMENT,
-        ],
-        user_id=message.from_user.id,
-    )
-    response = format_student_projects(projects)
-    await message.answer(response, parse_mode="Markdown")
+    projects = await GetStudentProjectsService(project_repo).execute(message.from_user.id)
+    await message.answer(format_student_projects(projects), parse_mode="Markdown")
 
 
 @router.callback_query(MenuCallback.filter(F.action == "my_offers"))
 async def cb_view_offers(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    offers = await project_repo.get_projects_by_status(
-        [ProjectStatus.OFFERED], user_id=callback.from_user.id
+    offers = await GetStudentOffersService(project_repo).execute(callback.from_user.id)
+    await callback.message.answer(
+        format_offer_list(offers), parse_mode="Markdown", reply_markup=get_offers_list_kb(offers)
     )
-    text = format_offer_list(offers)
-    markup = get_offers_list_kb(offers)
-    await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
     await callback.answer()
 
 
 @router.message(F.text == BTN_MY_OFFERS)
 @router.message(Command("my_offers"))
 async def view_offers(message: types.Message, project_repo: ProjectRepository):
-    """Shows the student all projects where an admin has sent an offer."""
-    offers = await project_repo.get_projects_by_status(
-        [ProjectStatus.OFFERED], user_id=message.from_user.id
+    offers = await GetStudentOffersService(project_repo).execute(message.from_user.id)
+    await message.answer(
+        format_offer_list(offers), parse_mode="Markdown", reply_markup=get_offers_list_kb(offers)
     )
-    text = format_offer_list(offers)
-    markup = get_offers_list_kb(offers)
-    await message.answer(text, parse_mode="Markdown", reply_markup=markup)
 
 
 @router.callback_query(ProjectCallback.filter(F.action == "view_offer"))
@@ -461,18 +313,13 @@ async def show_specific_offer(
     project_repo: ProjectRepository,
 ):
     proj_id = callback_data.id
-    res = await project_repo.get_project_by_id(proj_id)
-
-    if not res or res["user_id"] != callback.from_user.id:
-        return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
+    try:
+        res = await GetOfferDetailService(project_repo).execute(proj_id, callback.from_user.id)
+    except PermissionError as e:
+        return await callback.answer(f"⚠️ {e}", show_alert=True)
 
     subject = escape_md(res["subject_name"])
     price = escape_md(res["price"])
     delivery = escape_md(res["delivery_date"])
-
     text = MSG_OFFER_DETAILS.format(subject, price, delivery, escape_md(proj_id))
-    markup = get_offer_actions_kb(proj_id)
-
-    await callback.message.edit_text(
-        text, parse_mode="Markdown", reply_markup=markup
-    )
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=get_offer_actions_kb(proj_id))
