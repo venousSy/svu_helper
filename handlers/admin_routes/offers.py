@@ -288,4 +288,9 @@ async def handle_deny(
     except PermissionError as e:
         return await callback.answer(f"⚠️ {e}", show_alert=True)
 
-    await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
+    await callback.answer()
+    try:
+        await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
+    except Exception:
+        # Message already shows the closed state (e.g. repeated test run)
+        pass
