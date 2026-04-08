@@ -20,6 +20,7 @@ Usage in a unit test:
 """
 from typing import Optional
 
+from domain.entities import _parse_deadline
 from infrastructure.repositories import ProjectRepository
 
 
@@ -29,7 +30,6 @@ class AddProjectService:
     # Validation limits – single place to change them
     MAX_SUBJECT_LENGTH = 150
     MAX_TUTOR_LENGTH = 150
-    MAX_DEADLINE_LENGTH = 50
     MAX_DETAILS_LENGTH = 3000
     MAX_FILE_SIZE_MB = 15
     MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -88,10 +88,9 @@ class AddProjectService:
             raise ValueError(
                 f"Tutor name too long: max {self.MAX_TUTOR_LENGTH} chars."
             )
-        if len(deadline) > self.MAX_DEADLINE_LENGTH:
-            raise ValueError(
-                f"Deadline too long: max {self.MAX_DEADLINE_LENGTH} chars."
-            )
+        # Delegate deadline format validation to the domain entity helper.
+        # Raises ValueError with an Arabic error message if format is invalid.
+        _parse_deadline(deadline)
         if len(details) > self.MAX_DETAILS_LENGTH:
             raise ValueError(
                 f"Details too long: max {self.MAX_DETAILS_LENGTH} chars."

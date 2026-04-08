@@ -4,11 +4,26 @@ Infrastructure – MongoDB Connection
 Manages the global MongoDB client and provides the `Database` class
 for lifecycle management (connect, index creation, sequence counters).
 
+Indexes created at startup
+--------------------------
+projects:
+  - id          (unique)  – fast look-up by project ID
+  - user_id               – filter projects per student
+  - status                – filter by workflow state
+  - created_at (desc)     – time-based sorting / stats
+
+payments:
+  - id          (unique)  – fast look-up by payment ID
+  - project_id            – find payment for a project
+  - status                – filter pending / accepted receipts
+  - created_at (desc)     – time-based sorting / stats
+
 This module is the single place that knows about Motor / Motor-asyncio.
 Application and domain layers must never import from here directly;
 instead, use the `get_db` helper or receive `db` via DI middleware.
 """
 import logging
+from pymongo import DESCENDING
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -38,10 +53,12 @@ class Database:
         await cls.db.projects.create_index("id", unique=True)
         await cls.db.projects.create_index("user_id")
         await cls.db.projects.create_index("status")
+        await cls.db.projects.create_index([("created_at", DESCENDING)])
 
         await cls.db.payments.create_index("id", unique=True)
         await cls.db.payments.create_index("project_id")
         await cls.db.payments.create_index("status")
+        await cls.db.payments.create_index([("created_at", DESCENDING)])
 
     @classmethod
     async def get_next_sequence(cls, sequence_name: str) -> int:
