@@ -2,9 +2,10 @@ import os
 import sys
 
 # Mock Environment Variables BEFORE importing project modules
-print("DEBUG: conftest.py loaded, setting env vars")
+# These mocks are essential because the local environment lacks a .env file (variables are on Railway)
+print("DEBUG: conftest.py loaded, setting env vars (Railway variables are mocked locally)")
 os.environ["BOT_TOKEN"] = "test_token"
-os.environ["ADMIN_IDS"] = "[12345, 67890]"
+os.environ["ADMIN_IDS"] = "12345,67890"  # Comma-separated as expected by config.py
 os.environ["MONGO_URI"] = "mongodb://localhost:27017"
 
 # Ensure the root directory is in the python path
