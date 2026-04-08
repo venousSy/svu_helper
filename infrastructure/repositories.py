@@ -11,11 +11,21 @@ Handlers receive pre-built repository instances through the
 DbInjectionMiddleware (middlewares/db_injection.py) which populates
 the aiogram data dict before each handler call.
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from domain.entities import Payment, Project
 from domain.enums import PaymentStatus, ProjectStatus
 from infrastructure.mongo_db import Database
+
+
+# ---------------------------------------------------------------------------
+# Pagination defaults
+# ---------------------------------------------------------------------------
+
+#: Maximum documents returned in a single paginated query.
+#: Prevents accidental full-collection loads when callers omit a limit.
+DEFAULT_PAGE_SIZE: int = 100
+MAX_PAGE_SIZE: int = 500
 
 
 # ---------------------------------------------------------------------------
@@ -60,9 +70,23 @@ class ProjectRepository:
     async def get_project_by_id(self, project_id: int) -> Optional[Dict[str, Any]]:
         return await self._db.projects.find_one({"id": int(project_id)})
 
-    async def get_user_projects(self, user_id: int) -> List[Dict[str, Any]]:
-        cursor = self._db.projects.find({"user_id": user_id})
-        return await cursor.to_list(length=None)
+    async def get_user_projects(
+        self,
+        user_id: int,
+        *,
+        limit: int = DEFAULT_PAGE_SIZE,
+        skip: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Returns projects owned by *user_id*, newest-first, with pagination.
+
+        Args:
+            user_id: Telegram user id to filter by.
+            limit: Maximum number of documents to return (default 100, max 500).
+            skip:  Number of documents to skip (for offset-based paging).
+        """
+        limit = min(limit, MAX_PAGE_SIZE)
+        cursor = self._db.projects.find({"user_id": user_id}).skip(skip).limit(limit)
+        return await cursor.to_list(length=limit)
 
     async def update_status(self, project_id: int, new_status: str) -> None:
         await self._db.projects.update_one(
@@ -73,13 +97,24 @@ class ProjectRepository:
         self,
         statuses: List[str],
         user_id: Optional[int] = None,
+        *,
+        limit: int = DEFAULT_PAGE_SIZE,
+        skip: int = 0,
     ) -> List[Dict[str, Any]]:
-        """Fetches projects filtered by one or more status values."""
+        """Fetches projects filtered by one or more status values.
+
+        Args:
+            statuses: List of :class:`~domain.enums.ProjectStatus` values to match.
+            user_id:  If provided, further filters results to this Telegram user.
+            limit:    Maximum documents to return per page (default 100, max 500).
+            skip:     Documents to skip for offset-based pagination.
+        """
+        limit = min(limit, MAX_PAGE_SIZE)
         query: Dict[str, Any] = {"status": {"$in": statuses}}
         if user_id is not None:
             query["user_id"] = user_id
-        cursor = self._db.projects.find(query)
-        return await cursor.to_list(length=None)
+        cursor = self._db.projects.find(query).skip(skip).limit(limit)
+        return await cursor.to_list(length=limit)
 
     async def update_offer(self, proj_id: int, price: str, delivery: str) -> None:
         await self._db.projects.update_one(
@@ -151,8 +186,21 @@ class PaymentRepository:
             {"id": int(payment_id)}, {"$set": {"status": new_status}}
         )
 
-    async def get_all(self) -> List[Dict[str, Any]]:
-        return await self._db.payments.find().sort("id", -1).to_list(length=None)
+    async def get_all(
+        self,
+        *,
+        limit: int = DEFAULT_PAGE_SIZE,
+        skip: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Returns payments sorted newest-first with pagination.
+
+        Args:
+            limit: Maximum documents to return (default 100, max 500).
+            skip:  Documents to skip for offset-based paging.
+        """
+        limit = min(limit, MAX_PAGE_SIZE)
+        cursor = self._db.payments.find().sort("id", -1).skip(skip).limit(limit)
+        return await cursor.to_list(length=limit)
 
 
 # ---------------------------------------------------------------------------
