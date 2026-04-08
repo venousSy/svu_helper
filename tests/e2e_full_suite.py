@@ -64,7 +64,7 @@ async def click_inline_button(client, msg, text_match, error_msg="Button not fou
     await msg.click(data=target_btn.data)
     await asyncio.sleep(2)
 
-async def submit_project(student, subject="E2E Subject", tutor="E2E Tutor", deadline="Tomorrow", details="E2E details text."):
+async def submit_project(student, subject="E2E Subject", tutor="E2E Tutor", deadline="2026-12-31", details="E2E details text."):
     """Helper: Runs through the full project submission FSM."""
     await student.send_message(BOT_USERNAME, "/new_project")
     await wait_for_message(student, ["المادة"])
@@ -163,7 +163,7 @@ async def run_full_suite():
         await wait_for_message(student, ["المدرس"])
         await student.send_message(BOT_USERNAME, "PDF Tutor")
         await wait_for_message(student, ["التسليم", "Deadline"])
-        await student.send_message(BOT_USERNAME, "Next Week")
+        await student.send_message(BOT_USERNAME, "2026-12-31")
         await wait_for_message(student, ["التفاصيل", "وصف"])
 
         with open("dummy_test.pdf", "w", encoding="utf-8") as f:

@@ -4,11 +4,49 @@ Domain Entities
 Pydantic models representing the core domain objects.
 No framework (aiogram) or database (motor) dependencies here.
 """
+import re
+from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from domain.enums import PaymentStatus, ProjectStatus
+
+# Accepted deadline formats: DD/MM/YYYY  or  YYYY-MM-DD (ISO 8601)
+_DEADLINE_RE = re.compile(
+    r"^(?:"
+    r"(?P<dmy>\d{2}/\d{2}/\d{4})"  # DD/MM/YYYY
+    r"|"
+    r"(?P<iso>\d{4}-\d{2}-\d{2})"  # YYYY-MM-DD
+    r")$"
+)
+
+
+def _parse_deadline(value: str) -> str:
+    """Validate deadline and normalise to YYYY-MM-DD for DB storage."""
+    value = value.strip()
+    m = _DEADLINE_RE.match(value)
+    if not m:
+        raise ValueError(
+            "صيغة التاريخ غير صحيحة. استخدم DD/MM/YYYY أو YYYY-MM-DD "
+            "(مثال: 31/12/2025 أو 2025-12-31)."
+        )
+    if m.group("dmy"):
+        # Convert DD/MM/YYYY → YYYY-MM-DD for consistent storage
+        day, month, year = value.split("/")
+        try:
+            datetime(int(year), int(month), int(day))
+        except ValueError:
+            raise ValueError(
+                "التاريخ غير صحيح (يوم/شهر/سنة). تأكد من صحة القيم."
+            )
+        return f"{year}-{month}-{day}"
+    # ISO path – verify the calendar date is real
+    try:
+        datetime.fromisoformat(value)
+    except ValueError:
+        raise ValueError("التاريخ غير صحيح. تأكد من صحة اليوم والشهر والسنة.")
+    return value
 
 
 class Project(BaseModel):
@@ -25,8 +63,16 @@ class Project(BaseModel):
     status: ProjectStatus = Field(default=ProjectStatus.PENDING)
     price: Optional[str] = None
     delivery_date: Optional[str] = None
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
     model_config = ConfigDict(use_enum_values=True)
+
+    @field_validator("deadline", mode="before")
+    @classmethod
+    def validate_deadline(cls, v: str) -> str:  # noqa: N805
+        return _parse_deadline(v)
 
 
 class Payment(BaseModel):
@@ -35,5 +81,8 @@ class Payment(BaseModel):
     user_id: int
     file_id: str
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
     model_config = ConfigDict(use_enum_values=True)

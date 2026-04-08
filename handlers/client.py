@@ -6,6 +6,7 @@ from aiogram.exceptions import TelegramAPIError
 
 from application.project_service import AddProjectService
 from config import settings
+from domain.entities import _parse_deadline
 from domain.enums import ProjectStatus
 from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
@@ -97,10 +98,12 @@ async def process_tutor(message: types.Message, state: FSMContext):
 
 @router.message(ProjectOrder.deadline, F.text)
 async def process_deadline(message: types.Message, state: FSMContext):
-    """Stores the deadline and requests final project documentation."""
-    if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
-        return await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
-    await state.update_data(deadline=message.text)
+    """Validates the deadline format and advances to details input."""
+    try:
+        normalised = _parse_deadline(message.text)
+    except ValueError as exc:
+        return await message.answer(f"⚠️ {exc}")
+    await state.update_data(deadline=normalised)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
 
