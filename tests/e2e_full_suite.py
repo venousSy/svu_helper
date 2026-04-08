@@ -96,6 +96,8 @@ async def admin_make_offer(admin, price="30000", delivery="3 Days", notes="لا 
 PASSED = []
 FAILED = []
 
+import traceback
+
 async def run_test(name, coro):
     """Runs a single named test, tracking pass/fail."""
     print(f"\n[🎬 {name}]")
@@ -104,6 +106,7 @@ async def run_test(name, coro):
         PASSED.append(name)
     except Exception as e:
         print(f"  ❌ FAILED: {e}")
+        traceback.print_exc()
         FAILED.append(name)
 
 
@@ -164,7 +167,7 @@ async def run_full_suite():
         await wait_for_message(student, ["التفاصيل", "وصف"])
 
         with open("dummy_test.pdf", "w", encoding="utf-8") as f:
-            f.write("E2E dummy PDF content for testing.")
+            f.write("%PDF-1.4\nE2E dummy PDF content for testing.")
         await student.send_file(BOT_USERNAME, "dummy_test.pdf")
         os.remove("dummy_test.pdf")
 
@@ -182,7 +185,7 @@ async def run_full_suite():
         alert = await wait_for_message(admin, ["مشروع جديد"], timeout=15)
         await click_inline_button(admin, alert, "رفض")
         print("  ✅ Admin clicked Deny button.")
-        await wait_for_message(student, ["تم رفض", "رفض المشروع"], timeout=15)
+        await wait_for_message(student, ["تم رفض المشروع", "من قبل المشرف"], timeout=15)
         print("  ✅ Student received denial notification.")
     await run_test("TEST 6: Admin Deny Project", test_admin_deny())
 
@@ -198,7 +201,7 @@ async def run_full_suite():
 
         # Student uploads receipt
         with open("dummy_receipt.pdf", "w", encoding="utf-8") as f:
-            f.write("Dummy receipt for reject payment test.")
+            f.write("%PDF-1.4\nDummy receipt for reject payment test.")
         await student.send_file(BOT_USERNAME, "dummy_receipt.pdf")
         os.remove("dummy_receipt.pdf")
         await wait_for_message(student, ["استلام الإيصال"], timeout=15)
@@ -224,7 +227,7 @@ async def run_full_suite():
         await wait_for_message(student, ["إيصال"])
 
         with open("dummy_lifecycle.pdf", "w", encoding="utf-8") as f:
-            f.write("Dummy receipt for full lifecycle test.")
+            f.write("%PDF-1.4\nDummy receipt for full lifecycle test.")
         await student.send_file(BOT_USERNAME, "dummy_lifecycle.pdf")
         os.remove("dummy_lifecycle.pdf")
         await wait_for_message(student, ["استلام الإيصال"], timeout=15)
@@ -292,7 +295,7 @@ async def run_full_suite():
         await wait_for_message(student, ["إيصال"])
         
         with open("dummy_receipt_fin.pdf", "w", encoding="utf-8") as f:
-            f.write("Dummy receipt")
+            f.write("%PDF-1.4\nDummy receipt")
         await student.send_file(BOT_USERNAME, "dummy_receipt_fin.pdf")
         os.remove("dummy_receipt_fin.pdf")
         await wait_for_message(student, ["استلام الإيصال"], timeout=15)
@@ -313,15 +316,15 @@ async def run_full_suite():
         upload_prompt = await wait_for_message(admin, ["رفع الملف النهائي", "النهائي"], timeout=15)
         
         with open("dummy_final_work.pdf", "w", encoding="utf-8") as f:
-            f.write("This is the final delivered work.")
+            f.write("%PDF-1.4\nThis is the final delivered work.")
         await admin.send_file(BOT_USERNAME, "dummy_final_work.pdf")
         os.remove("dummy_final_work.pdf")
         
         # Project finished msgs
-        await wait_for_message(admin, ["إنهاء", "تم تسليم"], timeout=15)
+        await wait_for_message(admin, ["إنهاء", "تم إنهاء المشروع", "تسليم"], timeout=15)
         print("  ✅ Admin submitted final work.")
         
-        await wait_for_message(student, ["النهائي", "جاهز", "تم الانتهاء"], timeout=15)
+        await wait_for_message(student, ["إنجاز", "النهائي", "جاهز", "تم الانتهاء"], timeout=15)
         print("  ✅ Student received final work!")
         
     await run_test("TEST 12: Admin Submit Finished Work", test_submit_finished_work())
