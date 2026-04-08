@@ -57,6 +57,8 @@ dp = Dispatcher(storage=storage)
 # Order matters: DB Injection -> Maintenance -> Error Handler
 dp.message.middleware(DbInjectionMiddleware())
 dp.callback_query.middleware(DbInjectionMiddleware())
+dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
+dp.callback_query.middleware(ThrottlingMiddleware(rate_limit=0.5))
 dp.message.middleware(MaintenanceMiddleware())
 dp.message.middleware(GlobalErrorHandler())
 dp.callback_query.middleware(GlobalErrorHandler())

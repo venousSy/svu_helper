@@ -330,31 +330,22 @@ async def process_finished_work(
     await state.clear()
 
 
-@router.callback_query(ProjectCallback.filter(F.action == "deny"))
-async def handle_deny(
+@router.callback_query(
+    ProjectCallback.filter(F.action == "deny"),
+    F.from_user.id.in_(settings.admin_ids)
+)
+async def handle_admin_deny(
     callback: types.CallbackQuery,
     bot,
     callback_data: ProjectCallback,
     project_repo: ProjectRepository,
 ):
-    """General denial handler for both Admin rejection and Student cancellation."""
+    """Admin rejection handler."""
     proj_id = callback_data.id
-    if callback.from_user.id in settings.admin_ids:
-        await project_repo.update_status(proj_id, ProjectStatus.DENIED_ADMIN)
-        res = await project_repo.get_project_by_id(proj_id)
-        if res:
-            await bot.send_message(
-                res["user_id"], MSG_PROJECT_DENIED_CLIENT.format(proj_id)
-            )
-    else:
-        project = await project_repo.get_project_by_id(proj_id)
-        if not project or project["user_id"] != callback.from_user.id:
-            return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
-
-        await project_repo.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
-        for admin_id in settings.admin_ids:
-            await bot.send_message(
-                admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)
-            )
-
+    await project_repo.update_status(proj_id, ProjectStatus.DENIED_ADMIN)
+    res = await project_repo.get_project_by_id(proj_id)
+    if res:
+        await bot.send_message(
+            res["user_id"], MSG_PROJECT_DENIED_CLIENT.format(proj_id)
+        )
     await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
