@@ -8,6 +8,7 @@ from application.project_service import AddProjectService
 from config import settings
 from domain.entities import _parse_deadline
 from domain.enums import ProjectStatus
+from keyboards.calendar_kb import CalendarCallback, build_calendar
 from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.admin_kb import get_new_project_alert_kb, get_payment_verify_kb
 from keyboards.client_kb import (
@@ -86,23 +87,76 @@ async def process_subject(message: types.Message, state: FSMContext):
 
 @router.message(ProjectOrder.tutor, F.text)
 async def process_tutor(message: types.Message, state: FSMContext):
-    """Stores the tutor name and advances to deadline input."""
+    """Stores the tutor name and shows the inline calendar for deadline picking."""
     if len(message.text) > AddProjectService.MAX_TUTOR_LENGTH:
         return await message.answer(
             f"⚠️ اسم المدرس طويل جداً. الحد الأقصى {AddProjectService.MAX_TUTOR_LENGTH} حرف."
         )
     await state.update_data(tutor=message.text)
-    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown")
+    await message.answer(
+        MSG_ASK_DEADLINE,
+        parse_mode="Markdown",
+        reply_markup=build_calendar(),
+    )
     await state.set_state(ProjectOrder.deadline)
 
 
+# ── Calendar callback: day selected ──────────────────────────────────────────
+
+@router.callback_query(CalendarCallback.filter(F.action == "day"), ProjectOrder.deadline)
+async def calendar_day_selected(
+    callback: types.CallbackQuery,
+    callback_data: CalendarCallback,
+    state: FSMContext,
+):
+    """User tapped a day on the calendar — store and advance the FSM."""
+    date_str = f"{callback_data.year:04d}-{callback_data.month:02d}-{callback_data.day:02d}"
+    await state.update_data(deadline=date_str)
+    # Replace calendar with a clean confirmation line
+    display = f"{callback_data.day:02d}/{callback_data.month:02d}/{callback_data.year:04d}"
+    await callback.message.edit_text(
+        f"📅 **تاريخ التسليم:** {display}",
+        parse_mode="Markdown",
+    )
+    await callback.answer()
+    await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
+    await state.set_state(ProjectOrder.details)
+
+
+# ── Calendar callback: month navigation ───────────────────────────────────────
+
+@router.callback_query(CalendarCallback.filter(F.action == "nav"), ProjectOrder.deadline)
+async def calendar_nav(
+    callback: types.CallbackQuery,
+    callback_data: CalendarCallback,
+):
+    """User tapped ◀ or ▶ — redraw calendar for the new month."""
+    await callback.message.edit_reply_markup(
+        reply_markup=build_calendar(callback_data.year, callback_data.month)
+    )
+    await callback.answer()
+
+
+# ── Calendar callback: ignore cosmetic cells ──────────────────────────────────
+
+@router.callback_query(CalendarCallback.filter(F.action == "ignore"), ProjectOrder.deadline)
+async def calendar_ignore(callback: types.CallbackQuery):
+    """Cosmetic header/weekday cells — silently acknowledge."""
+    await callback.answer()
+
+
+# ── Text fallback: user typed a date manually ─────────────────────────────────
+
 @router.message(ProjectOrder.deadline, F.text)
-async def process_deadline(message: types.Message, state: FSMContext):
-    """Validates the deadline format and advances to details input."""
+async def process_deadline_text(message: types.Message, state: FSMContext):
+    """Fallback: validate a manually typed date and advance the FSM."""
     try:
         normalised = _parse_deadline(message.text)
     except ValueError as exc:
-        return await message.answer(f"⚠️ {exc}")
+        return await message.answer(
+            f"⚠️ {exc}\n"
+            "أو اختر التاريخ مباشرة من التقويم أعلاه 👆"
+        )
     await state.update_data(deadline=normalised)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
