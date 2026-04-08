@@ -15,6 +15,8 @@ import pytest
 
 from domain.enums import ProjectStatus
 from infrastructure.repositories import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
     PaymentRepository,
     ProjectRepository,
     SettingsRepository,
@@ -120,9 +122,11 @@ async def test_update_status(project_repo, mock_db):
 @pytest.mark.asyncio
 async def test_get_projects_by_status(project_repo, mock_db):
     mock_projects = [{"id": 1}, {"id": 2}]
-    # find() must return a plain MagicMock cursor (not a coroutine)
-    # so that cursor.to_list() can be awaited separately.
+    # Cursor is a plain MagicMock so .skip() and .limit() can chain synchronously,
+    # while .to_list() is awaitable.
     mock_cursor = MagicMock()
+    mock_cursor.skip.return_value = mock_cursor
+    mock_cursor.limit.return_value = mock_cursor
     mock_cursor.to_list = AsyncMock(return_value=mock_projects)
     mock_db.projects.find = MagicMock(return_value=mock_cursor)
 
@@ -134,6 +138,42 @@ async def test_get_projects_by_status(project_repo, mock_db):
     mock_db.projects.find.assert_called_once_with(
         {"status": {"$in": [ProjectStatus.PENDING]}, "user_id": 10}
     )
+    mock_cursor.skip.assert_called_once_with(0)
+    mock_cursor.limit.assert_called_once_with(DEFAULT_PAGE_SIZE)
+
+
+@pytest.mark.asyncio
+async def test_get_projects_by_status_custom_pagination(project_repo, mock_db):
+    """Custom limit/skip values are forwarded to the cursor."""
+    mock_cursor = MagicMock()
+    mock_cursor.skip.return_value = mock_cursor
+    mock_cursor.limit.return_value = mock_cursor
+    mock_cursor.to_list = AsyncMock(return_value=[])
+    mock_db.projects.find = MagicMock(return_value=mock_cursor)
+
+    await project_repo.get_projects_by_status(
+        [ProjectStatus.PENDING], limit=25, skip=50
+    )
+
+    mock_cursor.skip.assert_called_once_with(50)
+    mock_cursor.limit.assert_called_once_with(25)
+
+
+@pytest.mark.asyncio
+async def test_get_projects_by_status_max_page_size_cap(project_repo, mock_db):
+    """Requests exceeding MAX_PAGE_SIZE are capped silently."""
+    mock_cursor = MagicMock()
+    mock_cursor.skip.return_value = mock_cursor
+    mock_cursor.limit.return_value = mock_cursor
+    mock_cursor.to_list = AsyncMock(return_value=[])
+    mock_db.projects.find = MagicMock(return_value=mock_cursor)
+
+    await project_repo.get_projects_by_status(
+        [ProjectStatus.PENDING], limit=99_999
+    )
+
+    # The cursor must receive MAX_PAGE_SIZE, not the caller's huge value.
+    mock_cursor.limit.assert_called_once_with(MAX_PAGE_SIZE)
 
 
 @pytest.mark.asyncio
@@ -185,6 +225,25 @@ async def test_get_payment_not_found(payment_repo, mock_db):
     result = await payment_repo.get_payment(999)
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_payment_get_all_uses_pagination(payment_repo, mock_db):
+    """get_all() must use skip/limit and not load an unbounded cursor."""
+    mock_payments = [{"id": 5}, {"id": 4}]
+    mock_cursor = MagicMock()
+    mock_cursor.sort.return_value = mock_cursor
+    mock_cursor.skip.return_value = mock_cursor
+    mock_cursor.limit.return_value = mock_cursor
+    mock_cursor.to_list = AsyncMock(return_value=mock_payments)
+    mock_db.payments.find = MagicMock(return_value=mock_cursor)
+
+    result = await payment_repo.get_all()
+
+    assert result == mock_payments
+    mock_cursor.sort.assert_called_once_with("id", -1)
+    mock_cursor.skip.assert_called_once_with(0)
+    mock_cursor.limit.assert_called_once_with(DEFAULT_PAGE_SIZE)
 
 
 # ---------------------------------------------------------------------------
