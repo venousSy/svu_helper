@@ -72,7 +72,7 @@ async def start_project(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.subject)
 
 
-@router.message(ProjectOrder.subject, F.text)
+@router.message(ProjectOrder.subject, F.text, ~F.text.startswith('/'))
 async def process_subject(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_SUBJECT_LENGTH:
         return await message.answer(
@@ -83,7 +83,7 @@ async def process_subject(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.tutor)
 
 
-@router.message(ProjectOrder.tutor, F.text)
+@router.message(ProjectOrder.tutor, F.text, ~F.text.startswith('/'))
 async def process_tutor(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_TUTOR_LENGTH:
         return await message.answer(
@@ -94,7 +94,7 @@ async def process_tutor(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.deadline)
 
 
-@router.message(ProjectOrder.deadline, F.text)
+@router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
 async def process_deadline(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
         return await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
