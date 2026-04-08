@@ -1,9 +1,9 @@
-
 import time
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message
+import cachetools
 
 class ThrottlingMiddleware(BaseMiddleware):
     """
@@ -13,7 +13,7 @@ class ThrottlingMiddleware(BaseMiddleware):
 
     def __init__(self, rate_limit: float = 2.0):
         self.rate_limit = rate_limit
-        self.last_seen: Dict[int, float] = {}
+        self.last_seen = cachetools.TTLCache(maxsize=10000, ttl=rate_limit)
 
     async def __call__(
         self,
@@ -29,16 +29,12 @@ class ThrottlingMiddleware(BaseMiddleware):
             user_id = event.from_user.id
         else:
             return await handler(event, data)
-        current_time = time.time()
-        
-        last_time = self.last_seen.get(user_id, 0)
         
         # Check if user is spamming
-        if current_time - last_time < self.rate_limit:
+        if user_id in self.last_seen:
             # Drop the update (don't process it)
-            # Optional: Send a warning (careful not to create an infinite loop of warnings)
             return None 
 
         # Update last seen time and proceed
-        self.last_seen[user_id] = current_time
+        self.last_seen[user_id] = time.time()
         return await handler(event, data)

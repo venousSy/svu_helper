@@ -31,6 +31,8 @@ from utils.constants import (
     MSG_OFFER_DETAILS,
     MSG_PROJECT_SUBMITTED,
     MSG_RECEIPT_RECEIVED,
+    MSG_PROJECT_CLOSED,
+    MSG_PROJECT_DENIED_STUDENT_TO_ADMIN,
 )
 from utils.formatters import (
     escape_md,
@@ -39,12 +41,10 @@ from utils.formatters import (
     format_student_projects,
 )
 from utils.helpers import get_file_id, get_file_size
-from middlewares.throttling import ThrottlingMiddleware
 
 # Initialize router for student-related events
 router = Router()
 logger = logging.getLogger(__name__)
-router.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
 
 MAX_FILE_SIZE_MB = AddProjectService.MAX_FILE_SIZE_MB
 MAX_FILE_SIZE_BYTES = AddProjectService.MAX_FILE_SIZE_BYTES
@@ -221,6 +221,31 @@ async def student_accept_offer(
     )
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
     await callback.answer()
+
+@router.callback_query(ProjectCallback.filter(F.action == "student_deny"))
+async def student_deny_offer(
+    callback: types.CallbackQuery,
+    bot,
+    callback_data: ProjectCallback,
+    project_repo: ProjectRepository,
+):
+    """Student clicks 'Deny' on the offer."""
+    proj_id = callback_data.id
+
+    project = await project_repo.get_project_by_id(proj_id)
+    if not project or project["user_id"] != callback.from_user.id:
+        return await callback.answer("⚠️ غير مصرح لك بذلك", show_alert=True)
+
+    await project_repo.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
+    for admin_id in settings.admin_ids:
+        try:
+            await bot.send_message(
+                admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id)
+            )
+        except TelegramAPIError as e:
+            logger.error(f"Failed to notify admin {admin_id}: {e}")
+
+    await callback.message.edit_text(MSG_PROJECT_CLOSED.format(proj_id))
 
 
 @router.callback_query(MenuCallback.filter(F.action == "cancel_pay"))

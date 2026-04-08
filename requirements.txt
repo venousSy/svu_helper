@@ -13,3 +13,4 @@ isort
 flake8
 sentry-sdk
 telethon
+cachetools
