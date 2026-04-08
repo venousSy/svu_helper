@@ -33,3 +33,7 @@ mock_image.jpg
 
 # Agent Stuff
 .agents/
+
+# Antigravity Skills
+.gemini/skills/*
+!.gemini/skills/run_tests.md
