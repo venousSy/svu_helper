@@ -102,54 +102,74 @@ def format_project_history(projects):
     return text.strip()
 
 
-def format_master_report(categorized_data: dict) -> str:
+def format_master_report(
+    categorized_data: dict, page: int = 0, page_size: int = 5
+) -> tuple[str, int]:
     """
-    Formats the project dictionary into a summary.
-    Distinguishes between New requests and Sent offers.
-    """
-    text = "📑 **تقارير المشاريع الشاملة**\n" + "━" * 15 + "\n"
+    Returns (message_text, total_pages) for a paginated all-projects report.
 
+    Flattens all categories into a single list, slices the requested page,
+    and produces a compact Markdown block well within Telegram's 4096-char limit.
+    """
     # Mapping keys to their visual representation
     meta = {
-        "New / Pending": {"icon": "🆕", "label": "طلبات جديدة"},
-        "Offered / Waiting": {"icon": "📨", "label": "عروض مرسلة"},
-        "Ongoing": {"icon": "🚀", "label": "قيد التنفيذ"},
-        "History": {"icon": "📜", "label": "الأرشيف"},
+        "New / Pending":     {"icon": "🆕", "label": "طلب جديد"},
+        "Offered / Waiting": {"icon": "📨", "label": "عرض مرسل"},
+        "Ongoing":           {"icon": "🚀", "label": "جارٍ"},
+        "History":           {"icon": "📜", "label": "أرشيف"},
     }
 
+    # Build a flat list of (category_label, item) tuples
+    flat: list[tuple[str, dict]] = []
     for key, projects in categorized_data.items():
-        config = meta.get(key, {"icon": "🔹", "label": key.upper()})
-
-        text += f"\n{config['icon']} **{config['label']}** ({len(projects)})\n"
-
-        if not projects:
-            text += "└ _فارغ_\n"
-            continue
-
+        cfg = meta.get(key, {"icon": "🔹", "label": key})
         for item in projects:
-            p_id = item["id"]
-            sub = escape_md(item["subject_name"])
+            flat.append((cfg, item))
 
-            # Construct User Info
-            u_id = item.get("user_id")
-            name = escape_md(item.get("user_full_name") or "مجهول")
-            username = escape_md(item.get("username"))
+    total = len(flat)
+    if total == 0:
+        return "📑 **تقارير المشاريع الشاملة**\n━━━━━━━━━━━━━\n_لا توجد مشاريع حالياً._", 1
 
-            user_link = f"[{name}](tg://user?id={u_id})"
-            if username:
-                user_link += f" (@{username})"
+    total_pages = max(1, -(-total // page_size))   # ceiling division
+    page = max(0, min(page, total_pages - 1))
 
-            # Determine "extra" based on available keys
-            if "tutor_name" in item:
-                extra = f"المدرس: {escape_md(item['tutor_name'])}"
-            elif "status" in item:
-                extra = f"الحالة: {item['status']}"
-            else:
-                extra = ""
+    start = page * page_size
+    slice_ = flat[start : start + page_size]
 
-            text += f"└ #{p_id}: {sub}\n   👤 {user_link}\n   ℹ️ {extra}\n"
+    header = (
+        f"📑 **تقارير المشاريع الشاملة**\n"
+        f"━━━━━━━━━━━━━\n"
+        f"إجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
+    )
 
-    return text.strip()
+    lines: list[str] = [header]
+    for cfg, item in slice_:
+        p_id = item["id"]
+        sub  = escape_md(item.get("subject_name", "—"))
+
+        u_id    = item.get("user_id")
+        name    = escape_md(item.get("user_full_name") or "مجهول")
+        username = escape_md(item.get("username") or "")
+
+        user_link = f"[{name}](tg://user?id={u_id})" if u_id else name
+        if username:
+            user_link += f" (@{username})"
+
+        if "tutor_name" in item and item["tutor_name"]:
+            extra = f"المدرس: {escape_md(item['tutor_name'])}"
+        elif "status" in item:
+            extra = f"الحالة: {item['status']}"
+        else:
+            extra = ""
+
+        lines.append(
+            f"{cfg['icon']} **#{p_id}** [{cfg['label']}]: {sub}\n"
+            f"   👤 {user_link}\n"
+            + (f"   ℹ️ {extra}\n" if extra else "")
+        )
+
+    return "".join(lines).strip(), total_pages
+
 
 
 def format_student_projects(projects):

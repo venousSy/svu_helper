@@ -16,7 +16,8 @@ from keyboards.admin_kb import (
     get_payment_history_kb,
     get_pending_projects_kb,
 )
-from keyboards.callbacks import MenuCallback
+from keyboards.callbacks import MenuCallback, PageCallback
+from keyboards.factory import KeyboardFactory
 from utils.formatters import (
     format_master_report,
     format_payment_list,
@@ -27,6 +28,22 @@ from utils.formatters import (
 router = Router()
 logger = logging.getLogger(__name__)
 
+# How many projects to show per page in the master report
+_PAGE_SIZE = 5
+
+
+async def _render_master_page(
+    callback: types.CallbackQuery,
+    project_repo: ProjectRepository,
+    page: int,
+) -> None:
+    """Fetch categorized projects and edit the message to show the requested page."""
+    projects = await GetCategorizedProjectsService(project_repo).execute()
+    text, total_pages = format_master_report(projects, page=page, page_size=_PAGE_SIZE)
+    kb = KeyboardFactory.paginated_master_report(page=page, total_pages=total_pages)
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    await callback.answer()
+
 
 @router.callback_query(
     MenuCallback.filter(F.action == "view_all_master"),
@@ -35,11 +52,19 @@ logger = logging.getLogger(__name__)
 async def view_all_master(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    projects = await GetCategorizedProjectsService(project_repo).execute()
-    await callback.message.edit_text(
-        format_master_report(projects), parse_mode="Markdown",
-        reply_markup=get_back_btn().as_markup(),
-    )
+    await _render_master_page(callback, project_repo, page=0)
+
+
+@router.callback_query(
+    PageCallback.filter(F.action == "all_projects"),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def view_all_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    project_repo: ProjectRepository,
+):
+    await _render_master_page(callback, project_repo, page=callback_data.page)
 
 
 @router.callback_query(
