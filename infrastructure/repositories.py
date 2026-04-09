@@ -24,7 +24,7 @@ from infrastructure.mongo_db import Database
 
 #: Maximum documents returned in a single paginated query.
 #: Prevents accidental full-collection loads when callers omit a limit.
-DEFAULT_PAGE_SIZE: int = 100
+DEFAULT_PAGE_SIZE: int = 15
 MAX_PAGE_SIZE: int = 500
 
 
@@ -85,7 +85,7 @@ class ProjectRepository:
             skip:  Number of documents to skip (for offset-based paging).
         """
         limit = min(limit, MAX_PAGE_SIZE)
-        cursor = self._db.projects.find({"user_id": user_id}).skip(skip).limit(limit)
+        cursor = self._db.projects.find({"user_id": user_id}).sort("id", -1).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
 
     async def update_status(self, project_id: int, new_status: str) -> None:
@@ -113,7 +113,7 @@ class ProjectRepository:
         query: Dict[str, Any] = {"status": {"$in": statuses}}
         if user_id is not None:
             query["user_id"] = user_id
-        cursor = self._db.projects.find(query).skip(skip).limit(limit)
+        cursor = self._db.projects.find(query).sort("id", -1).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
 
     async def update_offer(self, proj_id: int, price: str, delivery: str) -> None:
