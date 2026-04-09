@@ -26,13 +26,13 @@ class GlobalErrorHandler(BaseMiddleware):
             # Check if we can reply to the user (Message or CallbackQuery)
             if isinstance(event, Message):
                 try:
-                    await event.answer("⚠️ حدث خطأ غير متوقع. تم إبلاغ المسؤولين.")
+                    await event.answer(f"DEBUG_TRACE: {repr(e)}")
                 except Exception:
                     pass # Only fails if we can't send messages (blocked etc)
             
             elif isinstance(event, CallbackQuery):
                 try:
-                    await event.answer("⚠️ حدث خطأ غير متوقع.", show_alert=True)
+                    await event.message.answer(f"DEBUG_TRACE: {repr(e)}")
                 except Exception:
                     pass
             
