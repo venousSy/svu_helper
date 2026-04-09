@@ -30,10 +30,10 @@ def test_formatting():
         ],
     }
 
-    report = format_master_report(mock_data)
+    report, total_pages = format_master_report(mock_data)
     if sys.stdout.encoding != "utf-8":
         sys.stdout.reconfigure(encoding="utf-8")
-    print(report)
+    print(f"[Page 1/{total_pages}]\n{report}")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ keyboards package require no changes during the transition.
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
-from keyboards.callbacks import MenuCallback, PaymentCallback, ProjectCallback
+from keyboards.callbacks import MenuCallback, PageCallback, PaymentCallback, ProjectCallback
 from utils.constants import (
     BTN_BACK,
     BTN_CANCEL,
@@ -323,6 +323,46 @@ class KeyboardFactory:
                     ).pack(),
                 )
             )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(action="back_to_admin").pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def paginated_master_report(
+        page: int, total_pages: int
+    ) -> types.InlineKeyboardMarkup:
+        """Navigation row (Prev / Page X of Y / Next) + Back for the all-projects view."""
+        builder = InlineKeyboardBuilder()
+        nav_buttons: list[types.InlineKeyboardButton] = []
+
+        if page > 0:
+            nav_buttons.append(
+                types.InlineKeyboardButton(
+                    text="⬅️ السابق",
+                    callback_data=PageCallback(action="all_projects", page=page - 1).pack(),
+                )
+            )
+
+        nav_buttons.append(
+            types.InlineKeyboardButton(
+                text=f"📄 {page + 1}/{total_pages}",
+                callback_data="noop",  # counter-only, not functional
+            )
+        )
+
+        if page < total_pages - 1:
+            nav_buttons.append(
+                types.InlineKeyboardButton(
+                    text="التالي ➡️",
+                    callback_data=PageCallback(action="all_projects", page=page + 1).pack(),
+                )
+            )
+
+        builder.row(*nav_buttons)
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
