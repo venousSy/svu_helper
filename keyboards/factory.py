@@ -95,7 +95,7 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_DENY_OFFER,
-                callback_data=ProjectCallback(action="student_deny", id=proj_id).pack(),
+                callback_data=ProjectCallback(action="deny", id=proj_id).pack(),
             )
         )
         return builder.as_markup()
