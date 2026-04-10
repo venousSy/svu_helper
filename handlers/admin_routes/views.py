@@ -10,12 +10,6 @@ from application.admin_service import (
 )
 from config import settings
 from infrastructure.repositories import PaymentRepository, ProjectRepository
-from keyboards.admin_kb import (
-    get_accepted_projects_kb,
-    get_back_btn,
-    get_payment_history_kb,
-    get_pending_projects_kb,
-)
 from keyboards.callbacks import MenuCallback, PageCallback
 from keyboards.factory import KeyboardFactory
 from utils.formatters import (
@@ -24,25 +18,42 @@ from utils.formatters import (
     format_project_history,
     format_project_list,
 )
+from utils.pagination import build_nav_keyboard
 
 router = Router()
 logger = logging.getLogger(__name__)
 
-# How many projects to show per page in the master report
-_PAGE_SIZE = 5
 
+# ── HELPER: render a single page and answer the callback ────────────────────
+
+async def _render(
+    callback: types.CallbackQuery,
+    text: str,
+    total_pages: int,
+    action: str,
+    page: int,
+    back_action: str = "back_to_admin",
+    extra_kb: types.InlineKeyboardMarkup | None = None,
+) -> None:
+    """Edit message, attach pagination footer, answer callback."""
+    kb = extra_kb if extra_kb and total_pages == 1 else build_nav_keyboard(
+        action=action, page=page, total_pages=total_pages, back_action=back_action
+    )
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    except Exception:
+        await callback.message.edit_text(text, parse_mode=None, reply_markup=kb)
+    await callback.answer()
+
+
+# ── MASTER REPORT (all projects, all categories) ─────────────────────────────
 
 async def _render_master_page(
-    callback: types.CallbackQuery,
-    project_repo: ProjectRepository,
-    page: int,
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
 ) -> None:
-    """Fetch categorized projects and edit the message to show the requested page."""
     projects = await GetCategorizedProjectsService(project_repo).execute()
-    text, total_pages = format_master_report(projects, page=page, page_size=_PAGE_SIZE)
-    kb = KeyboardFactory.paginated_master_report(page=page, total_pages=total_pages)
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
-    await callback.answer()
+    text, total_pages = format_master_report(projects, page=page)
+    await _render(callback, text, total_pages, "all_projects", page)
 
 
 @router.callback_query(
@@ -67,6 +78,32 @@ async def view_all_page(
     await _render_master_page(callback, project_repo, page=callback_data.page)
 
 
+# ── PENDING PROJECTS ─────────────────────────────────────────────────────────
+
+async def _render_pending(
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
+) -> None:
+    projects = await GetPendingProjectsService(project_repo).execute()
+    text, total_pages = format_project_list(projects, "📊 مشاريع قيد الانتظار", page=page)
+
+    # Build item buttons only for the visible page slice
+    from keyboards.factory import KeyboardFactory
+    from utils.pagination import paginate
+    slice_, _, _ = paginate(projects, page)
+    item_kb = KeyboardFactory.pending_projects(slice_)
+
+    if total_pages > 1:
+        kb = _merge_item_and_nav(item_kb, "pending", page, total_pages)
+    else:
+        kb = item_kb
+
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    except Exception:
+        await callback.message.edit_text(text, parse_mode=None, reply_markup=kb)
+    await callback.answer()
+
+
 @router.callback_query(
     MenuCallback.filter(F.action == "view_pending"),
     F.from_user.id.in_(settings.admin_ids),
@@ -74,12 +111,44 @@ async def view_all_page(
 async def admin_view_pending(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    pending = await GetPendingProjectsService(project_repo).execute()
-    await callback.message.edit_text(
-        format_project_list(pending, "📊 مشاريع قيد الانتظار"),
-        parse_mode="Markdown",
-        reply_markup=get_pending_projects_kb(pending),
-    )
+    await _render_pending(callback, project_repo, page=0)
+
+
+@router.callback_query(
+    PageCallback.filter(F.action == "pending"),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def admin_pending_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    project_repo: ProjectRepository,
+):
+    await _render_pending(callback, project_repo, page=callback_data.page)
+
+
+# ── ACCEPTED / ONGOING PROJECTS ───────────────────────────────────────────────
+
+async def _render_accepted(
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
+) -> None:
+    projects = await GetOngoingProjectsService(project_repo).execute()
+    text, total_pages = format_project_list(projects, "🚀 مشاريع جارية", page=page)
+
+    from keyboards.factory import KeyboardFactory
+    from utils.pagination import paginate
+    slice_, _, _ = paginate(projects, page)
+    item_kb = KeyboardFactory.accepted_projects(slice_)
+
+    if total_pages > 1:
+        kb = _merge_item_and_nav(item_kb, "accepted", page, total_pages)
+    else:
+        kb = item_kb
+
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    except Exception:
+        await callback.message.edit_text(text, parse_mode=None, reply_markup=kb)
+    await callback.answer()
 
 
 @router.callback_query(
@@ -89,12 +158,29 @@ async def admin_view_pending(
 async def admin_view_accepted(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    ongoing = await GetOngoingProjectsService(project_repo).execute()
-    await callback.message.edit_text(
-        format_project_list(ongoing, "🚀 مشاريع جارية"),
-        parse_mode="Markdown",
-        reply_markup=get_accepted_projects_kb(ongoing),
-    )
+    await _render_accepted(callback, project_repo, page=0)
+
+
+@router.callback_query(
+    PageCallback.filter(F.action == "accepted"),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def admin_accepted_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    project_repo: ProjectRepository,
+):
+    await _render_accepted(callback, project_repo, page=callback_data.page)
+
+
+# ── HISTORY ───────────────────────────────────────────────────────────────────
+
+async def _render_history(
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
+) -> None:
+    history = await GetProjectHistoryService(project_repo).execute()
+    text, total_pages = format_project_history(history, page=page)
+    await _render(callback, text, total_pages, "history", page)
 
 
 @router.callback_query(
@@ -104,12 +190,29 @@ async def admin_view_accepted(
 async def admin_view_history(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    history = await GetProjectHistoryService(project_repo).execute()
-    await callback.message.edit_text(
-        format_project_history(history),
-        parse_mode="Markdown",
-        reply_markup=get_back_btn().as_markup(),
-    )
+    await _render_history(callback, project_repo, page=0)
+
+
+@router.callback_query(
+    PageCallback.filter(F.action == "history"),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def admin_history_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    project_repo: ProjectRepository,
+):
+    await _render_history(callback, project_repo, page=callback_data.page)
+
+
+# ── PAYMENTS ──────────────────────────────────────────────────────────────────
+
+async def _render_payments(
+    callback: types.CallbackQuery, payment_repo: PaymentRepository, page: int
+) -> None:
+    payments = await GetAllPaymentsService(payment_repo).execute()
+    text, total_pages = format_payment_list(payments, page=page)
+    await _render(callback, text, total_pages, "payments", page)
 
 
 @router.callback_query(
@@ -119,9 +222,58 @@ async def admin_view_history(
 async def admin_view_payments(
     callback: types.CallbackQuery, payment_repo: PaymentRepository
 ):
-    payments = await GetAllPaymentsService(payment_repo).execute()
-    await callback.message.edit_text(
-        format_payment_list(payments),
-        parse_mode="Markdown",
-        reply_markup=get_payment_history_kb(payments),
-    )
+    await _render_payments(callback, payment_repo, page=0)
+
+
+@router.callback_query(
+    PageCallback.filter(F.action == "payments"),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def admin_payments_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    payment_repo: PaymentRepository,
+):
+    await _render_payments(callback, payment_repo, page=callback_data.page)
+
+
+# ── INTERNAL HELPER ───────────────────────────────────────────────────────────
+
+def _merge_item_and_nav(
+    item_kb: types.InlineKeyboardMarkup,
+    action: str,
+    page: int,
+    total_pages: int,
+) -> types.InlineKeyboardMarkup:
+    """Append the nav row to an existing item-button keyboard."""
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram import types as tg_types
+    from keyboards.callbacks import MenuCallback, PageCallback
+
+    builder = InlineKeyboardBuilder()
+    # Re-add existing rows
+    for row in item_kb.inline_keyboard:
+        builder.row(*row)
+
+    # Navigation row
+    nav: list[tg_types.InlineKeyboardButton] = []
+    if page > 0:
+        nav.append(tg_types.InlineKeyboardButton(
+            text="⬅️ السابق",
+            callback_data=PageCallback(action=action, page=page - 1).pack(),
+        ))
+    nav.append(tg_types.InlineKeyboardButton(
+        text=f"📄 {page + 1}/{total_pages}",
+        callback_data="noop",
+    ))
+    if page < total_pages - 1:
+        nav.append(tg_types.InlineKeyboardButton(
+            text="التالي ➡️",
+            callback_data=PageCallback(action=action, page=page + 1).pack(),
+        ))
+    builder.row(*nav)
+    builder.row(tg_types.InlineKeyboardButton(
+        text="⬅️ رجوع",
+        callback_data=MenuCallback(action="back_to_admin").pack(),
+    ))
+    return builder.as_markup()
