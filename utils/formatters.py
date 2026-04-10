@@ -1,3 +1,12 @@
+"""
+Formatters
+==========
+All list-returning formatters produce a (text, total_pages) tuple so every
+caller can attach the standard pagination keyboard.  Single-item formatters
+(e.g. format_admin_notification) are unchanged.
+"""
+from __future__ import annotations
+
 from utils.constants import (
     MSG_NO_OFFERS,
     MSG_NO_PROJECTS,
@@ -8,31 +17,53 @@ from utils.constants import (
     STATUS_FINISHED,
     STATUS_PENDING,
 )
+from utils.pagination import paginate, PAGE_SIZE
+
+_SEP = "━━━━━━━━━━━━━"
 
 
-def escape_md(text):
+# ---------------------------------------------------------------------------
+# Escaping helper
+# ---------------------------------------------------------------------------
+
+def escape_md(text) -> str:
     """Escapes Markdown special characters to prevent parsing errors."""
     if not text:
         return ""
     text = str(text)
-    # Escape backslash first to prevent double escaping
     text = text.replace("\\", "\\\\")
     for char in ["_", "*", "`", "["]:
         text = text.replace(char, f"\\{char}")
     return text
 
 
-def format_project_list(projects, title="📂 قائمة المشاريع"):
-    """Standard list for Pending or Ongoing projects."""
-    if not projects:
-        return "لا توجد مشاريع. ✅"
+# ---------------------------------------------------------------------------
+# Admin – project list (pending / ongoing)
+# ---------------------------------------------------------------------------
 
-    text = f"**{title}**\n━━━━━━━━━━━━━━━━━━\n"
-    for project in projects:
+def format_project_list(
+    projects: list,
+    title: str = "📂 قائمة المشاريع",
+    page: int = 0,
+    page_size: int = PAGE_SIZE,
+) -> tuple[str, int]:
+    """Standard paginated list for Pending or Ongoing projects.
+
+    Returns (text, total_pages).
+    """
+    if not projects:
+        return "لا توجد مشاريع. ✅", 1
+
+    slice_, total_pages, page = paginate(projects, page, page_size)
+    total = len(projects)
+
+    header = f"**{title}**\n{_SEP}\nإجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
+    lines = [header]
+
+    for project in slice_:
         p_id = project["id"]
         subject = project["subject_name"]
 
-        # Add user info if available
         user_info = ""
         if "user_full_name" in project and project["user_full_name"]:
             name = escape_md(project["user_full_name"])
@@ -42,76 +73,68 @@ def format_project_list(projects, title="📂 قائمة المشاريع"):
                 if project.get("username")
                 else ""
             )
-
-            # Link user if u_id is present
             if u_id:
                 user_info = f"\n   👤 [{name}](tg://user?id={u_id}){username}"
             else:
                 user_info = f"\n   👤 {name}{username}"
 
-        # Add Tutor and Deadline if available
         extra_info = ""
         if "tutor_name" in project and project["tutor_name"]:
-            tutor = escape_md(project["tutor_name"])
-            extra_info += f"\n   👨‍🏫 المدرس: {tutor}"
-
+            extra_info += f"\n   👨‍🏫 المدرس: {escape_md(project['tutor_name'])}"
         if "deadline" in project and project["deadline"]:
-            deadline = escape_md(project["deadline"])
-            extra_info += f" | 📅 الموعد: {deadline}"
+            extra_info += f" | 📅 الموعد: {escape_md(project['deadline'])}"
 
         user_info += extra_info
+        lines.append(f"• #{p_id}: {escape_md(subject)}{user_info}\n")
 
-        text += f"• #{p_id}: {escape_md(subject)}{user_info}\n"
-    return text.strip()
-
-
-# ... (rest of file) ...
+    return "".join(lines).strip(), total_pages
 
 
-def format_admin_notification(
-    p_id, subject, deadline, details, user_name="Unknown", username=None
-):
-    """Formats the alert sent to the admin when a new project arrives."""
-    user_display = f"{escape_md(user_name)}"
-    if username:
-        user_display += f" (@{escape_md(username)})"
+# ---------------------------------------------------------------------------
+# Admin – project history
+# ---------------------------------------------------------------------------
 
-    return (
-        f"🔔 **مشروع جديد #{p_id}**\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"👤 **المستخدم:** {user_display}\n"
-        f"📚 **المادة:** {escape_md(subject)}\n"
-        f"📅 **الموعد:** {escape_md(deadline)}\n"
-        f"📝 **التفاصيل:** {escape_md(details)}"
-    )
+def format_project_history(
+    projects: list,
+    page: int = 0,
+    page_size: int = PAGE_SIZE,
+) -> tuple[str, int]:
+    """History list with icons based on status.
 
-
-def format_project_history(projects):
-    """History list with icons based on status."""
+    Returns (text, total_pages).
+    """
     if not projects:
-        return "السجل فارغ. 📭"
+        return "السجل فارغ. 📭", 1
 
-    text = "📜 **سجل المشاريع:**\n━━━━━━━━━━━━━━━━━━\n"
-    for project in projects:
+    slice_, total_pages, page = paginate(projects, page, page_size)
+    total = len(projects)
+
+    header = f"📜 **سجل المشاريع:**\n{_SEP}\nإجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
+    lines = [header]
+
+    for project in slice_:
         p_id = project["id"]
         subject = project["subject_name"]
         status = project["status"]
-
         icon = "🏁" if status == STATUS_FINISHED else "❌"
-        text += f"{icon} #{p_id} | {escape_md(subject)} ({status})\n"
-    return text.strip()
+        lines.append(f"{icon} #{p_id} | {escape_md(subject)} ({status})\n")
 
+    return "".join(lines).strip(), total_pages
+
+
+# ---------------------------------------------------------------------------
+# Admin – master report (all categories flattened)
+# ---------------------------------------------------------------------------
 
 def format_master_report(
-    categorized_data: dict, page: int = 0, page_size: int = 5
+    categorized_data: dict,
+    page: int = 0,
+    page_size: int = PAGE_SIZE,
 ) -> tuple[str, int]:
-    """
-    Returns (message_text, total_pages) for a paginated all-projects report.
+    """Paginated all-projects report.
 
-    Flattens all categories into a single list, slices the requested page,
-    and produces a compact Markdown block well within Telegram's 4096-char limit.
+    Returns (text, total_pages).
     """
-    # Mapping keys to their visual representation
     meta = {
         "New / Pending":     {"icon": "🆕", "label": "طلب جديد"},
         "Offered / Waiting": {"icon": "📨", "label": "عرض مرسل"},
@@ -119,8 +142,7 @@ def format_master_report(
         "History":           {"icon": "📜", "label": "أرشيف"},
     }
 
-    # Build a flat list of (category_label, item) tuples
-    flat: list[tuple[str, dict]] = []
+    flat: list[tuple[dict, dict]] = []
     for key, projects in categorized_data.items():
         cfg = meta.get(key, {"icon": "🔹", "label": key})
         for item in projects:
@@ -128,29 +150,22 @@ def format_master_report(
 
     total = len(flat)
     if total == 0:
-        return "📑 **تقارير المشاريع الشاملة**\n━━━━━━━━━━━━━\n_لا توجد مشاريع حالياً._", 1
+        return f"📑 **تقارير المشاريع الشاملة**\n{_SEP}\n_لا توجد مشاريع حالياً._", 1
 
-    total_pages = max(1, -(-total // page_size))   # ceiling division
-    page = max(0, min(page, total_pages - 1))
-
-    start = page * page_size
-    slice_ = flat[start : start + page_size]
+    slice_, total_pages, page = paginate(flat, page, page_size)
 
     header = (
-        f"📑 **تقارير المشاريع الشاملة**\n"
-        f"━━━━━━━━━━━━━\n"
+        f"📑 **تقارير المشاريع الشاملة**\n{_SEP}\n"
         f"إجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
     )
-
     lines: list[str] = [header]
+
     for cfg, item in slice_:
         p_id = item["id"]
         sub  = escape_md(item.get("subject_name", "—"))
-
-        u_id    = item.get("user_id")
-        name    = escape_md(item.get("user_full_name") or "مجهول")
+        u_id = item.get("user_id")
+        name = escape_md(item.get("user_full_name") or "مجهول")
         username = escape_md(item.get("username") or "")
-
         user_link = f"[{name}](tg://user?id={u_id})" if u_id else name
         if username:
             user_link += f" (@{username})"
@@ -171,22 +186,80 @@ def format_master_report(
     return "".join(lines).strip(), total_pages
 
 
+# ---------------------------------------------------------------------------
+# Admin – payment list
+# ---------------------------------------------------------------------------
 
-def format_student_projects(projects):
+def format_payment_list(
+    payments: list,
+    page: int = 0,
+    page_size: int = PAGE_SIZE,
+) -> tuple[str, int]:
+    """Paginated payment history log.
+
+    Returns (text, total_pages).
     """
-    Formats the project list specifically for the student view.
-    Includes status-specific emojis for better UX.
+    if not payments:
+        return "سجل المدفوعات فارغ. 📭", 1
+
+    slice_, total_pages, page = paginate(payments, page, page_size)
+    total = len(payments)
+
+    header = f"💰 **سجل المدفوعات**\n{_SEP}\nإجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
+    lines = [header]
+
+    for pay in slice_:
+        p_id    = pay["id"]
+        proj_id = pay["project_id"]
+        u_id    = pay["user_id"]
+        status  = pay["status"]
+
+        if status == "accepted":
+            icon = "✅"
+        elif status == "rejected":
+            icon = "❌"
+        else:
+            icon = "⏳"
+
+        lines.append(
+            f"{icon} **D#{p_id}** | 🆔 Proj: #{proj_id}\n"
+            f"   👤 User: [{u_id}](tg://user?id={u_id})\n"
+            f"   🏷 Status: {status}\n\n"
+        )
+
+    return "".join(lines).strip(), total_pages
+
+
+# ---------------------------------------------------------------------------
+# Student – own projects
+# ---------------------------------------------------------------------------
+
+def format_student_projects(
+    projects: list,
+    page: int = 0,
+    page_size: int = PAGE_SIZE,
+) -> tuple[str, int]:
+    """Paginated student project list.
+
+    Returns (text, total_pages).
     """
     if not projects:
-        return MSG_NO_PROJECTS
+        return MSG_NO_PROJECTS, 1
 
-    response = "📋 **حالة مشاريعك:**\n━━━━━━━━━━━━━━━━━━\n\n"
-    for project in projects:
-        p_id = project["id"]
+    slice_, total_pages, page = paginate(projects, page, page_size)
+    total = len(projects)
+
+    header = (
+        f"📋 **حالة مشاريعك:**\n{_SEP}\n"
+        f"إجمالي: {total} | صفحة {page + 1}/{total_pages}\n\n"
+    )
+    lines = [header]
+
+    for project in slice_:
+        p_id    = project["id"]
         subject = project["subject_name"]
-        status = project["status"]
+        status  = project["status"]
 
-        # Map statuses to emojis
         if status == STATUS_PENDING:
             emoji = "⏳"
         elif status in [STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION]:
@@ -198,51 +271,63 @@ def format_student_projects(projects):
         else:
             emoji = "ℹ️"
 
-        response += (
-            f"• #{p_id} | {escape_md(subject)}\n   ┗ الحالة: {emoji} {status}\n\n"
-        )
+        lines.append(f"• #{p_id} | {escape_md(subject)}\n   ┗ الحالة: {emoji} {status}\n\n")
 
-    return response.strip()
+    return "".join(lines).strip(), total_pages
 
 
-def format_offer_list(offers: list) -> str:
-    """Formats a list of pending offers for the student."""
+# ---------------------------------------------------------------------------
+# Student – pending offers
+# ---------------------------------------------------------------------------
+
+def format_offer_list(
+    offers: list,
+    page: int = 0,
+    page_size: int = PAGE_SIZE,
+) -> tuple[str, int]:
+    """Paginated list of pending offers for the student.
+
+    Returns (text, total_pages).
+    """
     if not offers:
-        return MSG_NO_OFFERS
+        return MSG_NO_OFFERS, 1
 
-    text = "🎁 **العروض المعلقة**\n" + "━" * 15 + "\n"
-    for offer in offers:
-        p_id = offer["id"]
-        sub = escape_md(offer["subject_name"])
+    slice_, total_pages, page = paginate(offers, page, page_size)
+    total = len(offers)
+
+    header = (
+        f"🎁 **العروض المعلقة**\n{_SEP}\n"
+        f"إجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
+    )
+    lines = [header]
+
+    for offer in slice_:
+        p_id  = offer["id"]
+        sub   = escape_md(offer["subject_name"])
         tutor = escape_md(offer["tutor_name"])
+        lines.append(f"📍 **المشروع #{p_id}**: {sub}\n└ _المدرس: {tutor}_\n\n")
 
-        text += f"📍 **المشروع #{p_id}**: {sub}\n└ _المدرس: {tutor}_\n\n"
-
-    text += "💡 اضغط على الزر أدناه لعرض التفاصيل والرد."
-    return text
+    lines.append("💡 اضغط على الزر أدناه لعرض التفاصيل والرد.")
+    return "".join(lines).strip(), total_pages
 
 
-def format_payment_list(payments: list) -> str:
-    """Formats the raw payment logs into a readable history log."""
-    if not payments:
-        return "سجل المدفوعات فارغ. 📭"
+# ---------------------------------------------------------------------------
+# Admin – single-project notification (unchanged, no pagination needed)
+# ---------------------------------------------------------------------------
 
-    text = "💰 **سجل المدفوعات**\n" + "━" * 15 + "\n"
+def format_admin_notification(
+    p_id, subject, deadline, details, user_name="Unknown", username=None
+) -> str:
+    """Formats the alert sent to the admin when a new project arrives."""
+    user_display = escape_md(user_name)
+    if username:
+        user_display += f" (@{escape_md(username)})"
 
-    for pay in payments:
-        p_id = pay["id"]
-        proj_id = pay["project_id"]
-        u_id = pay["user_id"]
-        status = pay["status"]
-
-        # Emoji Logic
-        if status == "accepted":
-            icon = "✅"
-        elif status == "rejected":
-            icon = "❌"
-        else:
-            icon = "⏳"
-
-        text += f"{icon} **D#{p_id}** | 🆔 Proj: #{proj_id}\n   👤 User: [{u_id}](tg://user?id={u_id})\n   🏷 Status: {status}\n\n"
-
-    return text.strip()
+    return (
+        f"🔔 **مشروع جديد #{p_id}**\n"
+        f"{_SEP}\n"
+        f"👤 **المستخدم:** {user_display}\n"
+        f"📚 **المادة:** {escape_md(subject)}\n"
+        f"📅 **الموعد:** {escape_md(deadline)}\n"
+        f"📝 **التفاصيل:** {escape_md(details)}"
+    )

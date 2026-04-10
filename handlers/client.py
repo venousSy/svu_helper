@@ -20,7 +20,7 @@ from keyboards.client_kb import (
     get_offer_actions_kb,
     get_offers_list_kb,
 )
-from keyboards.callbacks import MenuCallback, ProjectCallback
+from keyboards.callbacks import MenuCallback, PageCallback, ProjectCallback
 from states import ProjectOrder
 from utils.constants import (
     MSG_ASK_DEADLINE,
@@ -43,6 +43,7 @@ from utils.formatters import (
     format_student_projects,
 )
 from utils.helpers import get_file_id, get_file_size
+from utils.pagination import build_nav_keyboard
 from middlewares.throttling import ThrottlingMiddleware
 
 router = Router()
@@ -274,36 +275,104 @@ async def process_payment_proof(
 async def cb_view_projects(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
+    await _render_my_projects(callback, project_repo, page=0)
+
+
+async def _render_my_projects(
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
+) -> None:
+    from application.project_service import GetStudentProjectsService
     projects = await GetStudentProjectsService(project_repo).execute(callback.from_user.id)
-    await callback.message.answer(format_student_projects(projects), parse_mode="Markdown")
+    text, total_pages = format_student_projects(projects, page=page)
+    kb = build_nav_keyboard(
+        action="my_projects", page=page, total_pages=total_pages, back_action="back_to_admin"
+    ) if total_pages > 1 else None
+    await callback.message.answer(text, parse_mode="Markdown", reply_markup=kb)
     await callback.answer()
+
+
+@router.callback_query(PageCallback.filter(F.action == "my_projects"))
+async def cb_my_projects_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    project_repo: ProjectRepository,
+):
+    await _render_my_projects(callback, project_repo, page=callback_data.page)
 
 
 @router.message(F.text == BTN_MY_PROJECTS)
 @router.message(Command("my_projects"))
 async def view_projects(message: types.Message, project_repo: ProjectRepository):
     projects = await GetStudentProjectsService(project_repo).execute(message.from_user.id)
-    await message.answer(format_student_projects(projects), parse_mode="Markdown")
+    text, total_pages = format_student_projects(projects)
+    kb = build_nav_keyboard(
+        action="my_projects", page=0, total_pages=total_pages, back_action="back_to_admin"
+    ) if total_pages > 1 else None
+    await message.answer(text, parse_mode="Markdown", reply_markup=kb)
 
 
 @router.callback_query(MenuCallback.filter(F.action == "my_offers"))
 async def cb_view_offers(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
+    await _render_my_offers(callback, project_repo, page=0)
+
+
+async def _render_my_offers(
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
+) -> None:
+    from application.project_service import GetStudentOffersService
     offers = await GetStudentOffersService(project_repo).execute(callback.from_user.id)
-    await callback.message.answer(
-        format_offer_list(offers), parse_mode="Markdown", reply_markup=get_offers_list_kb(offers)
-    )
+    text, total_pages = format_offer_list(offers, page=page)
+    from keyboards.client_kb import get_offers_list_kb
+    from utils.pagination import paginate
+    slice_, _, _ = paginate(offers, page)
+    item_kb = get_offers_list_kb(slice_)
+    if total_pages > 1:
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        from keyboards.callbacks import PageCallback as PC, MenuCallback as MC
+        builder = InlineKeyboardBuilder()
+        for row in item_kb.inline_keyboard:
+            builder.row(*row)
+        nav = []
+        if page > 0:
+            nav.append(types.InlineKeyboardButton(
+                text="⬅️ السابق",
+                callback_data=PC(action="my_offers", page=page - 1).pack(),
+            ))
+        nav.append(types.InlineKeyboardButton(
+            text=f"📄 {page + 1}/{total_pages}", callback_data="noop"
+        ))
+        if page < total_pages - 1:
+            nav.append(types.InlineKeyboardButton(
+                text="التالي ➡️",
+                callback_data=PC(action="my_offers", page=page + 1).pack(),
+            ))
+        builder.row(*nav)
+        item_kb = builder.as_markup()
+    await callback.message.answer(text, parse_mode="Markdown", reply_markup=item_kb)
     await callback.answer()
+
+
+@router.callback_query(PageCallback.filter(F.action == "my_offers"))
+async def cb_my_offers_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    project_repo: ProjectRepository,
+):
+    await _render_my_offers(callback, project_repo, page=callback_data.page)
 
 
 @router.message(F.text == BTN_MY_OFFERS)
 @router.message(Command("my_offers"))
 async def view_offers(message: types.Message, project_repo: ProjectRepository):
     offers = await GetStudentOffersService(project_repo).execute(message.from_user.id)
-    await message.answer(
-        format_offer_list(offers), parse_mode="Markdown", reply_markup=get_offers_list_kb(offers)
-    )
+    text, total_pages = format_offer_list(offers)
+    from keyboards.client_kb import get_offers_list_kb
+    from utils.pagination import paginate
+    slice_, _, _ = paginate(offers, 0)
+    item_kb = get_offers_list_kb(slice_)
+    await message.answer(text, parse_mode="Markdown", reply_markup=item_kb)
 
 
 @router.callback_query(ProjectCallback.filter(F.action == "view_offer"))
