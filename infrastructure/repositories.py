@@ -28,7 +28,7 @@ logger = structlog.get_logger()
 
 #: Maximum documents returned in a single paginated query.
 #: Prevents accidental full-collection loads when callers omit a limit.
-DEFAULT_PAGE_SIZE: int = 15
+DEFAULT_PAGE_SIZE: int = 500
 MAX_PAGE_SIZE: int = 500
 
 

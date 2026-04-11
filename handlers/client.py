@@ -285,9 +285,13 @@ async def _render_my_projects(
     projects = await GetStudentProjectsService(project_repo).execute(callback.from_user.id)
     text, total_pages = format_student_projects(projects, page=page)
     kb = build_nav_keyboard(
-        action="my_projects", page=page, total_pages=total_pages, back_action="back_to_admin"
+        action="my_projects", page=page, total_pages=total_pages, back_action=MenuAction.close_list
     ) if total_pages > 1 else None
-    await callback.message.answer(text, parse_mode="Markdown", reply_markup=kb)
+    
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -306,7 +310,7 @@ async def view_projects(message: types.Message, project_repo: ProjectRepository)
     projects = await GetStudentProjectsService(project_repo).execute(message.from_user.id)
     text, total_pages = format_student_projects(projects)
     kb = build_nav_keyboard(
-        action="my_projects", page=0, total_pages=total_pages, back_action="back_to_admin"
+        action="my_projects", page=0, total_pages=total_pages, back_action=MenuAction.close_list
     ) if total_pages > 1 else None
     await message.answer(text, parse_mode="Markdown", reply_markup=kb)
 
@@ -349,8 +353,16 @@ async def _render_my_offers(
                 callback_data=PC(action="my_offers", page=page + 1).pack(),
             ))
         builder.row(*nav)
+        builder.row(types.InlineKeyboardButton(
+            text="⬅️ رجوع",
+            callback_data=MC(action=MenuAction.close_list).pack(),
+        ))
         item_kb = builder.as_markup()
-    await callback.message.answer(text, parse_mode="Markdown", reply_markup=item_kb)
+        
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=item_kb)
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -392,3 +404,13 @@ async def show_specific_offer(
     delivery = escape_md(res["delivery_date"])
     text = MSG_OFFER_DETAILS.format(subject, price, delivery, escape_md(proj_id))
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=get_offer_actions_kb(proj_id))
+
+
+# ── CLOSE ACTIONS ────────────────────────────────────────────────────────
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.close_list))
+async def cb_close_list(callback: types.CallbackQuery):
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+    await callback.answer()
