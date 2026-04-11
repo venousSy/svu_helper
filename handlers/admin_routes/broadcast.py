@@ -6,7 +6,7 @@ from application.admin_service import GetAllUserIdsService
 from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.admin_kb import get_cancel_kb
-from keyboards.callbacks import MenuCallback
+from keyboards.callbacks import MenuCallback, MenuAction
 from states import AdminStates
 from utils.constants import MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS
 from utils.broadcaster import Broadcaster
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "admin_broadcast"),
+    MenuCallback.filter(F.action == MenuAction.admin_broadcast),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):

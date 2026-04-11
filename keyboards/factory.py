@@ -16,7 +16,16 @@ keyboards package require no changes during the transition.
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
-from keyboards.callbacks import MenuCallback, PageCallback, PaymentCallback, ProjectCallback
+from keyboards.callbacks import (
+    MenuCallback,
+    PageCallback,
+    PaymentCallback,
+    ProjectCallback,
+    MenuAction,
+    PageAction,
+    PaymentAction,
+    ProjectAction,
+)
 from utils.constants import (
     BTN_BACK,
     BTN_CANCEL,
@@ -65,19 +74,19 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.button(
             text=BTN_NEW_PROJECT,
-            callback_data=MenuCallback(action="new_project").pack(),
+            callback_data=MenuCallback(action=MenuAction.new_project).pack(),
         )
         builder.button(
             text=BTN_MY_PROJECTS,
-            callback_data=MenuCallback(action="my_projects").pack(),
+            callback_data=MenuCallback(action=MenuAction.my_projects).pack(),
         )
         builder.button(
             text=BTN_MY_OFFERS,
-            callback_data=MenuCallback(action="my_offers").pack(),
+            callback_data=MenuCallback(action=MenuAction.my_offers).pack(),
         )
         builder.button(
             text="ℹ️ المساعدة",
-            callback_data=MenuCallback(action="help").pack(),
+            callback_data=MenuCallback(action=MenuAction.help).pack(),
         )
         builder.adjust(1)
         return builder.as_markup()
@@ -89,13 +98,13 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_ACCEPT_OFFER,
-                callback_data=ProjectCallback(action="accept", id=proj_id).pack(),
+                callback_data=ProjectCallback(action=ProjectAction.accept, id=proj_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_DENY_OFFER,
-                callback_data=ProjectCallback(action="deny", id=proj_id).pack(),
+                callback_data=ProjectCallback(action=ProjectAction.deny, id=proj_id).pack(),
             )
         )
         return builder.as_markup()
@@ -109,7 +118,7 @@ class KeyboardFactory:
             builder.row(
                 types.InlineKeyboardButton(
                     text=f"عرض العرض #{p_id}",
-                    callback_data=ProjectCallback(action="view_offer", id=p_id).pack(),
+                    callback_data=ProjectCallback(action=ProjectAction.view_offer, id=p_id).pack(),
                 )
             )
         return builder.as_markup()
@@ -121,7 +130,7 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_CANCEL_PAY,
-                callback_data=MenuCallback(action="cancel_pay").pack(),
+                callback_data=MenuCallback(action=MenuAction.cancel_pay).pack(),
             )
         )
         return builder.as_markup()
@@ -137,37 +146,37 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_VIEW_ALL,
-                callback_data=MenuCallback(action="view_all_master").pack(),
+                callback_data=MenuCallback(action=MenuAction.view_all_master).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_VIEW_PENDING,
-                callback_data=MenuCallback(action="view_pending").pack(),
+                callback_data=MenuCallback(action=MenuAction.view_pending).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_VIEW_ACCEPTED,
-                callback_data=MenuCallback(action="view_accepted").pack(),
+                callback_data=MenuCallback(action=MenuAction.view_accepted).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_VIEW_HISTORY,
-                callback_data=MenuCallback(action="view_history").pack(),
+                callback_data=MenuCallback(action=MenuAction.view_history).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_VIEW_PAYMENTS,
-                callback_data=MenuCallback(action="view_payments").pack(),
+                callback_data=MenuCallback(action=MenuAction.view_payments).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BROADCAST,
-                callback_data=MenuCallback(action="admin_broadcast").pack(),
+                callback_data=MenuCallback(action=MenuAction.admin_broadcast).pack(),
             )
         )
         return builder.as_markup()
@@ -176,7 +185,7 @@ class KeyboardFactory:
     def back(callback_data: str = None) -> InlineKeyboardBuilder:
         """Returns an InlineKeyboardBuilder seeded with a 'Back' button."""
         if callback_data is None:
-            callback_data = MenuCallback(action="back_to_admin").pack()
+            callback_data = MenuCallback(action=MenuAction.back_to_admin).pack()
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
@@ -198,13 +207,13 @@ class KeyboardFactory:
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
-                    callback_data=ProjectCallback(action="manage", id=p_id).pack(),
+                    callback_data=ProjectCallback(action=ProjectAction.manage, id=p_id).pack(),
                 )
             )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
-                callback_data=MenuCallback(action="back_to_admin").pack(),
+                callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
         return builder.as_markup()
@@ -223,14 +232,14 @@ class KeyboardFactory:
                 types.InlineKeyboardButton(
                     text=btn_text,
                     callback_data=ProjectCallback(
-                        action="manage_accepted", id=p_id
+                        action=ProjectAction.manage_accepted, id=p_id
                     ).pack(),
                 )
             )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
-                callback_data=MenuCallback(action="back_to_admin").pack(),
+                callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
         return builder.as_markup()
@@ -242,19 +251,19 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_SEND_OFFER,
-                callback_data=ProjectCallback(action="make_offer", id=p_id).pack(),
+                callback_data=ProjectCallback(action=ProjectAction.make_offer, id=p_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_REJECT,
-                callback_data=ProjectCallback(action="deny", id=p_id).pack(),
+                callback_data=ProjectCallback(action=ProjectAction.deny, id=p_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
-                callback_data=MenuCallback(action="view_pending").pack(),
+                callback_data=MenuCallback(action=MenuAction.view_pending).pack(),
             )
         )
         return builder.as_markup()
@@ -266,11 +275,11 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_CONFIRM_PAYMENT,
-                callback_data=PaymentCallback(action="confirm", id=payment_id).pack(),
+                callback_data=PaymentCallback(action=PaymentAction.confirm, id=payment_id).pack(),
             ),
             types.InlineKeyboardButton(
                 text=_BTN_REJECT_PAYMENT,
-                callback_data=PaymentCallback(action="reject", id=payment_id).pack(),
+                callback_data=PaymentCallback(action=PaymentAction.reject, id=payment_id).pack(),
             ),
         )
         return builder.as_markup()
@@ -298,13 +307,13 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_SEND_OFFER,
-                callback_data=ProjectCallback(action="make_offer", id=p_id).pack(),
+                callback_data=ProjectCallback(action=ProjectAction.make_offer, id=p_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_REJECT,
-                callback_data=ProjectCallback(action="deny", id=p_id).pack(),
+                callback_data=ProjectCallback(action=ProjectAction.deny, id=p_id).pack(),
             )
         )
         return builder.as_markup()
@@ -319,14 +328,14 @@ class KeyboardFactory:
                 types.InlineKeyboardButton(
                     text=f"{_BTN_VIEW_RECEIPT} #{p_id}",
                     callback_data=PaymentCallback(
-                        action="view_receipt", id=p_id
+                        action=PaymentAction.view_receipt, id=p_id
                     ).pack(),
                 )
             )
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
-                callback_data=MenuCallback(action="back_to_admin").pack(),
+                callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
         return builder.as_markup()
@@ -343,7 +352,7 @@ class KeyboardFactory:
             nav_buttons.append(
                 types.InlineKeyboardButton(
                     text="⬅️ السابق",
-                    callback_data=PageCallback(action="all_projects", page=page - 1).pack(),
+                    callback_data=PageCallback(action=PageAction.all_projects, page=page - 1).pack(),
                 )
             )
 
@@ -358,7 +367,7 @@ class KeyboardFactory:
             nav_buttons.append(
                 types.InlineKeyboardButton(
                     text="التالي ➡️",
-                    callback_data=PageCallback(action="all_projects", page=page + 1).pack(),
+                    callback_data=PageCallback(action=PageAction.all_projects, page=page + 1).pack(),
                 )
             )
 
@@ -366,7 +375,7 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
-                callback_data=MenuCallback(action="back_to_admin").pack(),
+                callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
         return builder.as_markup()

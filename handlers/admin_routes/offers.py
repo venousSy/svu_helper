@@ -12,7 +12,7 @@ from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.admin_kb import get_cancel_kb, get_manage_project_kb, get_notes_decision_kb
 from keyboards.client_kb import get_offer_actions_kb
-from keyboards.callbacks import ProjectCallback
+from keyboards.callbacks import ProjectCallback, ProjectAction
 from states import AdminStates
 from utils.constants import (
     BTN_YES,
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # ── PROJECT DETAIL VIEW ─────────────────────────────────────────────────────
 
 @router.callback_query(
-    ProjectCallback.filter(F.action == "manage"),
+    ProjectCallback.filter(F.action == ProjectAction.manage),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def view_project_details(
@@ -129,7 +129,7 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
 # ── OFFER FLOW (FSM) ────────────────────────────────────────────────────────
 
 @router.callback_query(
-    ProjectCallback.filter(F.action == "make_offer"),
+    ProjectCallback.filter(F.action == ProjectAction.make_offer),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def start_offer_flow(
@@ -215,7 +215,7 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
 # ── WORK LIFECYCLE ──────────────────────────────────────────────────────────
 
 @router.callback_query(
-    ProjectCallback.filter(F.action == "manage_accepted"),
+    ProjectCallback.filter(F.action == ProjectAction.manage_accepted),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def manage_accepted_project(
@@ -265,7 +265,7 @@ async def process_finished_work(
 
 # ── DENY (admin + student) ──────────────────────────────────────────────────
 
-@router.callback_query(ProjectCallback.filter(F.action == "deny"))
+@router.callback_query(ProjectCallback.filter(F.action == ProjectAction.deny))
 async def handle_deny(
     callback: types.CallbackQuery,
     bot,
