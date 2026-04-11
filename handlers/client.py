@@ -286,7 +286,7 @@ async def _render_my_projects(
     text, total_pages = format_student_projects(projects, page=page)
     kb = build_nav_keyboard(
         action="my_projects", page=page, total_pages=total_pages, back_action=MenuAction.close_list
-    ) if total_pages > 1 else None
+    )
     
     try:
         await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
@@ -311,7 +311,7 @@ async def view_projects(message: types.Message, project_repo: ProjectRepository)
     text, total_pages = format_student_projects(projects)
     kb = build_nav_keyboard(
         action="my_projects", page=0, total_pages=total_pages, back_action=MenuAction.close_list
-    ) if total_pages > 1 else None
+    )
     await message.answer(text, parse_mode="Markdown", reply_markup=kb)
 
 
@@ -322,22 +322,17 @@ async def cb_view_offers(
     await _render_my_offers(callback, project_repo, page=0)
 
 
-async def _render_my_offers(
-    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
-) -> None:
-    from application.project_service import GetStudentOffersService
-    offers = await GetStudentOffersService(project_repo).execute(callback.from_user.id)
-    text, total_pages = format_offer_list(offers, page=page)
+def _build_offers_kb(slice_, page: int, total_pages: int):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from keyboards.callbacks import PageCallback as PC, MenuCallback as MC, MenuAction
     from keyboards.client_kb import get_offers_list_kb
-    from utils.pagination import paginate
-    slice_, _, _ = paginate(offers, page)
+    from aiogram import types
+    builder = InlineKeyboardBuilder()
     item_kb = get_offers_list_kb(slice_)
+    for row in item_kb.inline_keyboard:
+        builder.row(*row)
+    
     if total_pages > 1:
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        from keyboards.callbacks import PageCallback as PC, MenuCallback as MC
-        builder = InlineKeyboardBuilder()
-        for row in item_kb.inline_keyboard:
-            builder.row(*row)
         nav = []
         if page > 0:
             nav.append(types.InlineKeyboardButton(
@@ -353,11 +348,23 @@ async def _render_my_offers(
                 callback_data=PC(action="my_offers", page=page + 1).pack(),
             ))
         builder.row(*nav)
-        builder.row(types.InlineKeyboardButton(
-            text="⬅️ رجوع",
-            callback_data=MC(action=MenuAction.close_list).pack(),
-        ))
-        item_kb = builder.as_markup()
+        
+    builder.row(types.InlineKeyboardButton(
+        text="⬅️ رجوع",
+        callback_data=MC(action=MenuAction.close_list).pack(),
+    ))
+    return builder.as_markup()
+
+
+async def _render_my_offers(
+    callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
+) -> None:
+    from application.project_service import GetStudentOffersService
+    from utils.pagination import paginate
+    offers = await GetStudentOffersService(project_repo).execute(callback.from_user.id)
+    text, total_pages = format_offer_list(offers, page=page)
+    slice_, _, _ = paginate(offers, page)
+    item_kb = _build_offers_kb(slice_, page, total_pages)
         
     try:
         await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=item_kb)
@@ -378,12 +385,12 @@ async def cb_my_offers_page(
 @router.message(F.text == BTN_MY_OFFERS)
 @router.message(Command("my_offers"))
 async def view_offers(message: types.Message, project_repo: ProjectRepository):
+    from application.project_service import GetStudentOffersService
+    from utils.pagination import paginate
     offers = await GetStudentOffersService(project_repo).execute(message.from_user.id)
     text, total_pages = format_offer_list(offers)
-    from keyboards.client_kb import get_offers_list_kb
-    from utils.pagination import paginate
     slice_, _, _ = paginate(offers, 0)
-    item_kb = get_offers_list_kb(slice_)
+    item_kb = _build_offers_kb(slice_, 0, total_pages)
     await message.answer(text, parse_mode="Markdown", reply_markup=item_kb)
 
 

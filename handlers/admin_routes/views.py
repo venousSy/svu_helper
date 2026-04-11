@@ -251,8 +251,12 @@ def _merge_item_and_nav(
     from keyboards.callbacks import MenuCallback, PageCallback
 
     builder = InlineKeyboardBuilder()
-    # Re-add existing rows
+    
+    # Re-add existing rows except the back button
+    back_action_data = MenuCallback(action="back_to_admin").pack()
     for row in item_kb.inline_keyboard:
+        if len(row) == 1 and row[0].callback_data == back_action_data:
+            continue
         builder.row(*row)
 
     # Navigation row
@@ -274,6 +278,6 @@ def _merge_item_and_nav(
     builder.row(*nav)
     builder.row(tg_types.InlineKeyboardButton(
         text="⬅️ رجوع",
-        callback_data=MenuCallback(action="back_to_admin").pack(),
+        callback_data=back_action_data,
     ))
     return builder.as_markup()
