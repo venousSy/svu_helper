@@ -11,7 +11,7 @@ import sentry_sdk
 from config import settings
 from database.connection import init_db, mongo_client
 from handlers.admin_routes import router as admin_router
-from handlers.client import router as client_router
+from handlers.client_routes import router as client_router
 from handlers.common import router as common_router
 from middlewares.error_handler import GlobalErrorHandler
 from middlewares.maintenance import MaintenanceMiddleware

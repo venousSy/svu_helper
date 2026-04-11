@@ -35,18 +35,22 @@ def paginate(
 
 
 def build_nav_keyboard(
-    action: PageAction,
+    action: Any,
     page: int,
     total_pages: int,
-    back_action: MenuAction = MenuAction.back_to_admin,
+    back_action: Any = MenuAction.back_to_admin,
+    builder: InlineKeyboardBuilder | None = None,
 ) -> types.InlineKeyboardMarkup:
     """
     Build a standard navigation row + back button.
+    If 'builder' is provided, append the rows to it.
 
     ⬅️ السابق  |  📄 X/N  |  التالي ➡️
               ⬅️ رجوع
     """
-    builder = InlineKeyboardBuilder()
+    if builder is None:
+        builder = InlineKeyboardBuilder()
+
     nav: list[types.InlineKeyboardButton] = []
 
     if page > 0:
