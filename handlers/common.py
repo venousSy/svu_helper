@@ -19,7 +19,7 @@ from utils.constants import (
     MSG_WELCOME,
 )
 from keyboards.common_kb import get_student_main_kb
-from keyboards.callbacks import MenuCallback
+from keyboards.callbacks import MenuCallback, MenuAction
 # --- ROUTER INITIALIZATION ---
 router = Router()
 
@@ -35,7 +35,7 @@ async def help_command(message: types.Message):
     """Provides help information to the user."""
     await message.answer(MSG_HELP, reply_markup=types.ReplyKeyboardRemove())
 
-@router.callback_query(MenuCallback.filter(F.action == "help"))
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.help))
 async def cb_help(callback: types.CallbackQuery):
     await callback.message.answer(MSG_HELP)
     await callback.answer()

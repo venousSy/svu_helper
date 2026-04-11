@@ -20,7 +20,7 @@ from keyboards.client_kb import (
     get_offer_actions_kb,
     get_offers_list_kb,
 )
-from keyboards.callbacks import MenuCallback, PageCallback, ProjectCallback
+from keyboards.callbacks import MenuCallback, PageCallback, ProjectCallback, ProjectAction, PageAction, MenuAction
 from states import ProjectOrder
 from utils.constants import (
     MSG_ASK_DEADLINE,
@@ -59,7 +59,7 @@ ALLOWED_DOCUMENT_MIMES = [
 
 # ── PROJECT SUBMISSION FSM ──────────────────────────────────────────────────
 
-@router.callback_query(MenuCallback.filter(F.action == "new_project"))
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.new_project))
 async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(MSG_ASK_SUBJECT, parse_mode="Markdown")
     await state.set_state(ProjectOrder.subject)
@@ -175,7 +175,7 @@ async def process_details(
 
 # ── OFFER ACCEPTANCE & PAYMENT ──────────────────────────────────────────────
 
-@router.callback_query(ProjectCallback.filter(F.action == "accept"))
+@router.callback_query(ProjectCallback.filter(F.action == ProjectAction.accept))
 async def student_accept_offer(
     callback: types.CallbackQuery,
     state: FSMContext,
@@ -199,7 +199,7 @@ async def student_accept_offer(
     await callback.answer()
 
 
-@router.callback_query(MenuCallback.filter(F.action == "cancel_pay"))
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.cancel_pay))
 async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
@@ -271,7 +271,7 @@ async def process_payment_proof(
 
 # ── PROJECT / OFFER VIEWS ───────────────────────────────────────────────────
 
-@router.callback_query(MenuCallback.filter(F.action == "my_projects"))
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.my_projects))
 async def cb_view_projects(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
@@ -291,7 +291,7 @@ async def _render_my_projects(
     await callback.answer()
 
 
-@router.callback_query(PageCallback.filter(F.action == "my_projects"))
+@router.callback_query(PageCallback.filter(F.action == PageAction.my_projects))
 async def cb_my_projects_page(
     callback: types.CallbackQuery,
     callback_data: PageCallback,
@@ -311,7 +311,7 @@ async def view_projects(message: types.Message, project_repo: ProjectRepository)
     await message.answer(text, parse_mode="Markdown", reply_markup=kb)
 
 
-@router.callback_query(MenuCallback.filter(F.action == "my_offers"))
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.my_offers))
 async def cb_view_offers(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
@@ -354,7 +354,7 @@ async def _render_my_offers(
     await callback.answer()
 
 
-@router.callback_query(PageCallback.filter(F.action == "my_offers"))
+@router.callback_query(PageCallback.filter(F.action == PageAction.my_offers))
 async def cb_my_offers_page(
     callback: types.CallbackQuery,
     callback_data: PageCallback,
@@ -375,7 +375,7 @@ async def view_offers(message: types.Message, project_repo: ProjectRepository):
     await message.answer(text, parse_mode="Markdown", reply_markup=item_kb)
 
 
-@router.callback_query(ProjectCallback.filter(F.action == "view_offer"))
+@router.callback_query(ProjectCallback.filter(F.action == ProjectAction.view_offer))
 async def show_specific_offer(
     callback: types.CallbackQuery,
     callback_data: ProjectCallback,

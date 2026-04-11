@@ -10,7 +10,7 @@ from application.admin_service import (
 )
 from config import settings
 from infrastructure.repositories import PaymentRepository, ProjectRepository
-from keyboards.callbacks import MenuCallback, PageCallback
+from keyboards.callbacks import MenuCallback, PageCallback, PageAction, MenuAction
 from keyboards.factory import KeyboardFactory
 from utils.formatters import (
     format_master_report,
@@ -57,7 +57,7 @@ async def _render_master_page(
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "view_all_master"),
+    MenuCallback.filter(F.action == MenuAction.view_all_master),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def view_all_master(
@@ -67,7 +67,7 @@ async def view_all_master(
 
 
 @router.callback_query(
-    PageCallback.filter(F.action == "all_projects"),
+    PageCallback.filter(F.action == PageAction.all_projects),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def view_all_page(
@@ -105,7 +105,7 @@ async def _render_pending(
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "view_pending"),
+    MenuCallback.filter(F.action == MenuAction.view_pending),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_view_pending(
@@ -115,7 +115,7 @@ async def admin_view_pending(
 
 
 @router.callback_query(
-    PageCallback.filter(F.action == "pending"),
+    PageCallback.filter(F.action == PageAction.pending),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_pending_page(
@@ -152,7 +152,7 @@ async def _render_accepted(
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "view_accepted"),
+    MenuCallback.filter(F.action == MenuAction.view_accepted),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_view_accepted(
@@ -162,7 +162,7 @@ async def admin_view_accepted(
 
 
 @router.callback_query(
-    PageCallback.filter(F.action == "accepted"),
+    PageCallback.filter(F.action == PageAction.accepted),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_accepted_page(
@@ -184,7 +184,7 @@ async def _render_history(
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "view_history"),
+    MenuCallback.filter(F.action == MenuAction.view_history),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_view_history(
@@ -194,7 +194,7 @@ async def admin_view_history(
 
 
 @router.callback_query(
-    PageCallback.filter(F.action == "history"),
+    PageCallback.filter(F.action == PageAction.history),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_history_page(
@@ -216,7 +216,7 @@ async def _render_payments(
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "view_payments"),
+    MenuCallback.filter(F.action == MenuAction.view_payments),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_view_payments(
@@ -226,7 +226,7 @@ async def admin_view_payments(
 
 
 @router.callback_query(
-    PageCallback.filter(F.action == "payments"),
+    PageCallback.filter(F.action == PageAction.payments),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_payments_page(

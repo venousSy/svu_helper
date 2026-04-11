@@ -4,7 +4,7 @@ from aiogram import Router, F, types
 from application.payment_service import ConfirmPaymentService, RejectPaymentService
 from config import settings
 from infrastructure.repositories import PaymentRepository, ProjectRepository
-from keyboards.callbacks import PaymentCallback
+from keyboards.callbacks import PaymentCallback, PaymentAction
 from utils.constants import (
     MSG_PAYMENT_CONFIRMED_ADMIN,
     MSG_PAYMENT_CONFIRMED_CLIENT,
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.callback_query(
-    PaymentCallback.filter(F.action == "view_receipt"),
+    PaymentCallback.filter(F.action == PaymentAction.view_receipt),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_view_receipt(
@@ -48,7 +48,7 @@ async def admin_view_receipt(
 
 
 @router.callback_query(
-    PaymentCallback.filter(F.action == "confirm"),
+    PaymentCallback.filter(F.action == PaymentAction.confirm),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def confirm_payment(
@@ -78,7 +78,7 @@ async def confirm_payment(
 
 
 @router.callback_query(
-    PaymentCallback.filter(F.action == "reject"),
+    PaymentCallback.filter(F.action == PaymentAction.reject),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def reject_payment(

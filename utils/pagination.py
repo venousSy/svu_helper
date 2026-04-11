@@ -11,7 +11,7 @@ from typing import Any
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from keyboards.callbacks import MenuCallback, PageCallback
+from keyboards.callbacks import MenuCallback, PageCallback, MenuAction, PageAction
 
 PAGE_SIZE: int = 5
 
@@ -35,10 +35,10 @@ def paginate(
 
 
 def build_nav_keyboard(
-    action: str,
+    action: PageAction,
     page: int,
     total_pages: int,
-    back_action: str = "back_to_admin",
+    back_action: MenuAction = MenuAction.back_to_admin,
 ) -> types.InlineKeyboardMarkup:
     """
     Build a standard navigation row + back button.

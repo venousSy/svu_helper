@@ -7,7 +7,7 @@ from application.admin_service import GetStatsService, MaintenanceService
 from config import settings
 from infrastructure.repositories import SettingsRepository, StatsRepository
 from keyboards.admin_kb import get_admin_dashboard_kb
-from keyboards.callbacks import MenuCallback
+from keyboards.callbacks import MenuCallback, MenuAction
 from utils.constants import BTN_CANCEL, MSG_ADMIN_DASHBOARD, MSG_CANCELLED
 
 router = Router()
@@ -29,7 +29,7 @@ async def admin_dashboard(message: types.Message):
 
 
 @router.callback_query(
-    MenuCallback.filter(F.action == "back_to_admin"),
+    MenuCallback.filter(F.action == MenuAction.back_to_admin),
     F.from_user.id.in_(settings.admin_ids),
 )
 async def back_to_admin(callback: types.CallbackQuery):
