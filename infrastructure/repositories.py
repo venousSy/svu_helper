@@ -13,9 +13,13 @@ the aiogram data dict before each handler call.
 """
 from typing import Any, Dict, List, Optional, Tuple
 
+import structlog
+
 from domain.entities import Payment, Project
 from domain.enums import PaymentStatus, ProjectStatus
 from infrastructure.mongo_db import Database
+
+logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +69,7 @@ class ProjectRepository:
         )
 
         await self._db.projects.insert_one(project_model.model_dump())
+        logger.info("Project created in DB", project_id=project_id, user_id=user_id)
         return project_id
 
     async def get_project_by_id(self, project_id: int) -> Optional[Dict[str, Any]]:
@@ -85,6 +90,7 @@ class ProjectRepository:
             skip:  Number of documents to skip (for offset-based paging).
         """
         limit = min(limit, MAX_PAGE_SIZE)
+        logger.debug("Fetching user projects from DB", user_id=user_id, limit=limit, skip=skip)
         cursor = self._db.projects.find({"user_id": user_id}).sort("id", -1).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
 
@@ -92,6 +98,7 @@ class ProjectRepository:
         await self._db.projects.update_one(
             {"id": int(project_id)}, {"$set": {"status": new_status}}
         )
+        logger.info("Project status updated in DB", project_id=project_id, new_status=new_status)
 
     async def get_projects_by_status(
         self,
@@ -127,6 +134,7 @@ class ProjectRepository:
                 }
             },
         )
+        logger.info("Project offer updated in DB", project_id=proj_id, price=price)
 
     async def get_all_categorized(self) -> Dict[str, List[Dict[str, Any]]]:
         pending = await self.get_projects_by_status([ProjectStatus.PENDING])
@@ -176,6 +184,7 @@ class PaymentRepository:
         )
 
         await self._db.payments.insert_one(payment_model.model_dump())
+        logger.info("Payment reference created in DB", payment_id=payment_id, project_id=project_id)
         return payment_id
 
     async def get_payment(self, payment_id: int) -> Optional[Dict[str, Any]]:
@@ -185,6 +194,7 @@ class PaymentRepository:
         await self._db.payments.update_one(
             {"id": int(payment_id)}, {"$set": {"status": new_status}}
         )
+        logger.info("Payment status updated in DB", payment_id=payment_id, new_status=new_status)
 
     async def get_all(
         self,

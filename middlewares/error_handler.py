@@ -1,10 +1,11 @@
-
 import logging
 from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import TelegramObject, Message, CallbackQuery
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 class GlobalErrorHandler(BaseMiddleware):
     """
@@ -20,7 +21,7 @@ class GlobalErrorHandler(BaseMiddleware):
         try:
             return await handler(event, data)
         except Exception as e:
-            logger.exception(f"🔥 Uncaught exception processing update {event}:")
+            logger.exception("Uncaught exception processing update", dumped_event=str(event))
             
             # User Notification Logic
             # Check if we can reply to the user (Message or CallbackQuery)

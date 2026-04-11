@@ -207,7 +207,7 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
         await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
     except Exception as e:
-        logger.error(f"Failed to send offer for #{proj_id}: {e}", exc_info=True)
+        logger.error("Failed to send offer", project_id=proj_id, error=str(e), exc_info=True)
         await message.answer("⚠️ حدث خطأ أثناء إرسال العرض.", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
 
@@ -258,7 +258,7 @@ async def process_finished_work(
             await bot.send_message(result.user_id, text)
         await message.answer(MSG_FINISHED_CONFIRM.format(result.proj_id), reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
-        logger.error(f"Failed to finish project #{proj_id}: {e}", exc_info=True)
+        logger.error("Failed to finish project", project_id=proj_id, error=str(e), exc_info=True)
         await message.answer("⚠️ حدث خطأ أثناء إنهاء المشروع.")
     await state.clear()
 

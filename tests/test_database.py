@@ -125,6 +125,7 @@ async def test_get_projects_by_status(project_repo, mock_db):
     # Cursor is a plain MagicMock so .skip() and .limit() can chain synchronously,
     # while .to_list() is awaitable.
     mock_cursor = MagicMock()
+    mock_cursor.sort.return_value = mock_cursor
     mock_cursor.skip.return_value = mock_cursor
     mock_cursor.limit.return_value = mock_cursor
     mock_cursor.to_list = AsyncMock(return_value=mock_projects)
@@ -146,6 +147,7 @@ async def test_get_projects_by_status(project_repo, mock_db):
 async def test_get_projects_by_status_custom_pagination(project_repo, mock_db):
     """Custom limit/skip values are forwarded to the cursor."""
     mock_cursor = MagicMock()
+    mock_cursor.sort.return_value = mock_cursor
     mock_cursor.skip.return_value = mock_cursor
     mock_cursor.limit.return_value = mock_cursor
     mock_cursor.to_list = AsyncMock(return_value=[])
@@ -163,6 +165,7 @@ async def test_get_projects_by_status_custom_pagination(project_repo, mock_db):
 async def test_get_projects_by_status_max_page_size_cap(project_repo, mock_db):
     """Requests exceeding MAX_PAGE_SIZE are capped silently."""
     mock_cursor = MagicMock()
+    mock_cursor.sort.return_value = mock_cursor
     mock_cursor.skip.return_value = mock_cursor
     mock_cursor.limit.return_value = mock_cursor
     mock_cursor.to_list = AsyncMock(return_value=[])

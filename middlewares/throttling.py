@@ -4,6 +4,9 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 import cachetools
+import structlog
+
+logger = structlog.get_logger()
 
 class ThrottlingMiddleware(BaseMiddleware):
     """
@@ -32,8 +35,9 @@ class ThrottlingMiddleware(BaseMiddleware):
         
         # Check if user is spamming
         if user_id in self.last_seen:
+            logger.warning("Request throttled due to spam", user_id=user_id, rate_limit=self.rate_limit)
             # Drop the update (don't process it)
-            return None 
+            return None  
 
         # Update last seen time and proceed
         self.last_seen[user_id] = time.time()

@@ -6,9 +6,10 @@ import functools
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import structlog
 
 # Initialize logging for the config loader
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 class Settings(BaseSettings):
     # Bot Configuration
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
         try:
             return [int(x.strip()) for x in self.ADMIN_IDS_RAW.split(",") if x.strip()]
         except ValueError:
-            logger.error(f"Failed to parse ADMIN_IDS: {self.ADMIN_IDS_RAW}")
+            logger.error("Failed to parse ADMIN_IDS", raw_ids=self.ADMIN_IDS_RAW)
             return []
 
 # Instantiate settings
@@ -49,5 +50,5 @@ try:
     settings = Settings()
 except Exception as e:
     # We log it but we re-raise so the app (or test) fails loudly but traced
-    logger.critical(f"❌ Configuration Error: {e}")
+    logger.critical("Configuration Error", error=str(e))
     raise

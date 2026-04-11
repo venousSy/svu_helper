@@ -1,31 +1,39 @@
 import logging
 import sys
+import structlog
 from config import settings
 
 def setup_logger():
     """
-    Configures and returns the root logger with a standard format.
+    Configures structlog and standard logging.
     """
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    # Configure standard logging to redirect to structlog if desired,
+    # or just set the root logger level.
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stdout,
+        level=logging.INFO,
+    )
 
-    # Console Handler
-    c_handler = logging.StreamHandler(sys.stdout)
-    c_handler.setLevel(logging.INFO)
-    c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    c_handler.setFormatter(c_format)
+    processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.dev.ConsoleRenderer() if sys.stdout.isatty() else structlog.processors.JSONRenderer(),
+    ]
     
-    # File Handler (Optional, based on requirement)
-    if hasattr(settings, 'LOG_FILE') and settings.LOG_FILE:
-        f_handler = logging.FileHandler(settings.LOG_FILE, encoding='utf-8')
-        f_handler.setLevel(logging.INFO)
-        f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        f_handler.setFormatter(f_format)
-        logger.addHandler(f_handler)
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
 
-    logger.addHandler(c_handler)
-    
-    return logger
+    # Return a structlog bound logger
+    return structlog.get_logger()
 
 # Create a default logger instance
 logger = setup_logger()

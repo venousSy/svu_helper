@@ -1,4 +1,5 @@
 import logging
+import structlog
 from aiogram import Router, F, types
 
 from application.payment_service import ConfirmPaymentService, RejectPaymentService
@@ -13,7 +14,7 @@ from utils.constants import (
 from utils.formatters import escape_md
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 @router.callback_query(
@@ -39,7 +40,7 @@ async def admin_view_receipt(
         await bot.send_document(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
         await callback.answer()
     except Exception as e:
-        logger.warning(f"Failed to send document for payment {payment_id}: {e}")
+        logger.warning("Failed to send document for payment", payment_id=payment_id, error=str(e))
         try:
             await bot.send_photo(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
         except Exception:

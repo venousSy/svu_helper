@@ -14,3 +14,4 @@ flake8
 sentry-sdk
 telethon
 cachetools
+structlog>=24.0.0
