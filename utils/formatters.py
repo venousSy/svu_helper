@@ -60,32 +60,7 @@ def format_project_list(
     header = f"**{title}**\n{_SEP}\nإجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
     lines = [header]
 
-    for project in slice_:
-        p_id = project["id"]
-        subject = project["subject_name"]
-
-        user_info = ""
-        if "user_full_name" in project and project["user_full_name"]:
-            name = escape_md(project["user_full_name"])
-            u_id = project.get("user_id")
-            username = (
-                f" (@{escape_md(project['username'])})"
-                if project.get("username")
-                else ""
-            )
-            if u_id:
-                user_info = f"\n   👤 [{name}](tg://user?id={u_id}){username}"
-            else:
-                user_info = f"\n   👤 {name}{username}"
-
-        extra_info = ""
-        if "tutor_name" in project and project["tutor_name"]:
-            extra_info += f"\n   👨‍🏫 المدرس: {escape_md(project['tutor_name'])}"
-        if "deadline" in project and project["deadline"]:
-            extra_info += f" | 📅 الموعد: {escape_md(project['deadline'])}"
-
-        user_info += extra_info
-        lines.append(f"• #{p_id}: {escape_md(subject)}{user_info}\n")
+    lines.append("\n💡 اضغط على الزر أدناه لإدارة المشروع.")
 
     return "".join(lines).strip(), total_pages
 
@@ -301,13 +276,7 @@ def format_offer_list(
     )
     lines = [header]
 
-    for offer in slice_:
-        p_id  = offer["id"]
-        sub   = escape_md(offer["subject_name"])
-        tutor = escape_md(offer["tutor_name"])
-        lines.append(f"📍 **المشروع #{p_id}**: {sub}\n└ _المدرس: {tutor}_\n\n")
-
-    lines.append("💡 اضغط على الزر أدناه لعرض التفاصيل والرد.")
+    lines.append("\n💡 اضغط على الزر أدناه لعرض التفاصيل والرد.")
     return "".join(lines).strip(), total_pages
 
 
