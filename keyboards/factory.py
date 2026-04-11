@@ -115,9 +115,19 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for item in offers:
             p_id = item["id"]
+            subject = item.get("subject_name", "بدون مادة")
+            tutor = item.get("tutor_name", "")
+            
+            parts = [f"#{p_id}"]
+            if tutor:
+                parts.append(tutor)
+            if subject:
+                parts.append(subject)
+            btn_text = " | ".join(parts)
+            
             builder.row(
                 types.InlineKeyboardButton(
-                    text=f"عرض العرض #{p_id}",
+                    text=btn_text,
                     callback_data=ProjectCallback(action=ProjectAction.view_offer, id=p_id).pack(),
                 )
             )
@@ -201,9 +211,18 @@ class KeyboardFactory:
         for item in pending_projects:
             p_id = item["id"]
             subject = item.get("subject_name", "")
-            btn_text = f"{_BTN_MANAGE_PROJECT} #{p_id}"
+            username = item.get("username") or item.get("user_full_name", "")
+            date = item.get("deadline", "")
+            
+            parts = [f"#{p_id}"]
+            if username:
+                parts.append(username)
+            if date:
+                parts.append(date)
             if subject:
-                btn_text += f": {subject}"
+                parts.append(subject)
+            btn_text = " | ".join(parts)
+            
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
@@ -225,9 +244,18 @@ class KeyboardFactory:
         for item in accepted_projects:
             p_id = item["id"]
             subject = item.get("subject_name", "")
-            btn_text = f"{_BTN_FINISH_PROJECT} #{p_id}"
+            username = item.get("username") or item.get("user_full_name", "")
+            date = item.get("deadline", "")
+            
+            parts = [f"{_BTN_FINISH_PROJECT} #{p_id}"]
+            if username:
+                parts.append(username)
+            if date:
+                parts.append(date)
             if subject:
-                btn_text += f": {subject}"
+                parts.append(subject)
+            btn_text = " | ".join(parts)
+            
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
