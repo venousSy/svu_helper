@@ -1,10 +1,10 @@
 import asyncio
-import logging
+import structlog
 from typing import List, Union
 
 from aiogram import Bot, exceptions
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 class Broadcaster:
     """
@@ -27,11 +27,11 @@ class Broadcaster:
                 await asyncio.sleep(0.8) 
                 return True
             except exceptions.TelegramRetryAfter as e:
-                logger.warning(f"Flood limit exceeded. Sleeping for {e.retry_after} seconds.")
+                logger.warning("Flood limit exceeded", sleep_seconds=e.retry_after)
                 await asyncio.sleep(e.retry_after)
                 return await self.send_message(user_id, text)  # Retry once
             except (exceptions.TelegramAPIError, Exception) as e:
-                logger.error(f"Failed to send to {user_id}: {e}")
+                logger.error("Failed to send broadcast", user_id=user_id, error=str(e))
                 return False
 
     async def broadcast(self, user_ids: List[int], text: str) -> int:

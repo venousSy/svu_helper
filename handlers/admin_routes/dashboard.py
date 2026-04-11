@@ -2,6 +2,7 @@ import logging
 from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+import structlog
 
 from application.admin_service import GetStatsService, MaintenanceService
 from config import settings
@@ -11,7 +12,7 @@ from keyboards.callbacks import MenuCallback, MenuAction
 from utils.constants import BTN_CANCEL, MSG_ADMIN_DASHBOARD, MSG_CANCELLED
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 @router.message(F.text == BTN_CANCEL, F.from_user.id.in_(settings.admin_ids))
@@ -55,12 +56,12 @@ async def admin_stats_handler(message: types.Message, stats_repo: StatsRepositor
 @router.message(Command("maintenance_on"), F.from_user.id.in_(settings.admin_ids))
 async def admin_maintenance_on(message: types.Message, settings_repo: SettingsRepository):
     await MaintenanceService(settings_repo).enable()
-    logger.warning(f"Maintenance mode ENABLED by admin {message.from_user.id}")
+    logger.warning("Maintenance mode ENABLED", admin_id=message.from_user.id)
     await message.answer("🛑 **تم تفعيل وضع الصيانة.**\nلن يتمكن المستخدمون من استخدام البوت.")
 
 
 @router.message(Command("maintenance_off"), F.from_user.id.in_(settings.admin_ids))
 async def admin_maintenance_off(message: types.Message, settings_repo: SettingsRepository):
     await MaintenanceService(settings_repo).disable()
-    logger.warning(f"Maintenance mode DISABLED by admin {message.from_user.id}")
+    logger.warning("Maintenance mode DISABLED", admin_id=message.from_user.id)
     await message.answer("✅ **تم إيقاف وضع الصيانة.**\nالبوت متاح للجميع الآن.")

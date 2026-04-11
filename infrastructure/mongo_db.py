@@ -22,14 +22,14 @@ This module is the single place that knows about Motor / Motor-asyncio.
 Application and domain layers must never import from here directly;
 instead, use the `get_db` helper or receive `db` via DI middleware.
 """
-import logging
+import structlog
 from pymongo import DESCENDING
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 DB_NAME = settings.DB_NAME
 
@@ -47,7 +47,7 @@ class Database:
     async def connect(cls) -> None:
         """Initialises the MongoDB connection and ensures required indexes."""
         cls.db = cls.client[DB_NAME]
-        logger.info(f"🔌 Connected to MongoDB: {DB_NAME}")
+        logger.info("Connected to MongoDB", db_name=DB_NAME)
 
         # --- Index creation ---
         await cls.db.projects.create_index("id", unique=True)

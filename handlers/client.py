@@ -158,14 +158,14 @@ async def process_details(
                     reply_markup=get_new_project_alert_kb(project_id),
                 )
             except TelegramAPIError as e:
-                logger.error(f"Failed to notify admin {admin_id}: {e}")
+                logger.error("Failed to notify admin", admin_id=admin_id, error=str(e))
         await state.clear()
 
     except ValueError as e:
         await message.answer(f"⚠️ {e}", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
     except Exception as e:
-        logger.error(f"Failed to submit project: {e}", exc_info=True)
+        logger.error("Failed to submit project", error=str(e), exc_info=True)
         await message.answer(
             "⚠️ حدث خطأ أثناء حفظ المشروع. حاول مرة أخرى لاحقاً.",
             reply_markup=types.ReplyKeyboardRemove(),
@@ -260,11 +260,11 @@ async def process_payment_proof(
                         reply_markup=get_payment_verify_kb(result.payment_id),
                     )
             except TelegramAPIError as e:
-                logger.error(f"Failed to relay receipt {result.payment_id} to admin {admin_id}: {e}")
+                logger.error("Failed to relay receipt to admin", payment_id=result.payment_id, admin_id=admin_id, error=str(e))
         await state.clear()
 
     except Exception as e:
-        logger.error(f"Payment upload failed: {e}", exc_info=True)
+        logger.error("Payment upload failed", error=str(e), exc_info=True)
         await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
         await state.clear()
 

@@ -10,9 +10,11 @@ from keyboards.callbacks import MenuCallback, MenuAction
 from states import AdminStates
 from utils.constants import MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS
 from utils.broadcaster import Broadcaster
+from utils.constants import BTN_CANCEL
+import structlog
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 @router.callback_query(
@@ -46,7 +48,7 @@ async def execute_broadcast(
             reply_markup=types.ReplyKeyboardRemove(),
         )
     except Exception as e:
-        logger.error(f"Broadcast failed: {e}", exc_info=True)
+        logger.error("Broadcast failed", error=str(e), exc_info=True)
         await message.answer("⚠️ حدث خطأ أثناء عملية الإرسال.")
     finally:
         await state.clear()

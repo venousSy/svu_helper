@@ -17,6 +17,7 @@ from middlewares.error_handler import GlobalErrorHandler
 from middlewares.maintenance import MaintenanceMiddleware
 from middlewares.throttling import ThrottlingMiddleware
 from middlewares.db_injection import DbInjectionMiddleware
+from middlewares.correlation import CorrelationLoggingMiddleware
 from utils.storage import MongoStorage
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
@@ -54,7 +55,9 @@ storage = MongoStorage(mongo_client)
 dp = Dispatcher(storage=storage)
 
 # Register Middleware
-# Order matters: DB Injection -> Maintenance -> Error Handler
+# Order matters: Correlation -> DB Injection -> Maintenance -> Error Handler
+dp.message.outer_middleware(CorrelationLoggingMiddleware())
+dp.callback_query.outer_middleware(CorrelationLoggingMiddleware())
 dp.message.middleware(DbInjectionMiddleware())
 dp.callback_query.middleware(DbInjectionMiddleware())
 dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
@@ -85,7 +88,7 @@ async def start_keepalive_server():
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    logger.info(f"🌐 Keep-alive server started on port {port}")
+    logger.info("Keep-alive server started", port=port)
     return runner
 
 
@@ -128,7 +131,7 @@ async def main():
                 admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id)
             )
 
-        logger.info(f"🚀 Bot online. Admin IDs: {settings.admin_ids}")
+        logger.info("Bot online", admin_ids=settings.admin_ids)
 
         await bot.delete_webhook(drop_pending_updates=True)
         
@@ -138,7 +141,7 @@ async def main():
         await dp.start_polling(bot)
 
     except Exception as e:
-        logger.error(f"⚠️ Error: {e}", exc_info=True)
+        logger.error("Error occurred while running bot", e=str(e), exc_info=True)
     finally:
         await bot.session.close()
         try:
