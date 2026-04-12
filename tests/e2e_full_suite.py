@@ -67,13 +67,13 @@ async def click_inline_button(client, msg, text_match, error_msg="Button not fou
 async def submit_project(student, subject="E2E Subject", tutor="E2E Tutor", deadline="2026-12-31", details="E2E details text."):
     """Helper: Runs through the full project submission FSM."""
     await student.send_message(BOT_USERNAME, "/new_project")
-    await wait_for_message(student, ["المادة"])
+    await wait_for_message(student, ["[1/4]", "المادة"])
     await student.send_message(BOT_USERNAME, subject)
-    await wait_for_message(student, ["المدرس"])
+    await wait_for_message(student, ["[2/4]", "المدرس"])
     await student.send_message(BOT_USERNAME, tutor)
-    await wait_for_message(student, ["التسليم", "Deadline"])
+    await wait_for_message(student, ["[3/4]", "التسليم", "Deadline"])
     await student.send_message(BOT_USERNAME, deadline)
-    await wait_for_message(student, ["التفاصيل", "وصف"])
+    await wait_for_message(student, ["[4/4]", "التفاصيل", "وصف"])
     await student.send_message(BOT_USERNAME, details)
     await wait_for_message(student, ["تم تقديم", "بنجاح"], timeout=15)
 
@@ -81,11 +81,13 @@ async def admin_make_offer(admin, price="30000", delivery="3 Days", notes="لا 
     """Helper: Admin dispatches a pricing offer from an incoming alert."""
     alert = await wait_for_message(admin, ["مشروع جديد"], timeout=15)
     await click_inline_button(admin, alert, "إرسال عرض")
-    await wait_for_message(admin, ["السعر"])
+    await wait_for_message(admin, ["[1/3]", "السعر"])
     await admin.send_message(BOT_USERNAME, price)
-    await wait_for_message(admin, ["تاريخ", "تسليم"])
+    await wait_for_message(admin, ["[2/3]", "تاريخ", "تسليم"])
     await admin.send_message(BOT_USERNAME, delivery)
-    await wait_for_message(admin, ["ملاحظات", "نعم", "لا"])
+    await wait_for_message(admin, ["[3/3]", "ملاحظات"])
+    await admin.send_message(BOT_USERNAME, "نعم")
+    await wait_for_message(admin, ["اكتب", "ملاحظاتك", "🖋"])
     await admin.send_message(BOT_USERNAME, notes)
     await wait_for_message(admin, ["تم إرسال", "بنجاح"])
 
@@ -123,7 +125,7 @@ async def run_full_suite():
     # --- TEST 1: CANCELLATION ---
     async def test_cancellation():
         await student.send_message(BOT_USERNAME, "/new_project")
-        await wait_for_message(student, ["المادة"])
+        await wait_for_message(student, ["[1/4]", "المادة"])
         await student.send_message(BOT_USERNAME, "/cancel")
         await wait_for_message(student, ["تم الإلغاء", "إلغاء"])
         print("  ✅ Cancellation flow works correctly.")
@@ -158,13 +160,13 @@ async def run_full_suite():
     # --- TEST 5: FILE UPLOAD - PDF ---
     async def test_pdf_upload():
         await student.send_message(BOT_USERNAME, "/new_project")
-        await wait_for_message(student, ["المادة"])
+        await wait_for_message(student, ["[1/4]", "المادة"])
         await student.send_message(BOT_USERNAME, "PDF Test Subject")
-        await wait_for_message(student, ["المدرس"])
+        await wait_for_message(student, ["[2/4]", "المدرس"])
         await student.send_message(BOT_USERNAME, "PDF Tutor")
-        await wait_for_message(student, ["التسليم", "Deadline"])
+        await wait_for_message(student, ["[3/4]", "التسليم", "Deadline"])
         await student.send_message(BOT_USERNAME, "2026-12-31")
-        await wait_for_message(student, ["التفاصيل", "وصف"])
+        await wait_for_message(student, ["[4/4]", "التفاصيل", "وصف"])
 
         with open("dummy_test.pdf", "w", encoding="utf-8") as f:
             f.write("%PDF-1.4\nE2E dummy PDF content for testing.")

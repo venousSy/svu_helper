@@ -14,9 +14,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from domain.enums import ProjectStatus
+from infrastructure.repositories.project import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from infrastructure.repositories import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     PaymentRepository,
     ProjectRepository,
     SettingsRepository,
@@ -66,7 +65,7 @@ def stats_repo(mock_db):
 @pytest.mark.asyncio
 async def test_add_project(project_repo, mock_db):
     with patch(
-        "infrastructure.repositories.Database.get_next_sequence",
+        "infrastructure.mongo_db.Database.get_next_sequence",
         new=AsyncMock(return_value=101),
     ):
         project_id = await project_repo.add_project(
@@ -197,7 +196,7 @@ async def test_get_all_user_ids(project_repo, mock_db):
 @pytest.mark.asyncio
 async def test_add_payment(payment_repo, mock_db):
     with patch(
-        "infrastructure.repositories.Database.get_next_sequence",
+        "infrastructure.mongo_db.Database.get_next_sequence",
         new=AsyncMock(return_value=101),
     ):
         payment_id = await payment_repo.add_payment(

@@ -148,7 +148,9 @@ async def show_specific_offer(
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.close_list))
 async def cb_close_list(callback: types.CallbackQuery):
     try:
-        await callback.message.delete()
+        from keyboards.common_kb import get_student_main_kb
+        from utils.constants import MSG_WELCOME
+        await callback.message.edit_text(MSG_WELCOME, parse_mode="Markdown", reply_markup=get_student_main_kb())
     except Exception:
         pass
     await callback.answer()

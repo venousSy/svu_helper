@@ -81,7 +81,7 @@ async def test_add_project_service_validates_deadline_format(mock_project_repo):
 async def test_add_project_service_persists_on_valid_input(mock_project_repo):
     mock_project_repo.add_project.return_value = 42
     with patch(
-        "infrastructure.repositories.Database.get_next_sequence",
+        "infrastructure.mongo_db.Database.get_next_sequence",
         new=AsyncMock(return_value=42),
     ):
         service = AddProjectService(mock_project_repo)

@@ -11,7 +11,7 @@ from keyboards.admin_kb import get_payment_verify_kb
 from keyboards.client_kb import get_cancel_payment_kb
 from keyboards.callbacks import MenuCallback, ProjectCallback, ProjectAction, MenuAction
 from states import ProjectOrder
-from utils.constants import MSG_OFFER_ACCEPTED, MSG_RECEIPT_RECEIVED
+from utils.constants import MSG_OFFER_ACCEPTED, MSG_RECEIPT_RECEIVED, MSG_PAYMENT_CANCELLED, MSG_PAYMENT_PROOF_HINT
 from utils.helpers import get_file_id
 from middlewares.throttling import ThrottlingMiddleware
 
@@ -57,9 +57,15 @@ async def student_accept_offer(
 async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
-        "🚫 تم إلغاء عملية الدفع. يمكنك قبول العرض لاحقاً من قائمة 'عروضي'."
+        MSG_PAYMENT_CANCELLED,
+        parse_mode="Markdown"
     )
-    await callback.answer()
+    await callback.answer("تم الإلغاء ✓")
+
+
+@router.message(ProjectOrder.waiting_for_payment_proof, F.text)
+async def process_payment_proof_invalid(message: types.Message):
+    await message.answer(MSG_PAYMENT_PROOF_HINT)
 
 
 @router.message(ProjectOrder.waiting_for_payment_proof, F.photo | F.document)
