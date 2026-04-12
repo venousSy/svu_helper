@@ -9,6 +9,7 @@ from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.admin_kb import get_new_project_alert_kb
 from keyboards.callbacks import MenuCallback, MenuAction
+from keyboards.calendar_kb import build_calendar, CalendarCallback
 from states import ProjectOrder
 from utils.constants import (
     MSG_ASK_DEADLINE,
@@ -66,8 +67,35 @@ async def process_tutor(message: types.Message, state: FSMContext):
             f"⚠️ اسم المدرس طويل جداً. الحد الأقصى {AddProjectService.MAX_TUTOR_LENGTH} حرف."
         )
     await state.update_data(tutor=message.text)
-    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown")
+    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown", reply_markup=build_calendar())
     await state.set_state(ProjectOrder.deadline)
+
+
+@router.callback_query(CalendarCallback.filter(), ProjectOrder.deadline)
+async def process_calendar(callback: types.CallbackQuery, callback_data: CalendarCallback, state: FSMContext):
+    action = callback_data.action
+    year = callback_data.year
+    month = callback_data.month
+    day = callback_data.day
+
+    if action == "ignore":
+        await callback.answer()
+        return
+
+    if action == "nav":
+        await callback.message.edit_reply_markup(reply_markup=build_calendar(year, month))
+        return
+
+    if action == "day":
+        date_str = f"{year:04d}-{month:02d}-{day:02d}"
+        await state.update_data(deadline=date_str)
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
+        await state.set_state(ProjectOrder.details)
+        await callback.answer()
 
 
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
