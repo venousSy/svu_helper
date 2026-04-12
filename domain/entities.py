@@ -80,6 +80,7 @@ class Payment(BaseModel):
     project_id: int
     user_id: int
     file_id: str
+    file_type: Optional[str] = None   # photo / document / video / etc.
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)

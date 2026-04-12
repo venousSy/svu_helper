@@ -8,14 +8,20 @@ from utils.i18n import load_messages
 _msgs = load_messages("ar")
 
 # --- STATUS CONSTANTS ---
-STATUS_PENDING = _msgs["status"]["pending"]
-STATUS_ACCEPTED = _msgs["status"]["accepted"]
-STATUS_AWAITING_VERIFICATION = _msgs["status"]["awaiting_verification"]
-STATUS_FINISHED = _msgs["status"]["finished"]
-STATUS_OFFERED = _msgs["status"]["offered"]
-STATUS_REJECTED_PAYMENT = _msgs["status"]["rejected_payment"]
-STATUS_DENIED_ADMIN = _msgs["status"]["denied_admin"]
-STATUS_DENIED_STUDENT = _msgs["status"]["denied_student"]
+# These match the English slug values stored in MongoDB (ProjectStatus enum values).
+STATUS_PENDING               = "pending"
+STATUS_ACCEPTED              = "accepted"
+STATUS_AWAITING_VERIFICATION = "awaiting_verification"
+STATUS_FINISHED              = "finished"
+STATUS_OFFERED               = "offered"
+STATUS_REJECTED_PAYMENT      = "rejected_payment"
+STATUS_DENIED_ADMIN          = "denied_admin"
+STATUS_DENIED_STUDENT        = "denied_student"
+
+# Arabic display labels keyed by slug, sourced from locale file.
+# Always use this dict for user-facing status text, never the raw slug.
+STATUS_LABELS: dict = _msgs["status"]
+
 
 # --- MESSAGES ---
 MSG_WELCOME = _msgs["messages"]["welcome"]

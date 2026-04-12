@@ -67,7 +67,9 @@ class SubmitPaymentService:
         if not proj_id:
             raise ValueError("No active project for payment – missing FSM state.")
 
-        payment_id = await self._payment_repo.add_payment(proj_id, user_id, file_id)
+        payment_id = await self._payment_repo.add_payment(
+            proj_id, user_id, file_id, file_type=file_type
+        )
         await self._project_repo.update_status(proj_id, ProjectStatus.AWAITING_VERIFICATION)
 
         return SubmitPaymentResult(
