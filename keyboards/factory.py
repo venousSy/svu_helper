@@ -99,12 +99,16 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=_BTN_ACCEPT_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.accept, id=proj_id).pack(),
+            ),
+            types.InlineKeyboardButton(
+                text=_BTN_DENY_OFFER,
+                callback_data=ProjectCallback(action=ProjectAction.deny, id=proj_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_DENY_OFFER,
-                callback_data=ProjectCallback(action=ProjectAction.deny, id=proj_id).pack(),
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(action=MenuAction.my_offers).pack(),
             )
         )
         return builder.as_markup()
@@ -247,7 +251,7 @@ class KeyboardFactory:
             username = item.get("username") or item.get("user_full_name", "")
             date = item.get("deadline", "")
             
-            parts = [f"{_BTN_FINISH_PROJECT} #{p_id}"]
+            parts = [f"#{p_id}"]
             if username:
                 parts.append(username)
             if date:

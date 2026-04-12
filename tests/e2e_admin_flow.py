@@ -110,8 +110,8 @@ async def run_admin_tests():
         
         # Bot asks for price
         messages = await client.get_messages(BOT_USERNAME, limit=1)
-        if "السعر" not in messages[0].text:
-             print(f"❌ FAILED: Expected prompt for Price, got: {messages[0].text}")
+        if "السعر" not in messages[0].text or "[1/3]" not in messages[0].text:
+             print(f"❌ FAILED: Expected prompt for Price [1/3], got: {messages[0].text}")
              return
              
         print("✅ Received Price prompt. Entering '15000'...")
@@ -120,21 +120,31 @@ async def run_admin_tests():
         
         # Bot asks for delivery date
         messages = await client.get_messages(BOT_USERNAME, limit=1)
-        if "تاريخ" not in messages[0].text and "تسليم" not in messages[0].text:
-             print(f"❌ FAILED: Expected prompt for Delivery Date, got: {messages[0].text}")
+        if ("تاريخ" not in messages[0].text and "تسليم" not in messages[0].text) or "[2/3]" not in messages[0].text:
+             print(f"❌ FAILED: Expected prompt for Delivery Date [2/3], got: {messages[0].text}")
              return
              
         print("✅ Received Delivery Date prompt. Entering 'After 3 Days'...")
         await client.send_message(BOT_USERNAME, "After 3 Days")
         await asyncio.sleep(3)
         
-        # Bot asks for notes
+        # Bot asks for notes decision
         messages = await client.get_messages(BOT_USERNAME, limit=1)
-        if "ملاحظات" not in messages[0].text:
-             print(f"❌ FAILED: Expected prompt for Notes, got: {messages[0].text}")
+        if "ملاحظات" not in messages[0].text or "[3/3]" not in messages[0].text:
+             print(f"❌ FAILED: Expected prompt for Notes decision [3/3], got: {messages[0].text}")
              return
              
-        print("✅ Received Notes prompt. Entering 'No special notes.'...")
+        print("✅ Received Notes decision prompt. Entering 'نعم'...")
+        await client.send_message(BOT_USERNAME, "نعم")
+        await asyncio.sleep(2)
+        
+        # Bot asks for note text
+        messages = await client.get_messages(BOT_USERNAME, limit=1)
+        if "اكتب" not in messages[0].text:
+             print(f"❌ FAILED: Expected prompt for Note text, got: {messages[0].text}")
+             return
+             
+        print("✅ Received Note text prompt. Entering 'No special notes.'...")
         await client.send_message(BOT_USERNAME, "No special notes.")
         await asyncio.sleep(3)
         

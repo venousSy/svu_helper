@@ -16,6 +16,7 @@ from keyboards.callbacks import ProjectCallback, ProjectAction
 from states import AdminStates
 from utils.constants import (
     BTN_YES,
+    BTN_NO,
     MSG_ASK_DELIVERY,
     MSG_ASK_NOTES,
     MSG_ASK_NOTES_TEXT,
@@ -169,11 +170,14 @@ async def process_delivery(message: types.Message, state: FSMContext):
 async def process_notes_decision(
     message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
 ):
-    if message.text == BTN_YES:
+    text = message.text.strip()
+    if text == BTN_YES:
         await message.answer(MSG_ASK_NOTES_TEXT, reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(AdminStates.waiting_for_notes_text)
-    else:
+    elif text == BTN_NO:
         await _finalize_offer(message, state, bot, project_repo, notes=MSG_NO_NOTES)
+    else:
+        await message.answer("⚠️ الرجاء اختيار 'نعم' أو 'لا' من لوحة المفاتيح المرفقة.", reply_markup=get_notes_decision_kb())
 
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.admin_ids))
@@ -200,6 +204,9 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
             f"📅 **التسليم:** {escape_md(result.delivery)}\n"
             f"📝 **ملاحظات:** {escape_md(result.notes)}\n━━━━━━━━━━━━━"
         )
+        
+        await bot.send_chat_action(result.user_id, "typing")
+        
         await bot.send_message(
             result.user_id, offer_text, parse_mode="Markdown",
             reply_markup=get_offer_actions_kb(result.proj_id),

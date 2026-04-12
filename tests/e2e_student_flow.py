@@ -64,8 +64,8 @@ async def run_student_tests():
         await asyncio.sleep(2)
         
         msg = (await client.get_messages(BOT_USERNAME, limit=1))[0]
-        if "المادة" not in msg.text:
-            print(f"❌ TEST 2 FAILED: Expected Subject prompt, got: {msg.text}")
+        if "المادة" not in msg.text or "[1/4]" not in msg.text:
+            print(f"❌ TEST 2 FAILED: Expected Subject prompt [1/4], got: {msg.text}")
             return
             
         print("✅ Received Subject prompt. Entering 'Automated Test Subject'...")
@@ -73,8 +73,8 @@ async def run_student_tests():
         await asyncio.sleep(2)
         
         msg = (await client.get_messages(BOT_USERNAME, limit=1))[0]
-        if "المدرس" not in msg.text:
-            print(f"❌ TEST 2 FAILED: Expected Tutor prompt, got: {msg.text}")
+        if "المدرس" not in msg.text or "[2/4]" not in msg.text:
+            print(f"❌ TEST 2 FAILED: Expected Tutor prompt [2/4], got: {msg.text}")
             return
             
         print("✅ Received Tutor prompt. Entering 'Auto-Tutor'...")
@@ -82,8 +82,8 @@ async def run_student_tests():
         await asyncio.sleep(2)
         
         msg = (await client.get_messages(BOT_USERNAME, limit=1))[0]
-        if "التسليم" not in msg.text and "Deadline" not in msg.text:
-            print(f"❌ TEST 2 FAILED: Expected Deadline prompt, got: {msg.text}")
+        if ("التسليم" not in msg.text and "Deadline" not in msg.text) or "[3/4]" not in msg.text:
+            print(f"❌ TEST 2 FAILED: Expected Deadline prompt [3/4], got: {msg.text}")
             return
             
         print("✅ Received Deadline prompt. Entering 'Tomorrow'...")
@@ -91,8 +91,8 @@ async def run_student_tests():
         await asyncio.sleep(2)
         
         msg = (await client.get_messages(BOT_USERNAME, limit=1))[0]
-        if "التفاصيل" not in msg.text:
-            print(f"❌ TEST 2 FAILED: Expected Details prompt, got: {msg.text}")
+        if "التفاصيل" not in msg.text or "[4/4]" not in msg.text:
+            print(f"❌ TEST 2 FAILED: Expected Details prompt [4/4], got: {msg.text}")
             return
             
         print("✅ Received Details prompt. Sending final test text...")
