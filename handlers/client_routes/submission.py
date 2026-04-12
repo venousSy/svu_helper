@@ -22,13 +22,9 @@ from utils.constants import (
 )
 from utils.formatters import format_admin_notification
 from utils.helpers import get_file_id, get_file_size
-from middlewares.throttling import ThrottlingMiddleware
 
 router = Router()
 logger = logging.getLogger(__name__)
-
-# Re-apply throttling since we use multiple routers now
-router.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
 
 MAX_FILE_SIZE_MB = AddProjectService.MAX_FILE_SIZE_MB
 MAX_FILE_SIZE_BYTES = AddProjectService.MAX_FILE_SIZE_BYTES
