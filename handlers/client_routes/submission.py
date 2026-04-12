@@ -71,33 +71,6 @@ async def process_tutor(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.deadline)
 
 
-@router.callback_query(CalendarCallback.filter(), ProjectOrder.deadline)
-async def process_calendar(callback: types.CallbackQuery, callback_data: CalendarCallback, state: FSMContext):
-    action = callback_data.action
-    year = callback_data.year
-    month = callback_data.month
-    day = callback_data.day
-
-    if action == "ignore":
-        await callback.answer()
-        return
-
-    if action == "nav":
-        await callback.message.edit_reply_markup(reply_markup=build_calendar(year, month))
-        return
-
-    if action == "day":
-        date_str = f"{year:04d}-{month:02d}-{day:02d}"
-        await state.update_data(deadline=date_str)
-        try:
-            await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
-        await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
-        await state.set_state(ProjectOrder.details)
-        await callback.answer()
-
-
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
 async def process_deadline(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:

@@ -11,6 +11,7 @@ from application.offer_service import (
 from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.admin_kb import get_cancel_kb, get_manage_project_kb, get_notes_decision_kb
+from keyboards.calendar_kb import build_calendar
 from keyboards.client_kb import get_offer_actions_kb
 from keyboards.callbacks import ProjectCallback, ProjectAction
 from states import AdminStates
@@ -150,7 +151,7 @@ async def process_price(message: types.Message, state: FSMContext):
     if len(price_text) > 50:
         return await message.answer("⚠️ النص طويل جداً. الرجاء إدخال سعر مختصر (مثلاً: 50,000 ل.س).")
     await state.update_data(price=price_text)
-    await message.answer(MSG_ASK_DELIVERY, reply_markup=get_cancel_kb())
+    await message.answer(MSG_ASK_DELIVERY, reply_markup=build_calendar())
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
