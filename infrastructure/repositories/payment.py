@@ -15,7 +15,7 @@ class PaymentRepository:
         self._db = db
 
     async def add_payment(
-        self, project_id: int, user_id: int, file_id: str
+        self, project_id: int, user_id: int, file_id: str, file_type: Optional[str] = None
     ) -> int:
         payment_id = await Database.get_next_sequence("payment_id")
 
@@ -24,6 +24,7 @@ class PaymentRepository:
             project_id=int(project_id),
             user_id=user_id,
             file_id=file_id,
+            file_type=file_type,
             status=PaymentStatus.PENDING,
         )
 

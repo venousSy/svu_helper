@@ -15,6 +15,7 @@ from utils.constants import (
     STATUS_DENIED_ADMIN,
     STATUS_DENIED_STUDENT,
     STATUS_FINISHED,
+    STATUS_LABELS,
     STATUS_PENDING,
 )
 from utils.pagination import paginate, PAGE_SIZE
@@ -90,9 +91,11 @@ def format_project_history(
     for project in slice_:
         p_id = project["id"]
         subject = project["subject_name"]
-        status = project["status"]
-        icon = "🏁" if status == STATUS_FINISHED else "❌"
-        lines.append(f"{icon} #{p_id} | {escape_md(subject)} ({status})\n")
+        status_slug = project["status"]
+        # Display the Arabic label; fall back to the slug if somehow unknown
+        status_label = STATUS_LABELS.get(status_slug, status_slug)
+        icon = "🏁" if status_slug == STATUS_FINISHED else "❌"
+        lines.append(f"{icon} #{p_id} | {escape_md(subject)} ({status_label})\n")
 
     return "".join(lines).strip(), total_pages
 
@@ -148,7 +151,8 @@ def format_master_report(
         if "tutor_name" in item and item["tutor_name"]:
             extra = f"المدرس: {escape_md(item['tutor_name'])}"
         elif "status" in item:
-            extra = f"الحالة: {item['status']}"
+            # Translate slug to Arabic for display
+            extra = f"الحالة: {STATUS_LABELS.get(item['status'], item['status'])}"
         else:
             extra = ""
 
@@ -233,20 +237,21 @@ def format_student_projects(
     for project in slice_:
         p_id    = project["id"]
         subject = project["subject_name"]
-        status  = project["status"]
+        status_slug  = project["status"]
+        status_label = STATUS_LABELS.get(status_slug, status_slug)
 
-        if status == STATUS_PENDING:
+        if status_slug == STATUS_PENDING:
             emoji = "⏳"
-        elif status in [STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION]:
+        elif status_slug in [STATUS_ACCEPTED, STATUS_AWAITING_VERIFICATION]:
             emoji = "🚀"
-        elif status == STATUS_FINISHED:
+        elif status_slug == STATUS_FINISHED:
             emoji = "✅"
-        elif status in [STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT]:
+        elif status_slug in [STATUS_DENIED_ADMIN, STATUS_DENIED_STUDENT]:
             emoji = "❌"
         else:
             emoji = "ℹ️"
 
-        lines.append(f"• #{p_id} | {escape_md(subject)}\n   ┗ الحالة: {emoji} {status}\n\n")
+        lines.append(f"• #{p_id} | {escape_md(subject)}\n   ┗ الحالة: {emoji} {status_label}\n\n")
 
     return "".join(lines).strip(), total_pages
 

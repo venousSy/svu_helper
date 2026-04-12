@@ -33,19 +33,19 @@ async def admin_view_receipt(
     if not payment:
         return await callback.answer("⚠️ File not found.", show_alert=True)
 
-    file_id = payment["file_id"]
-    status = payment["status"]
-    caption = f"📄 **Detail View: Payment #{payment_id}**\nStatus: {status}"
+    file_id   = payment["file_id"]
+    file_type = payment.get("file_type", "document")
+    status    = payment["status"]
+    caption   = f"📄 **Detail View: Payment #{payment_id}**\nStatus: {status}"
     try:
-        await bot.send_document(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
+        if file_type == "photo":
+            await bot.send_photo(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
+        else:
+            await bot.send_document(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
         await callback.answer()
     except Exception as e:
-        logger.warning("Failed to send document for payment", payment_id=payment_id, error=str(e))
-        try:
-            await bot.send_photo(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
-        except Exception:
-            pass
-        await callback.answer()
+        logger.warning("Failed to send receipt file", payment_id=payment_id, error=str(e))
+        await callback.answer("⚠️ تعذر إرسال الملف.", show_alert=True)
 
 
 @router.callback_query(
