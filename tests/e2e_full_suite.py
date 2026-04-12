@@ -312,7 +312,7 @@ async def run_full_suite():
         await click_inline_button(admin, dashboard, "مقبولة/جارية")
         
         active_list = await wait_for_message(admin, ["مشاريع جارية", "🚀"], timeout=15)
-        await click_inline_button(admin, active_list, "إنهاء")
+        await click_inline_button(admin, active_list, "Finish Work Subject")
         
         # Admin is waiting for finished work upload
         upload_prompt = await wait_for_message(admin, ["رفع الملف النهائي", "النهائي"], timeout=15)
