@@ -60,6 +60,12 @@ class Database:
         await cls.db.payments.create_index("status")
         await cls.db.payments.create_index([("created_at", DESCENDING)])
 
+        # FSM state storage — compound index for fast per-user look-ups
+        await cls.db.fsm_states.create_index(
+            [("chat_id", 1), ("user_id", 1)],
+            unique=True,
+        )
+
     @classmethod
     async def get_next_sequence(cls, sequence_name: str) -> int:
         """Atomically increments and returns the next integer ID."""

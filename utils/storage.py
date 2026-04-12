@@ -7,8 +7,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 class MongoStorage(BaseStorage):
     """
     MongoDB-based storage for FSM state and data.
+    The caller MUST pass db_name explicitly so FSM state is kept in the
+    same database as the rest of the application data.
     """
-    def __init__(self, mongo_client: AsyncIOMotorClient, db_name: str = "svu_bot_db", collection_name: str = "fsm_states"):
+    def __init__(self, mongo_client: AsyncIOMotorClient, db_name: str, collection_name: str = "fsm_states"):
         self.client = mongo_client
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]

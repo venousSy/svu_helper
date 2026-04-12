@@ -13,12 +13,9 @@ from keyboards.callbacks import MenuCallback, ProjectCallback, ProjectAction, Me
 from states import ProjectOrder
 from utils.constants import MSG_OFFER_ACCEPTED, MSG_RECEIPT_RECEIVED, MSG_PAYMENT_CANCELLED, MSG_PAYMENT_PROOF_HINT
 from utils.helpers import get_file_id
-from middlewares.throttling import ThrottlingMiddleware
 
 router = Router()
 logger = logging.getLogger(__name__)
-
-router.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
 
 MAX_FILE_SIZE_MB = 20
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024

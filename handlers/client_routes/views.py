@@ -18,12 +18,9 @@ from utils.formatters import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.pagination import build_nav_keyboard, paginate
-from middlewares.throttling import ThrottlingMiddleware
 
 router = Router()
 logger = logging.getLogger(__name__)
-
-router.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
 
 
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.my_projects))
@@ -45,7 +42,10 @@ async def _render_my_projects(
     try:
         await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
     except Exception:
-        pass
+        try:
+            await callback.message.edit_text(text, parse_mode=None, reply_markup=kb)
+        except Exception as e:
+            logger.warning("Failed to render project list", error=str(e))
     await callback.answer()
 
 
@@ -102,7 +102,10 @@ async def _render_my_offers(
     try:
         await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=item_kb)
     except Exception:
-        pass
+        try:
+            await callback.message.edit_text(text, parse_mode=None, reply_markup=item_kb)
+        except Exception as e:
+            logger.warning("Failed to render offers list", error=str(e))
     await callback.answer()
 
 

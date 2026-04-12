@@ -50,21 +50,24 @@ else:
 # --- BOT INITIALIZATION ---
 bot = Bot(token=settings.BOT_TOKEN)
 
-# Use MongoDB for persistent storage
-storage = MongoStorage(mongo_client)
+# Use MongoDB for persistent storage — must use the SAME DB as app data
+storage = MongoStorage(mongo_client, db_name=settings.DB_NAME)
 dp = Dispatcher(storage=storage)
 
 # Register Middleware
-# Order matters: Correlation -> DB Injection -> Maintenance -> Error Handler
+# Order matters: Correlation -> DB Injection -> Maintenance -> Throttling -> Error Handler
 dp.message.outer_middleware(CorrelationLoggingMiddleware())
 dp.callback_query.outer_middleware(CorrelationLoggingMiddleware())
+dp.edited_message.outer_middleware(CorrelationLoggingMiddleware())
 dp.message.middleware(DbInjectionMiddleware())
 dp.callback_query.middleware(DbInjectionMiddleware())
+dp.edited_message.middleware(DbInjectionMiddleware())
 dp.message.middleware(ThrottlingMiddleware(rate_limit=0.5))
 dp.callback_query.middleware(ThrottlingMiddleware(rate_limit=0.5))
 dp.message.middleware(MaintenanceMiddleware())
 dp.message.middleware(GlobalErrorHandler())
 dp.callback_query.middleware(GlobalErrorHandler())
+dp.edited_message.middleware(GlobalErrorHandler())
 
 # Register all hander routers
 dp.include_router(common_router)

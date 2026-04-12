@@ -69,7 +69,8 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
         return await callback.answer()
 
     if action == "nav":
-        return await callback.message.edit_reply_markup(reply_markup=build_calendar(year, month))
+        await callback.message.edit_reply_markup(reply_markup=build_calendar(year, month))
+        return await callback.answer()
 
     if action == "day":
         date_str = f"{year:04d}-{month:02d}-{day:02d}"
@@ -90,5 +91,6 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
             await state.update_data(delivery=date_str)
             await callback.message.answer(MSG_ASK_NOTES, reply_markup=get_notes_decision_kb())
             await state.set_state(AdminStates.waiting_for_notes_decision)
-            
-        await callback.answer()
+
+    # Always answer the callback to dismiss the spinner, regardless of state
+    await callback.answer()

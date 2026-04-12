@@ -14,23 +14,28 @@ class Broadcaster:
         self.bot = bot
         self.sem = asyncio.Semaphore(limit)
 
-    async def send_message(self, user_id: int, text: str) -> bool:
+    async def send_message(self, user_id: int, text: str, _retries: int = 1) -> bool:
         """
         Sends a message to a single user with safety checks.
         Returns True if successful, False otherwise.
+        Retries once on TelegramRetryAfter; gives up after that to avoid
+        unbounded recursion / stack overflow under sustained flood limiting.
         """
         async with self.sem:
             try:
                 await self.bot.send_message(user_id, text)
                 # Sleep briefly to respect the ~30 msgs/sec global limit roughly
                 # 25 tasks / 0.8s ~ 31 req/s
-                await asyncio.sleep(0.8) 
+                await asyncio.sleep(0.8)
                 return True
             except exceptions.TelegramRetryAfter as e:
-                logger.warning("Flood limit exceeded", sleep_seconds=e.retry_after)
+                if _retries <= 0:
+                    logger.warning("Flood limit exceeded, skipping user", user_id=user_id)
+                    return False
+                logger.warning("Flood limit exceeded, retrying", sleep_seconds=e.retry_after)
                 await asyncio.sleep(e.retry_after)
-                return await self.send_message(user_id, text)  # Retry once
-            except (exceptions.TelegramAPIError, Exception) as e:
+                return await self.send_message(user_id, text, _retries=_retries - 1)
+            except Exception as e:
                 logger.error("Failed to send broadcast", user_id=user_id, error=str(e))
                 return False
 
