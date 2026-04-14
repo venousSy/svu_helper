@@ -52,7 +52,12 @@ class TicketRepository:
             messages=[first_message],
         )
 
-        await self._db.tickets.insert_one(ticket.model_dump())
+        # exclude_none=True ensures fields like message_thread_id are
+        # ABSENT (not null) in MongoDB, which is required for the
+        # sparse unique index to allow multiple tickets without a topic.
+        await self._db.tickets.insert_one(
+            ticket.model_dump(exclude_none=True)
+        )
         logger.info(
             "Ticket created", ticket_id=ticket_id, user_id=user_id
         )
