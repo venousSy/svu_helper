@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     
     # Sentry Configuration
     SENTRY_DSN: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+
+    # Ticket System Configuration
+    ADMIN_FORUM_GROUP_ID: Optional[int] = Field(
+        default=None,
+        description="Telegram Forum Supergroup ID for support tickets"
+    )
     
     # Logging Configuration
     LOG_FILE: str = Field(default="bot.log", description="Log file path")

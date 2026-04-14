@@ -7,6 +7,7 @@ class MenuAction(str, Enum):
     cancel_pay = "cancel_pay"
     my_projects = "my_projects"
     my_offers = "my_offers"
+    support = "support"
     view_all_master = "view_all_master"
     view_pending = "view_pending"
     view_accepted = "view_accepted"
@@ -37,6 +38,15 @@ class PageAction(str, Enum):
     accepted = "accepted"
     history = "history"
     payments = "payments"
+    ticket_messages = "ticket_messages"
+
+class TicketAction(str, Enum):
+    open_new = "open_new"
+    list_active = "list_active"
+    view = "view"
+    reply = "reply"
+    close = "close"
+    back = "back"
 
 class ProjectCallback(CallbackData, prefix="proj"):
     action: ProjectAction
@@ -53,3 +63,9 @@ class PageCallback(CallbackData, prefix="page"):
     """Pagination callback for paged admin views."""
     action: PageAction
     page: int
+
+class TicketCallback(CallbackData, prefix="tkt"):
+    """Callback for ticket-related actions."""
+    action: TicketAction
+    id: int = 0   # ticket_id (0 = N/A for menu-level actions)
+

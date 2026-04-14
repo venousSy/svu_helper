@@ -66,6 +66,16 @@ class Database:
             unique=True,
         )
 
+        # --- Ticket indexes ---
+        await cls.db.tickets.create_index("ticket_id", unique=True)
+        await cls.db.tickets.create_index(
+            "message_thread_id", unique=True, sparse=True
+        )
+        await cls.db.tickets.create_index("user_id")
+        await cls.db.tickets.create_index(
+            [("user_id", 1), ("status", 1)]
+        )
+
     @classmethod
     async def get_next_sequence(cls, sequence_name: str) -> int:
         """Atomically increments and returns the next integer ID."""
