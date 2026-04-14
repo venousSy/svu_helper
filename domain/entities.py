@@ -6,11 +6,11 @@ No framework (aiogram) or database (motor) dependencies here.
 """
 import re
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from domain.enums import PaymentStatus, ProjectStatus
+from domain.enums import PaymentStatus, ProjectStatus, TicketStatus
 
 # Accepted deadline formats: DD/MM/YYYY  or  YYYY-MM-DD (ISO 8601)
 _DEADLINE_RE = re.compile(
@@ -82,6 +82,31 @@ class Payment(BaseModel):
     file_id: str
     file_type: Optional[str] = None   # photo / document / video / etc.
     status: PaymentStatus = Field(default=PaymentStatus.PENDING)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class TicketMessage(BaseModel):
+    """A single message inside a support ticket conversation."""
+    sender: str                        # "user" | "admin"
+    text: Optional[str] = None
+    file_id: Optional[str] = None
+    file_type: Optional[str] = None    # photo / document / video / …
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+
+class Ticket(BaseModel):
+    """Root document for the tickets collection."""
+    ticket_id: int
+    user_id: int
+    message_thread_id: Optional[int] = None  # Telegram Forum Topic ID
+    status: TicketStatus = Field(default=TicketStatus.OPEN)
+    messages: List[TicketMessage] = Field(default_factory=list)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )

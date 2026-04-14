@@ -21,10 +21,12 @@ from keyboards.callbacks import (
     PageCallback,
     PaymentCallback,
     ProjectCallback,
+    TicketCallback,
     MenuAction,
     PageAction,
     PaymentAction,
     ProjectAction,
+    TicketAction,
 )
 from utils.constants import (
     BTN_BACK,
@@ -58,6 +60,7 @@ _BTN_DENY_OFFER = "❌ رفض"
 _BTN_CANCEL_PAY = "❌ إلغاء"
 _BTN_FINISH_PROJECT = "📤 إنهاء"
 _BTN_MANAGE_PROJECT = "📂 إدارة"
+_BTN_SUPPORT = "📩 الدعم الفني"
 _BTN_VIEW_RECEIPT = "📄 عرض الإيصال"
 
 
@@ -83,6 +86,10 @@ class KeyboardFactory:
         builder.button(
             text=BTN_MY_OFFERS,
             callback_data=MenuCallback(action=MenuAction.my_offers).pack(),
+        )
+        builder.button(
+            text=_BTN_SUPPORT,
+            callback_data=MenuCallback(action=MenuAction.support).pack(),
         )
         builder.button(
             text="ℹ️ المساعدة",
@@ -408,6 +415,164 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
                 callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    # -----------------------------------------------------------------------
+    # Ticket keyboards
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def support_menu() -> types.InlineKeyboardMarkup:
+        """Support sub-menu: Open New Ticket + My Active Tickets."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text="🆕 فتح تذكرة جديدة",
+                callback_data=TicketCallback(
+                    action=TicketAction.open_new
+                ).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text="📋 تذاكري المفتوحة",
+                callback_data=TicketCallback(
+                    action=TicketAction.list_active
+                ).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data="menu:start",
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def active_tickets_list(
+        tickets: list,
+    ) -> types.InlineKeyboardMarkup:
+        """Inline list of open tickets for the student."""
+        builder = InlineKeyboardBuilder()
+        for t in tickets:
+            tid = t["ticket_id"]
+            created = t.get("created_at", "")
+            if hasattr(created, "strftime"):
+                created = created.strftime("%m/%d %H:%M")
+            else:
+                created = str(created)[:16]
+            msg_count = len(t.get("messages", []))
+            btn_text = f"🎫 #{tid}  |  💬 {msg_count}  |  {created}"
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=btn_text,
+                    callback_data=TicketCallback(
+                        action=TicketAction.view, id=tid
+                    ).pack(),
+                )
+            )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(
+                    action=MenuAction.support
+                ).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def ticket_detail(
+        ticket_id: int,
+        *,
+        is_closed: bool = False,
+    ) -> types.InlineKeyboardMarkup:
+        """Reply + Close + Back for a single ticket view."""
+        builder = InlineKeyboardBuilder()
+        if not is_closed:
+            builder.row(
+                types.InlineKeyboardButton(
+                    text="✏️ إرسال رد",
+                    callback_data=TicketCallback(
+                        action=TicketAction.reply, id=ticket_id
+                    ).pack(),
+                )
+            )
+            builder.row(
+                types.InlineKeyboardButton(
+                    text="🔒 إغلاق التذكرة",
+                    callback_data=TicketCallback(
+                        action=TicketAction.close, id=ticket_id
+                    ).pack(),
+                )
+            )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=TicketCallback(
+                    action=TicketAction.list_active
+                ).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def ticket_message_pagination(
+        ticket_id: int,
+        page: int,
+        total_pages: int,
+    ) -> types.InlineKeyboardMarkup:
+        """Pagination for ticket conversation history."""
+        builder = InlineKeyboardBuilder()
+        nav_buttons: list[types.InlineKeyboardButton] = []
+
+        if page > 0:
+            nav_buttons.append(
+                types.InlineKeyboardButton(
+                    text="⬅️ السابق",
+                    callback_data=PageCallback(
+                        action=PageAction.ticket_messages, page=page - 1
+                    ).pack(),
+                )
+            )
+
+        nav_buttons.append(
+            types.InlineKeyboardButton(
+                text=f"📄 {page + 1}/{total_pages}",
+                callback_data="noop",
+            )
+        )
+
+        if page < total_pages - 1:
+            nav_buttons.append(
+                types.InlineKeyboardButton(
+                    text="التالي ➡️",
+                    callback_data=PageCallback(
+                        action=PageAction.ticket_messages, page=page + 1
+                    ).pack(),
+                )
+            )
+
+        builder.row(*nav_buttons)
+
+        # Action buttons below pagination
+        builder.row(
+            types.InlineKeyboardButton(
+                text="✏️ إرسال رد",
+                callback_data=TicketCallback(
+                    action=TicketAction.reply, id=ticket_id
+                ).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=TicketCallback(
+                    action=TicketAction.view, id=ticket_id
+                ).pack(),
             )
         )
         return builder.as_markup()

@@ -26,3 +26,8 @@ class PaymentStatus(str, Enum):
     PENDING  = "pending"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+class TicketStatus(str, Enum):
+    OPEN   = "open"
+    CLOSED = "closed"

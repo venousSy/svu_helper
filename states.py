@@ -16,3 +16,9 @@ class AdminStates(StatesGroup):
     waiting_for_notes_decision = State()  # Do you want notes? (Yes/No)
     waiting_for_notes_text = State()  # Type the notes here.
     waiting_for_finished_work = State()
+
+
+class TicketStates(StatesGroup):
+    waiting_for_message = State()    # User composing initial ticket message
+    waiting_for_reply = State()      # User replying to existing ticket
+
