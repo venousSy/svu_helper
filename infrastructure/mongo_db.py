@@ -68,9 +68,23 @@ class Database:
 
         # --- Ticket indexes ---
         await cls.db.tickets.create_index("ticket_id", unique=True)
+
+        # Drop the old message_thread_id index if it exists with stale
+        # null values, then recreate with sparse=True.
+        try:
+            await cls.db.tickets.drop_index("message_thread_id_1")
+        except Exception:
+            pass  # index doesn't exist yet — first run
+        # Clean up any documents where the field is explicitly null
+        # (they break the sparse unique constraint).
+        await cls.db.tickets.update_many(
+            {"message_thread_id": None},
+            {"$unset": {"message_thread_id": ""}},
+        )
         await cls.db.tickets.create_index(
             "message_thread_id", unique=True, sparse=True
         )
+
         await cls.db.tickets.create_index("user_id")
         await cls.db.tickets.create_index(
             [("user_id", 1), ("status", 1)]
