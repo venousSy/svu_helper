@@ -95,7 +95,7 @@ def _format_messages(messages: list) -> str:
             content_parts.append(f"[📎 {ft}]")
 
         content = " ".join(content_parts) if content_parts else "[رسالة فارغة]"
-        lines.append(f"{sender}  ({ts}):\n{content}")
+        lines.append(f"<b>{sender}</b> <i>({ts})</i>:\n<blockquote>{content}</blockquote>")
 
     return "\n\n".join(lines)
 
@@ -129,8 +129,8 @@ async def start_new_ticket(
     await state.set_state(TicketStates.waiting_for_message)
     await callback.message.edit_text(
         "✏️ <b>فتح تذكرة جديدة</b>\n\n"
-        "أرسل رسالتك أو صورة/ملف يوضح مشكلتك.\n"
-        "يمكنك إلغاء العملية بالأمر /cancel",
+        "أرسل رسالتك أو صورة/ملف يوضح مشكلتك.",
+        reply_markup=KeyboardFactory.inline_cancel_ticket_action(),
         parse_mode="HTML",
     )
     await callback.answer()
@@ -168,6 +168,27 @@ async def receive_new_ticket_message(
         reply_markup=KeyboardFactory.support_menu(),
         parse_mode="HTML",
     )
+
+
+# ------------------------------------------------------------------
+# Cancel Action (Generic for all ticket input states)
+# ------------------------------------------------------------------
+@router.callback_query(
+    TicketCallback.filter(F.action == TicketAction.cancel_action)
+)
+async def cancel_ticket_action(
+    callback: types.CallbackQuery, state: FSMContext
+):
+    """Cancel the current FSM state and return to support menu."""
+    await state.clear()
+    await callback.message.edit_text(
+        "تم إلغاء العملية.\n\n"
+        "📩 <b>الدعم الفني</b>\n"
+        "يمكنك فتح تذكرة جديدة أو متابعة تذاكرك المفتوحة.",
+        reply_markup=KeyboardFactory.support_menu(),
+        parse_mode="HTML",
+    )
+    await callback.answer("تم الإلغاء")
 
 
 # ------------------------------------------------------------------
@@ -329,8 +350,8 @@ async def start_ticket_reply(
     await state.update_data(reply_ticket_id=callback_data.id)
     await callback.message.edit_text(
         f"✏️ <b>الرد على تذكرة #{callback_data.id}</b>\n\n"
-        "أرسل رسالتك أو صورة/ملف.\n"
-        "يمكنك إلغاء العملية بالأمر /cancel",
+        "أرسل رسالتك أو صورة/ملف.",
+        reply_markup=KeyboardFactory.inline_cancel_ticket_action(),
         parse_mode="HTML",
     )
     await callback.answer()

@@ -576,3 +576,17 @@ class KeyboardFactory:
             )
         )
         return builder.as_markup()
+
+    @staticmethod
+    def inline_cancel_ticket_action() -> types.InlineKeyboardMarkup:
+        """Inline cancel button for ticket-related FSM states."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text="❌ إلغاء",
+                callback_data=TicketCallback(
+                    action=TicketAction.cancel_action
+                ).pack(),
+            )
+        )
+        return builder.as_markup()
