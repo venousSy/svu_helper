@@ -47,6 +47,7 @@ class TicketAction(str, Enum):
     reply = "reply"
     close = "close"
     back = "back"
+    cancel_action = "cancel_action"
 
 class ProjectCallback(CallbackData, prefix="proj"):
     action: ProjectAction
