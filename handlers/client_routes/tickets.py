@@ -427,3 +427,72 @@ async def close_ticket_handler(
         await callback.answer("❌ خطأ في إغلاق التذكرة.", show_alert=True)
 
     await callback.answer()
+
+
+# ------------------------------------------------------------------
+# List Closed Tickets (History)
+# ------------------------------------------------------------------
+@router.callback_query(
+    TicketCallback.filter(F.action == TicketAction.list_closed)
+)
+async def list_closed_tickets(
+    callback: types.CallbackQuery,
+    ticket_repo: TicketRepository,
+    bot: Bot,
+):
+    """Show the user's closed tickets history."""
+    service = _build_ticket_service(ticket_repo, bot)
+    tickets = await service.get_user_closed_tickets(callback.from_user.id)
+
+    if not tickets:
+        try:
+            await callback.message.edit_text(
+                "📭 <b>لا توجد تذاكر مغلقة.</b>\n\n"
+                "سجل التذاكر المغلقة سيظهر هنا بعد إغلاق تذكرة.",
+                reply_markup=KeyboardFactory.support_menu(),
+                parse_mode="HTML",
+            )
+        except TelegramBadRequest:
+            pass
+        await callback.answer()
+        return
+
+    try:
+        await callback.message.edit_text(
+            f"📜 <b>التذاكر المغلقة ({len(tickets)})</b>\n\n"
+            "اختر تذكرة لعرض المحادثة أو إعادة فتحها:",
+            reply_markup=KeyboardFactory.closed_tickets_list(tickets),
+            parse_mode="HTML",
+        )
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
+
+
+# ------------------------------------------------------------------
+# Reopen a Closed Ticket
+# ------------------------------------------------------------------
+@router.callback_query(
+    TicketCallback.filter(F.action == TicketAction.reopen)
+)
+async def reopen_ticket_handler(
+    callback: types.CallbackQuery,
+    callback_data: TicketCallback,
+    ticket_repo: TicketRepository,
+    bot: Bot,
+):
+    """Reopen a closed ticket by user request."""
+    service = _build_ticket_service(ticket_repo, bot)
+    success = await service.reopen_ticket(callback_data.id)
+
+    if success:
+        await callback.message.edit_text(
+            f"🔓 <b>تم إعادة فتح التذكرة #{callback_data.id}.</b>\n\n"
+            "يمكنك الآن الرد عليها من جديد.",
+            reply_markup=KeyboardFactory.support_menu(),
+            parse_mode="HTML",
+        )
+    else:
+        await callback.answer("❌ خطأ في إعادة فتح التذكرة.", show_alert=True)
+
+    await callback.answer()

@@ -425,7 +425,7 @@ class KeyboardFactory:
 
     @staticmethod
     def support_menu() -> types.InlineKeyboardMarkup:
-        """Support sub-menu: Open New Ticket + My Active Tickets."""
+        """Support sub-menu: Open New Ticket + Active + Closed Tickets."""
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
@@ -440,6 +440,14 @@ class KeyboardFactory:
                 text="📋 تذاكري المفتوحة",
                 callback_data=TicketCallback(
                     action=TicketAction.list_active
+                ).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text="📜 سجل التذاكر المغلقة",
+                callback_data=TicketCallback(
+                    action=TicketAction.list_closed
                 ).pack(),
             )
         )
@@ -490,7 +498,7 @@ class KeyboardFactory:
         *,
         is_closed: bool = False,
     ) -> types.InlineKeyboardMarkup:
-        """Reply + Close + Back for a single ticket view."""
+        """Reply + Close/Reopen + Back for a single ticket view."""
         builder = InlineKeyboardBuilder()
         if not is_closed:
             builder.row(
@@ -509,11 +517,55 @@ class KeyboardFactory:
                     ).pack(),
                 )
             )
+        else:
+            builder.row(
+                types.InlineKeyboardButton(
+                    text="🔓 إعادة فتح التذكرة",
+                    callback_data=TicketCallback(
+                        action=TicketAction.reopen, id=ticket_id
+                    ).pack(),
+                )
+            )
+        # Back goes to appropriate list
+        back_action = TicketAction.list_closed if is_closed else TicketAction.list_active
         builder.row(
             types.InlineKeyboardButton(
                 text=_BTN_BACK_ICON,
                 callback_data=TicketCallback(
-                    action=TicketAction.list_active
+                    action=back_action
+                ).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def closed_tickets_list(
+        tickets: list,
+    ) -> types.InlineKeyboardMarkup:
+        """Inline list of closed tickets for the student."""
+        builder = InlineKeyboardBuilder()
+        for t in tickets:
+            tid = t["ticket_id"]
+            created = t.get("created_at", "")
+            if hasattr(created, "strftime"):
+                created = created.strftime("%m/%d %H:%M")
+            else:
+                created = str(created)[:16]
+            msg_count = len(t.get("messages", []))
+            btn_text = f"🔒 #{tid}  |  💬 {msg_count}  |  {created}"
+            builder.row(
+                types.InlineKeyboardButton(
+                    text=btn_text,
+                    callback_data=TicketCallback(
+                        action=TicketAction.view, id=tid
+                    ).pack(),
+                )
+            )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_BACK_ICON,
+                callback_data=MenuCallback(
+                    action=MenuAction.support
                 ).pack(),
             )
         )

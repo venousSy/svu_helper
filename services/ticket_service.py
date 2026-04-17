@@ -183,6 +183,11 @@ class TicketService:
     ) -> List[Dict[str, Any]]:
         return await self._repo.get_active_tickets(user_id)
 
+    async def get_user_closed_tickets(
+        self, user_id: int
+    ) -> List[Dict[str, Any]]:
+        return await self._repo.get_closed_tickets(user_id)
+
     async def get_conversation_history(
         self,
         ticket_id: int,
@@ -199,6 +204,39 @@ class TicketService:
 
     async def get_ticket(self, ticket_id: int) -> Optional[Dict[str, Any]]:
         return await self._repo.get_ticket_by_id(ticket_id)
+
+    # ------------------------------------------------------------------
+    # Reopen a closed ticket
+    # ------------------------------------------------------------------
+    async def reopen_ticket(self, ticket_id: int) -> bool:
+        """Reopen a closed ticket and optionally reopen the Forum Topic."""
+        ticket = await self._repo.get_ticket_by_id(ticket_id)
+        if not ticket:
+            return False
+
+        await self._repo.reopen_ticket(ticket_id)
+
+        thread_id = ticket.get("message_thread_id")
+        if thread_id and self._forum_group_id:
+            try:
+                await self._bot.reopen_forum_topic(
+                    chat_id=self._forum_group_id,
+                    message_thread_id=thread_id,
+                )
+            except TelegramBadRequest as e:
+                logger.warning(
+                    "Could not reopen forum topic",
+                    thread_id=thread_id,
+                    error=str(e),
+                )
+            except Exception as e:
+                logger.error(
+                    "Unexpected error reopening forum topic",
+                    thread_id=thread_id,
+                    error=str(e),
+                )
+
+        return True
 
     # ------------------------------------------------------------------
     # Private helpers
