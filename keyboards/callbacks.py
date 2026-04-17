@@ -43,9 +43,11 @@ class PageAction(str, Enum):
 class TicketAction(str, Enum):
     open_new = "open_new"
     list_active = "list_active"
+    list_closed = "list_closed"
     view = "view"
     reply = "reply"
     close = "close"
+    reopen = "reopen"
     back = "back"
     cancel_action = "cancel_action"
 

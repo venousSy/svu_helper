@@ -185,3 +185,26 @@ class TicketRepository:
             {"$set": {"status": TicketStatus.CLOSED}},
         )
         logger.info("Ticket closed", ticket_id=ticket_id)
+
+    async def reopen_ticket(self, ticket_id: int) -> None:
+        """Mark a closed ticket as open again."""
+        await self._db.tickets.update_one(
+            {"ticket_id": ticket_id},
+            {"$set": {"status": TicketStatus.OPEN}},
+        )
+        logger.info("Ticket reopened", ticket_id=ticket_id)
+
+    # ------------------------------------------------------------------
+    # Read (closed)
+    # ------------------------------------------------------------------
+    async def get_closed_tickets(
+        self, user_id: int
+    ) -> List[Dict[str, Any]]:
+        """Return all closed tickets for a user."""
+        cursor = (
+            self._db.tickets.find(
+                {"user_id": user_id, "status": TicketStatus.CLOSED}
+            )
+            .sort("ticket_id", -1)
+        )
+        return await cursor.to_list(length=100)
