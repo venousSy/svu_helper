@@ -12,6 +12,7 @@ import math
 from typing import Optional
 
 from aiogram import Bot, F, Router, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 
 import structlog
@@ -185,12 +186,15 @@ async def list_active_tickets(
     tickets = await service.get_user_active_tickets(callback.from_user.id)
 
     if not tickets:
-        await callback.message.edit_text(
-            "📭 <b>لا توجد تذاكر مفتوحة حالياً.</b>\n\n"
-            "يمكنك فتح تذكرة جديدة من القائمة.",
-            reply_markup=KeyboardFactory.support_menu(),
-            parse_mode="HTML",
-        )
+        try:
+            await callback.message.edit_text(
+                "📭 <b>لا توجد تذاكر مفتوحة حالياً.</b>\n\n"
+                "يمكنك فتح تذكرة جديدة من القائمة.",
+                reply_markup=KeyboardFactory.support_menu(),
+                parse_mode="HTML",
+            )
+        except TelegramBadRequest:
+            pass  # message content unchanged — ignore
         await callback.answer()
         return
 
