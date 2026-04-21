@@ -32,6 +32,8 @@ class TicketRepository:
         self,
         *,
         user_id: int,
+        username: Optional[str] = None,
+        user_full_name: Optional[str] = None,
         initial_text: Optional[str] = None,
         file_id: Optional[str] = None,
         file_type: Optional[str] = None,
@@ -49,6 +51,8 @@ class TicketRepository:
         ticket = Ticket(
             ticket_id=ticket_id,
             user_id=user_id,
+            username=username,
+            user_full_name=user_full_name,
             messages=[first_message],
         )
 
@@ -90,6 +94,22 @@ class TicketRepository:
             .sort("ticket_id", -1)
         )
         return await cursor.to_list(length=100)
+
+    async def get_all_active_tickets(
+        self, page: int = 0, page_size: int = 5
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Return all active tickets paginated (for admin view)."""
+        query = {"status": TicketStatus.OPEN}
+        total_count = await self._db.tickets.count_documents(query)
+        
+        cursor = (
+            self._db.tickets.find(query)
+            .sort("created_at", -1)
+            .skip(page * page_size)
+            .limit(page_size)
+        )
+        tickets = await cursor.to_list(length=page_size)
+        return tickets, total_count
 
     async def get_recent_messages(
         self,

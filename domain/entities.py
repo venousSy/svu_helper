@@ -104,6 +104,8 @@ class Ticket(BaseModel):
     """Root document for the tickets collection."""
     ticket_id: int
     user_id: int
+    username: Optional[str] = None
+    user_full_name: Optional[str] = None
     message_thread_id: Optional[int] = None  # Telegram Forum Topic ID
     status: TicketStatus = Field(default=TicketStatus.OPEN)
     messages: List[TicketMessage] = Field(default_factory=list)

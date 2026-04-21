@@ -14,6 +14,7 @@ class MenuAction(str, Enum):
     view_history = "view_history"
     view_payments = "view_payments"
     admin_broadcast = "admin_broadcast"
+    admin_tickets = "admin_tickets"
     back_to_admin = "back_to_admin"
     close_list = "close_list"
 
@@ -39,6 +40,7 @@ class PageAction(str, Enum):
     history = "history"
     payments = "payments"
     ticket_messages = "ticket_messages"
+    admin_tickets_page = "admin_tickets_page"
 
 class TicketAction(str, Enum):
     open_new = "open_new"

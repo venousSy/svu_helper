@@ -6,10 +6,14 @@ import structlog
 
 from application.admin_service import GetStatsService, MaintenanceService
 from config import settings
-from infrastructure.repositories import SettingsRepository, StatsRepository
+from infrastructure.repositories import SettingsRepository, StatsRepository, TicketRepository
 from keyboards.admin_kb import get_admin_dashboard_kb
-from keyboards.callbacks import MenuCallback, MenuAction
+from keyboards.callbacks import MenuCallback, MenuAction, PageCallback, PageAction
+from keyboards.factory import KeyboardFactory
+from services.ticket_service import TicketService
 from utils.constants import BTN_CANCEL, MSG_ADMIN_DASHBOARD, MSG_CANCELLED
+from utils.pagination import build_nav_keyboard
+from aiogram import Bot
 
 router = Router()
 logger = structlog.get_logger()
@@ -65,3 +69,90 @@ async def admin_maintenance_off(message: types.Message, settings_repo: SettingsR
     await MaintenanceService(settings_repo).disable()
     logger.warning("Maintenance mode DISABLED", admin_id=message.from_user.id)
     await message.answer("✅ **تم إيقاف وضع الصيانة.**\nالبوت متاح للجميع الآن.")
+
+
+def _build_ticket_service(ticket_repo: TicketRepository, bot: Bot) -> TicketService:
+    return TicketService(
+        ticket_repo=ticket_repo,
+        bot=bot,
+        forum_group_id=settings.ADMIN_FORUM_GROUP_ID,
+    )
+
+
+async def _render_admin_tickets(
+    callback: types.CallbackQuery, service: TicketService, page: int
+):
+    page_size = 5
+    tickets, total_count = await service.get_all_active_tickets(
+        page=page, page_size=page_size
+    )
+
+    if total_count == 0:
+        await callback.message.edit_text(
+            "📭 لا توجد تذاكر مفتوحة حالياً.",
+            reply_markup=KeyboardFactory.back(),
+        )
+        return
+
+    lines = ["🎫 **التذاكر المفتوحة** 🎫\n"]
+    for t in tickets:
+        tid = t["ticket_id"]
+        # Determine user name
+        username = t.get("username")
+        full_name = t.get("user_full_name")
+        display_name = f"@{username}" if username else (full_name or f"مستخدم {t['user_id']}")
+
+        # Format date
+        created = t.get("created_at", "")
+        if hasattr(created, "strftime"):
+            created = created.strftime("%Y-%m-%d %H:%M")
+        else:
+            created = str(created)[:16]
+            
+        # Get last message
+        messages = t.get("messages", [])
+        last_msg = ""
+        if messages:
+            last_msg_obj = messages[-1]
+            last_msg_text = last_msg_obj.get("text") or "مرفق 📎"
+            # Trim message if too long
+            if len(last_msg_text) > 40:
+                last_msg_text = last_msg_text[:37] + "..."
+            last_msg = f"💬 آخر رسالة: {last_msg_text}"
+
+        lines.append(f"🔹 **تذكرة #{tid}**")
+        lines.append(f"👤 {display_name}")
+        lines.append(f"📅 {created}")
+        lines.append(f"{last_msg}\n")
+
+    import math
+    total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+
+    text = "\n".join(lines)
+    kb = build_nav_keyboard(action=PageAction.admin_tickets_page, page=page, total_pages=total_pages)
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+
+
+@router.callback_query(
+    MenuCallback.filter(F.action == MenuAction.admin_tickets),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def view_admin_tickets(
+    callback: types.CallbackQuery, ticket_repo: TicketRepository, bot: Bot
+):
+    service = _build_ticket_service(ticket_repo, bot)
+    await _render_admin_tickets(callback, service, 0)
+
+
+@router.callback_query(
+    PageCallback.filter(F.action == PageAction.admin_tickets_page),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def view_admin_tickets_page(
+    callback: types.CallbackQuery,
+    callback_data: PageCallback,
+    ticket_repo: TicketRepository,
+    bot: Bot,
+):
+    service = _build_ticket_service(ticket_repo, bot)
+    await _render_admin_tickets(callback, service, callback_data.page)

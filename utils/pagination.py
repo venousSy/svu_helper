@@ -40,6 +40,7 @@ def build_nav_keyboard(
     total_pages: int,
     back_action: Any = MenuAction.back_to_admin,
     builder: InlineKeyboardBuilder | None = None,
+    back_callback_data: str | None = None,
 ) -> types.InlineKeyboardMarkup:
     """
     Build a standard navigation row + back button.
@@ -77,10 +78,12 @@ def build_nav_keyboard(
         )
 
     builder.row(*nav)
+    
+    cb_data = back_callback_data or MenuCallback(action=back_action).pack()
     builder.row(
         types.InlineKeyboardButton(
             text="⬅️ رجوع",
-            callback_data=MenuCallback(action=back_action).pack(),
+            callback_data=cb_data,
         )
     )
     return builder.as_markup()
