@@ -38,6 +38,8 @@ class TicketService:
         self,
         *,
         user_id: int,
+        username: Optional[str] = None,
+        user_full_name: Optional[str] = None,
         text: Optional[str] = None,
         file_id: Optional[str] = None,
         file_type: Optional[str] = None,
@@ -45,6 +47,8 @@ class TicketService:
         """Create a ticket, open a Forum Topic, and post the first msg."""
         ticket_id = await self._repo.create_ticket(
             user_id=user_id,
+            username=username,
+            user_full_name=user_full_name,
             initial_text=text,
             file_id=file_id,
             file_type=file_type,
@@ -182,6 +186,11 @@ class TicketService:
         self, user_id: int
     ) -> List[Dict[str, Any]]:
         return await self._repo.get_active_tickets(user_id)
+
+    async def get_all_active_tickets(
+        self, page: int = 0, page_size: int = 5
+    ) -> tuple[List[Dict[str, Any]], int]:
+        return await self._repo.get_all_active_tickets(page, page_size)
 
     async def get_user_closed_tickets(
         self, user_id: int

@@ -48,6 +48,7 @@ _BTN_VIEW_ACCEPTED = "✅ مشاريع مقبولة/جارية"
 _BTN_VIEW_HISTORY = "📜 سجل المشاريع"
 _BTN_VIEW_PAYMENTS = "💰 سجل المدفوعات"
 _BTN_BROADCAST = "📢 إرسال إعلان"
+_BTN_ADMIN_TICKETS = "🎫 التذاكر المفتوحة"
 
 # Shared action buttons
 _BTN_BACK_ICON = "⬅️ رجوع"
@@ -198,6 +199,12 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=_BTN_BROADCAST,
                 callback_data=MenuCallback(action=MenuAction.admin_broadcast).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=_BTN_ADMIN_TICKETS,
+                callback_data=MenuCallback(action=MenuAction.admin_tickets).pack(),
             )
         )
         return builder.as_markup()
@@ -384,40 +391,15 @@ class KeyboardFactory:
         page: int, total_pages: int
     ) -> types.InlineKeyboardMarkup:
         """Navigation row (Prev / Page X of Y / Next) + Back for the all-projects view."""
-        builder = InlineKeyboardBuilder()
-        nav_buttons: list[types.InlineKeyboardButton] = []
-
-        if page > 0:
-            nav_buttons.append(
-                types.InlineKeyboardButton(
-                    text="⬅️ السابق",
-                    callback_data=PageCallback(action=PageAction.all_projects, page=page - 1).pack(),
-                )
-            )
-
-        nav_buttons.append(
-            types.InlineKeyboardButton(
-                text=f"📄 {page + 1}/{total_pages}",
-                callback_data="noop",  # counter-only, not functional
-            )
+        from utils.pagination import build_nav_keyboard
+        return build_nav_keyboard(
+            action=PageAction.all_projects,
+            page=page,
+            total_pages=total_pages,
+            back_action=MenuAction.back_to_admin,
         )
 
-        if page < total_pages - 1:
-            nav_buttons.append(
-                types.InlineKeyboardButton(
-                    text="التالي ➡️",
-                    callback_data=PageCallback(action=PageAction.all_projects, page=page + 1).pack(),
-                )
-            )
 
-        builder.row(*nav_buttons)
-        builder.row(
-            types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
-                callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
-            )
-        )
-        return builder.as_markup()
 
     # -----------------------------------------------------------------------
     # Ticket keyboards
@@ -578,37 +560,8 @@ class KeyboardFactory:
         total_pages: int,
     ) -> types.InlineKeyboardMarkup:
         """Pagination for ticket conversation history."""
+        from utils.pagination import build_nav_keyboard
         builder = InlineKeyboardBuilder()
-        nav_buttons: list[types.InlineKeyboardButton] = []
-
-        if page > 0:
-            nav_buttons.append(
-                types.InlineKeyboardButton(
-                    text="⬅️ السابق",
-                    callback_data=PageCallback(
-                        action=PageAction.ticket_messages, page=page - 1
-                    ).pack(),
-                )
-            )
-
-        nav_buttons.append(
-            types.InlineKeyboardButton(
-                text=f"📄 {page + 1}/{total_pages}",
-                callback_data="noop",
-            )
-        )
-
-        if page < total_pages - 1:
-            nav_buttons.append(
-                types.InlineKeyboardButton(
-                    text="التالي ➡️",
-                    callback_data=PageCallback(
-                        action=PageAction.ticket_messages, page=page + 1
-                    ).pack(),
-                )
-            )
-
-        builder.row(*nav_buttons)
 
         # Action buttons below pagination
         builder.row(
@@ -619,15 +572,14 @@ class KeyboardFactory:
                 ).pack(),
             )
         )
-        builder.row(
-            types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
-                callback_data=TicketCallback(
-                    action=TicketAction.view, id=ticket_id
-                ).pack(),
-            )
+        
+        return build_nav_keyboard(
+            action=PageAction.ticket_messages,
+            page=page,
+            total_pages=total_pages,
+            builder=builder,
+            back_callback_data=TicketCallback(action=TicketAction.view, id=ticket_id).pack(),
         )
-        return builder.as_markup()
 
     @staticmethod
     def inline_cancel_ticket_action() -> types.InlineKeyboardMarkup:

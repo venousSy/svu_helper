@@ -155,6 +155,8 @@ async def receive_new_ticket_message(
     service = _build_ticket_service(ticket_repo, bot)
     ticket_id = await service.open_ticket(
         user_id=message.from_user.id,
+        username=message.from_user.username,
+        user_full_name=message.from_user.full_name,
         text=text,
         file_id=file_id,
         file_type=file_type,

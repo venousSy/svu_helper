@@ -245,10 +245,10 @@ def _merge_item_and_nav(
     page: int,
     total_pages: int,
 ) -> types.InlineKeyboardMarkup:
-    """Append the nav row to an existing item-button keyboard."""
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram import types as tg_types
-    from keyboards.callbacks import MenuCallback, PageCallback
+    from keyboards.callbacks import MenuCallback
+    from utils.pagination import build_nav_keyboard
 
     builder = InlineKeyboardBuilder()
     
@@ -259,25 +259,10 @@ def _merge_item_and_nav(
             continue
         builder.row(*row)
 
-    # Navigation row
-    nav: list[tg_types.InlineKeyboardButton] = []
-    if page > 0:
-        nav.append(tg_types.InlineKeyboardButton(
-            text="⬅️ السابق",
-            callback_data=PageCallback(action=action, page=page - 1).pack(),
-        ))
-    nav.append(tg_types.InlineKeyboardButton(
-        text=f"📄 {page + 1}/{total_pages}",
-        callback_data="noop",
-    ))
-    if page < total_pages - 1:
-        nav.append(tg_types.InlineKeyboardButton(
-            text="التالي ➡️",
-            callback_data=PageCallback(action=action, page=page + 1).pack(),
-        ))
-    builder.row(*nav)
-    builder.row(tg_types.InlineKeyboardButton(
-        text="⬅️ رجوع",
-        callback_data=back_action_data,
-    ))
-    return builder.as_markup()
+    return build_nav_keyboard(
+        action=action,
+        page=page,
+        total_pages=total_pages,
+        builder=builder,
+        back_callback_data=back_action_data,
+    )
