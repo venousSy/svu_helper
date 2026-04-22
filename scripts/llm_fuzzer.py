@@ -11,9 +11,9 @@ except ImportError:
     sys.exit(1)
 
 try:
-    import google.generativeai as genai
+    from openai import AsyncOpenAI
 except ImportError:
-    print("google-generativeai is not installed. Please run: pip install google-generativeai")
+    print("openai is not installed. Please run: pip install openai")
     sys.exit(1)
 
 # Ensure proper encoding for printing Arabic
@@ -25,21 +25,21 @@ load_dotenv()
 S_API_ID   = os.getenv("TEST_API_ID")
 S_API_HASH = os.getenv("TEST_API_HASH")
 BOT_USERNAME = os.getenv("TARGET_BOT_USERNAME", "").strip()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not all([S_API_ID, S_API_HASH, BOT_USERNAME]):
     print("⛔ MISSING TELEGRAM CREDENTIALS. Please check your .env file.")
     sys.exit(1)
 
-if not GEMINI_API_KEY:
-    print("⛔ MISSING GEMINI_API_KEY. Please set it in your .env file.")
+if not OPENAI_API_KEY:
+    print("⛔ MISSING OPENAI_API_KEY. Please set it in your .env file.")
     sys.exit(1)
 
 if not BOT_USERNAME.startswith("@"):
     BOT_USERNAME = f"@{BOT_USERNAME}"
 
-# Initialize Gemini
-genai.configure(api_key=GEMINI_API_KEY)
+# Initialize OpenAI
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 system_instruction = (
     "You are an AI auditor testing a Telegram bot by acting as a university student. "
@@ -57,13 +57,9 @@ system_instruction = (
     "}"
 )
 
-# Use gemini-1.5-flash or pro for quick response
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
-    system_instruction=system_instruction
-)
-
-chat = model.start_chat(history=[])
+chat_history = [
+    {"role": "system", "content": system_instruction}
+]
 
 def clean_json(text):
     text = text.strip()
@@ -78,7 +74,16 @@ def clean_json(text):
 async def main():
     print("🚀 Starting LLM Student Fuzzer...")
     print("Connecting to Telegram...")
-    client = TelegramClient('student_session', S_API_ID, S_API_HASH)
+    
+    session_string = os.getenv("TEST_USER_SESSION_STRING")
+    if session_string:
+        from telethon.sessions import StringSession
+        client = TelegramClient(StringSession(session_string), S_API_ID, S_API_HASH)
+        print("Using StringSession from environment variables.")
+    else:
+        client = TelegramClient('student_session', S_API_ID, S_API_HASH)
+        print("Using local 'student_session' file.")
+        
     await client.start()
     
     print(f"✅ Logged in as student. Targeting {BOT_USERNAME}")
@@ -92,8 +97,9 @@ async def main():
         print(f"\n{'='*40}\nTurn {turn+1}/{max_turns}\n{'='*40}")
         print("⏳ Waiting for bot to reply...")
         
-        # Wait a few seconds to let all bot messages arrive
-        await asyncio.sleep(4) 
+        # Wait 15 seconds to let bot messages arrive AND to avoid hitting
+        # the free tier rate limit of 5 requests per minute for Gemini.
+        await asyncio.sleep(15) 
         
         # Get recent messages
         msgs = await client.get_messages(BOT_USERNAME, limit=5)
@@ -126,29 +132,50 @@ async def main():
         
         # Get LLM response
         print("\n🧠 LLM is thinking...")
-        try:
-            response = chat.send_message(prompt_text)
-            llm_reply_raw = response.text
-            
+        
+        chat_history.append({"role": "user", "content": prompt_text})
+        
+        max_retries = 3
+        llm_reply_raw = None
+        for attempt in range(max_retries):
             try:
-                parsed = json.loads(clean_json(llm_reply_raw))
-                thought = parsed.get("thought", "")
-                message_to_send = parsed.get("message_to_send", "")
-            except json.JSONDecodeError:
-                print("⚠️ Failed to parse LLM JSON. Raw output:")
-                print(llm_reply_raw)
-                message_to_send = "مرحبا" # fallback
-                thought = "Parse error"
-
-            print(f"\n💡 LLM THOUGHT: {thought}")
-            print(f"💬 LLM SENDING: {message_to_send}")
-            
-            # Send to bot
-            await client.send_message(BOT_USERNAME, message_to_send)
-            
-        except Exception as e:
-            print(f"❌ Error during LLM generation: {e}")
+                response = await openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=chat_history,
+                    temperature=0.7
+                )
+                llm_reply_raw = response.choices[0].message.content
+                chat_history.append({"role": "assistant", "content": llm_reply_raw})
+                break
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg or "Quota" in error_msg:
+                    print(f"⏳ Rate limit hit! Waiting 60 seconds before retrying... (Attempt {attempt+1}/{max_retries})")
+                    import time
+                    time.sleep(60) # Wait for quota to refresh
+                else:
+                    print(f"❌ Error during LLM generation: {e}")
+                    break
+        
+        if not llm_reply_raw:
+            print("⚠️ Failed to get a response from the LLM. Ending fuzzer session.")
             break
+            
+        try:
+            parsed = json.loads(clean_json(llm_reply_raw))
+            thought = parsed.get("thought", "")
+            message_to_send = parsed.get("message_to_send", "")
+        except json.JSONDecodeError:
+            print("⚠️ Failed to parse LLM JSON. Raw output:")
+            print(llm_reply_raw)
+            message_to_send = "مرحبا" # fallback
+            thought = "Parse error"
+
+        print(f"\n💡 LLM THOUGHT: {thought}")
+        print(f"💬 LLM SENDING: {message_to_send}")
+        
+        # Send to bot
+        await client.send_message(BOT_USERNAME, message_to_send)
             
     print("\n✅ Fuzzer session complete. Please review the transcript above to discover any UX issues or rigidity.")
     await client.disconnect()
