@@ -67,11 +67,20 @@ async def process_tutor(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.deadline)
 
 
+from domain.entities import _parse_deadline
+
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
 async def process_deadline(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
         return await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
-    await state.update_data(deadline=message.text)
+        
+    try:
+        valid_date = _parse_deadline(message.text)
+    except ValueError as e:
+        # e contains the user-friendly Arabic error message from _parse_deadline
+        return await message.answer(f"⚠️ {e}")
+        
+    await state.update_data(deadline=valid_date)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
 
