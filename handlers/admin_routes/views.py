@@ -207,7 +207,20 @@ async def _render_payments(
 ) -> None:
     payments = await GetAllPaymentsService(payment_repo).execute()
     text, total_pages = format_payment_list(payments, page=page)
-    await _render(callback, text, total_pages, "payments", page)
+
+    slice_, _, _ = paginate(payments, page)
+    item_kb = KeyboardFactory.payment_history(slice_)
+
+    if total_pages > 1:
+        kb = _merge_item_and_nav(item_kb, "payments", page, total_pages)
+    else:
+        kb = item_kb
+
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    except Exception:
+        await callback.message.edit_text(text, parse_mode=None, reply_markup=kb)
+    await callback.answer()
 
 
 @router.callback_query(
