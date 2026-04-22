@@ -1,4 +1,3 @@
-import logging
 import structlog
 from aiogram import Router, F, types
 

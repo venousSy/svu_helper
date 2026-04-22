@@ -13,17 +13,17 @@ from utils.constants import (
     BTN_MY_OFFERS,
     BTN_MY_PROJECTS,
     BTN_NEW_PROJECT,
+    MSG_ASK_DETAILS,
+    MSG_ASK_NOTES,
     MSG_CANCELLED,
     MSG_HELP,
     MSG_NO_ACTIVE_PROCESS,
     MSG_WELCOME,
 )
-from keyboards.common_kb import get_student_main_kb
+from keyboards.factory import KeyboardFactory
 from keyboards.callbacks import MenuCallback, MenuAction
 from keyboards.calendar_kb import build_calendar, CalendarCallback
 from states import ProjectOrder, AdminStates
-from utils.constants import MSG_ASK_DETAILS, MSG_ASK_NOTES
-from keyboards.admin_kb import get_notes_decision_kb
 
 # --- ROUTER INITIALIZATION ---
 router = Router()
@@ -32,7 +32,7 @@ router = Router()
 @router.message(Command("start"))
 async def welcome(message: types.Message):
     """Greets the user and provides basic instructions."""
-    await message.answer(MSG_WELCOME, reply_markup=get_student_main_kb())
+    await message.answer(MSG_WELCOME, reply_markup=KeyboardFactory.student_main())
 
 
 @router.message(Command("help"))
@@ -89,7 +89,7 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
             
         elif current_state == AdminStates.waiting_for_delivery.state:
             await state.update_data(delivery=date_str)
-            await callback.message.answer(MSG_ASK_NOTES, reply_markup=get_notes_decision_kb())
+            await callback.message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())
             await state.set_state(AdminStates.waiting_for_notes_decision)
 
     # Always answer the callback to dismiss the spinner, regardless of state

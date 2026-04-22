@@ -1,17 +1,15 @@
-import logging
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
+import structlog
 
 from application.admin_service import GetAllUserIdsService
 from config import settings
 from infrastructure.repositories import ProjectRepository
-from keyboards.admin_kb import get_cancel_kb
 from keyboards.callbacks import MenuCallback, MenuAction
+from keyboards.factory import KeyboardFactory
 from states import AdminStates
-from utils.constants import MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS
 from utils.broadcaster import Broadcaster
-from utils.constants import BTN_CANCEL
-import structlog
+from utils.constants import BTN_CANCEL, MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS
 
 router = Router()
 logger = structlog.get_logger()
@@ -22,7 +20,7 @@ logger = structlog.get_logger()
     F.from_user.id.in_(settings.admin_ids),
 )
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=get_cancel_kb())
+    await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=KeyboardFactory.cancel())
     await state.set_state(AdminStates.waiting_for_broadcast)
 
 

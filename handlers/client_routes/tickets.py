@@ -28,8 +28,8 @@ from keyboards.callbacks import (
 )
 from keyboards.factory import KeyboardFactory
 from infrastructure.repositories.ticket import TicketRepository
-from services.ticket_service import TicketService
 from states import TicketStates
+from utils.helpers import build_ticket_service, extract_message_content
 
 logger = structlog.get_logger()
 router = Router()
@@ -37,40 +37,7 @@ router = Router()
 MESSAGES_PER_PAGE = 10
 
 
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
-def _build_ticket_service(
-    ticket_repo: TicketRepository, bot: Bot
-) -> TicketService:
-    forum_id = getattr(settings, "ADMIN_FORUM_GROUP_ID", None)
-    return TicketService(
-        ticket_repo=ticket_repo, bot=bot, forum_group_id=forum_id
-    )
 
-
-def _extract_content(message: types.Message):
-    """Extract text and file info from a user message."""
-    text: Optional[str] = None
-    file_id: Optional[str] = None
-    file_type: Optional[str] = None
-
-    if message.photo:
-        file_id = message.photo[-1].file_id
-        file_type = "photo"
-        text = message.caption
-    elif message.document:
-        file_id = message.document.file_id
-        file_type = "document"
-        text = message.caption
-    elif message.video:
-        file_id = message.video.file_id
-        file_type = "video"
-        text = message.caption
-    elif message.text:
-        text = message.text
-
-    return text, file_id, file_type
 
 
 def _format_messages(messages: list) -> str:
@@ -144,7 +111,7 @@ async def receive_new_ticket_message(
     bot: Bot,
 ):
     """Capture the initial ticket message, create ticket + forum topic."""
-    text, file_id, file_type = _extract_content(message)
+    text, file_id, file_type = extract_message_content(message)
 
     if not text and not file_id:
         await message.answer(
@@ -152,7 +119,7 @@ async def receive_new_ticket_message(
         )
         return
 
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     ticket_id = await service.open_ticket(
         user_id=message.from_user.id,
         username=message.from_user.username,
@@ -205,7 +172,7 @@ async def list_active_tickets(
     bot: Bot,
 ):
     """Show the user's open tickets."""
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     tickets = await service.get_user_active_tickets(callback.from_user.id)
 
     if not tickets:
@@ -244,7 +211,7 @@ async def view_ticket(
     state: FSMContext,
 ):
     """Show the ticket detail with recent messages."""
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     ticket = await service.get_ticket(callback_data.id)
 
     if not ticket:
@@ -309,7 +276,7 @@ async def paginate_ticket_messages(
         return
 
     page = callback_data.page
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
 
     messages = await service.get_conversation_history(
         ticket_id, page=page, page_size=MESSAGES_PER_PAGE
@@ -374,13 +341,13 @@ async def receive_ticket_reply(
         await message.answer("⚠️ حدث خطأ. حاول مرة أخرى.")
         return
 
-    text, file_id, file_type = _extract_content(message)
+    text, file_id, file_type = extract_message_content(message)
 
     if not text and not file_id:
         await message.answer("⚠️ أرسل نصاً أو صورة/ملف للرد.")
         return
 
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     success = await service.user_reply(
         ticket_id,
         text=text,
@@ -415,7 +382,7 @@ async def close_ticket_handler(
     bot: Bot,
 ):
     """Close a ticket by user request."""
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     success = await service.close_ticket(callback_data.id)
 
     if success:
@@ -443,7 +410,7 @@ async def list_closed_tickets(
     bot: Bot,
 ):
     """Show the user's closed tickets history."""
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     tickets = await service.get_user_closed_tickets(callback.from_user.id)
 
     if not tickets:
@@ -484,7 +451,7 @@ async def reopen_ticket_handler(
     bot: Bot,
 ):
     """Reopen a closed ticket by user request."""
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     success = await service.reopen_ticket(callback_data.id)
 
     if success:

@@ -1,8 +1,11 @@
 from typing import Optional, Tuple
 
+import structlog
 from aiogram import Bot, types
 
 from config import settings
+
+logger = structlog.get_logger(__name__)
 
 
 def get_file_id(message: types.Message) -> Tuple[Optional[str], Optional[str]]:
@@ -39,6 +42,23 @@ def get_file_size(message: types.Message) -> Optional[int]:
     return None
 
 
+def extract_message_content(
+    message: types.Message,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Extract text, file_id, and file_type from any message.
+
+    Returns:
+        (text, file_id, file_type) — text is message.text or message.caption
+        depending on whether the message carries media.
+    """
+    file_id, file_type = get_file_id(message)
+    if file_id:
+        text = message.caption
+    else:
+        text = message.text
+    return text, file_id, file_type
+
+
 async def notify_admins(bot: Bot, text: str, reply_markup=None, parse_mode="Markdown"):
     """
     Sends a message to the defined administrator(s).
@@ -52,5 +72,18 @@ async def notify_admins(bot: Bot, text: str, reply_markup=None, parse_mode="Mark
                 parse_mode=parse_mode,
             )
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Failed to notify admin {admin_id}: {e}")
+            logger.error("Failed to notify admin", admin_id=admin_id, error=str(e))
+
+
+def build_ticket_service(ticket_repo, bot: Bot):
+    """Build a TicketService instance with the configured forum group ID.
+
+    Centralised factory so every handler file doesn't duplicate the same
+    three-line setup.
+    """
+    from services.ticket_service import TicketService
+
+    forum_id = getattr(settings, "ADMIN_FORUM_GROUP_ID", None)
+    return TicketService(
+        ticket_repo=ticket_repo, bot=bot, forum_group_id=forum_id
+    )

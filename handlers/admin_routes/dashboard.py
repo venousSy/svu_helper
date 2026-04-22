@@ -1,5 +1,6 @@
-import logging
-from aiogram import Router, F, types
+import math
+
+from aiogram import Router, F, types, Bot
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 import structlog
@@ -7,13 +8,12 @@ import structlog
 from application.admin_service import GetStatsService, MaintenanceService
 from config import settings
 from infrastructure.repositories import SettingsRepository, StatsRepository, TicketRepository
-from keyboards.admin_kb import get_admin_dashboard_kb
 from keyboards.callbacks import MenuCallback, MenuAction, PageCallback, PageAction
 from keyboards.factory import KeyboardFactory
-from services.ticket_service import TicketService
 from utils.constants import BTN_CANCEL, MSG_ADMIN_DASHBOARD, MSG_CANCELLED
+from utils.formatters import format_datetime
+from utils.helpers import build_ticket_service
 from utils.pagination import build_nav_keyboard
-from aiogram import Bot
 
 router = Router()
 logger = structlog.get_logger()
@@ -30,7 +30,7 @@ async def admin_cancel_process(message: types.Message, state: FSMContext):
 
 @router.message(Command("admin"), F.from_user.id.in_(settings.admin_ids))
 async def admin_dashboard(message: types.Message):
-    await message.answer(MSG_ADMIN_DASHBOARD, reply_markup=get_admin_dashboard_kb())
+    await message.answer(MSG_ADMIN_DASHBOARD, reply_markup=KeyboardFactory.admin_dashboard())
 
 
 @router.callback_query(
@@ -39,7 +39,7 @@ async def admin_dashboard(message: types.Message):
 )
 async def back_to_admin(callback: types.CallbackQuery):
     await callback.message.edit_text(
-        MSG_ADMIN_DASHBOARD, parse_mode="Markdown", reply_markup=get_admin_dashboard_kb()
+        MSG_ADMIN_DASHBOARD, parse_mode="Markdown", reply_markup=KeyboardFactory.admin_dashboard()
     )
 
 
@@ -71,16 +71,11 @@ async def admin_maintenance_off(message: types.Message, settings_repo: SettingsR
     await message.answer("✅ **تم إيقاف وضع الصيانة.**\nالبوت متاح للجميع الآن.")
 
 
-def _build_ticket_service(ticket_repo: TicketRepository, bot: Bot) -> TicketService:
-    return TicketService(
-        ticket_repo=ticket_repo,
-        bot=bot,
-        forum_group_id=settings.ADMIN_FORUM_GROUP_ID,
-    )
+
 
 
 async def _render_admin_tickets(
-    callback: types.CallbackQuery, service: TicketService, page: int
+    callback: types.CallbackQuery, service, page: int
 ):
     page_size = 5
     tickets, total_count = await service.get_all_active_tickets(
@@ -103,11 +98,7 @@ async def _render_admin_tickets(
         display_name = f"@{username}" if username else (full_name or f"مستخدم {t['user_id']}")
 
         # Format date
-        created = t.get("created_at", "")
-        if hasattr(created, "strftime"):
-            created = created.strftime("%Y-%m-%d %H:%M")
-        else:
-            created = str(created)[:16]
+        created = format_datetime(t.get("created_at", ""), fmt="%Y-%m-%d %H:%M")
             
         # Get last message
         messages = t.get("messages", [])
@@ -125,7 +116,6 @@ async def _render_admin_tickets(
         lines.append(f"📅 {created}")
         lines.append(f"{last_msg}\n")
 
-    import math
     total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
 
     text = "\n".join(lines)
@@ -140,7 +130,7 @@ async def _render_admin_tickets(
 async def view_admin_tickets(
     callback: types.CallbackQuery, ticket_repo: TicketRepository, bot: Bot
 ):
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     await _render_admin_tickets(callback, service, 0)
 
 
@@ -154,5 +144,5 @@ async def view_admin_tickets_page(
     ticket_repo: TicketRepository,
     bot: Bot,
 ):
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
     await _render_admin_tickets(callback, service, callback_data.page)
