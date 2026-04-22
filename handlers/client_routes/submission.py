@@ -25,7 +25,6 @@ from utils.constants import (
     MSG_DEADLINE_TOO_LONG,
     BTN_NEW_PROJECT,
     MSG_PROJECT_SUBMITTED,
-    BTN_SEND_MORE,
     BTN_DONE,
     MSG_DETAILS_RECEIVED,
     MSG_SEND_NEXT,
@@ -112,15 +111,10 @@ def _build_details_kb():
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=BTN_SEND_MORE)],
             [KeyboardButton(text=BTN_DONE)]
         ],
         resize_keyboard=True
     )
-
-@router.message(ProjectOrder.details, F.text == BTN_SEND_MORE)
-async def ask_more_details(message: types.Message):
-    await message.answer(MSG_SEND_NEXT, reply_markup=_build_details_kb())
 
 @router.message(ProjectOrder.details, F.text == BTN_DONE)
 async def finalize_project(
@@ -194,7 +188,7 @@ async def process_details_accumulation(
 
     # Append text or caption
     text_content = message.text or message.caption
-    if text_content and text_content not in (BTN_SEND_MORE, BTN_DONE):
+    if text_content and text_content != BTN_DONE:
         if details_text:
             details_text += "\n" + text_content
         else:
