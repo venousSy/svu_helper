@@ -11,9 +11,9 @@ except ImportError:
     sys.exit(1)
 
 try:
-    from openai import AsyncOpenAI
+    import google.generativeai as genai
 except ImportError:
-    print("openai is not installed. Please run: pip install openai")
+    print("google-generativeai is not installed. Please run: pip install google-generativeai")
     sys.exit(1)
 
 # Ensure proper encoding for printing Arabic
@@ -25,21 +25,21 @@ load_dotenv()
 S_API_ID   = os.getenv("TEST_API_ID")
 S_API_HASH = os.getenv("TEST_API_HASH")
 BOT_USERNAME = os.getenv("TARGET_BOT_USERNAME", "").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not all([S_API_ID, S_API_HASH, BOT_USERNAME]):
     print("⛔ MISSING TELEGRAM CREDENTIALS. Please check your .env file.")
     sys.exit(1)
 
-if not OPENAI_API_KEY:
-    print("⛔ MISSING OPENAI_API_KEY. Please set it in your .env file.")
+if not GEMINI_API_KEY:
+    print("⛔ MISSING GEMINI_API_KEY. Please set it in your .env file.")
     sys.exit(1)
 
 if not BOT_USERNAME.startswith("@"):
     BOT_USERNAME = f"@{BOT_USERNAME}"
 
-# Initialize OpenAI
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+# Initialize Gemini
+genai.configure(api_key=GEMINI_API_KEY)
 
 system_instruction = (
     "You are an AI auditor testing a Telegram bot by acting as a university student. "
@@ -57,9 +57,13 @@ system_instruction = (
     "}"
 )
 
-chat_history = [
-    {"role": "system", "content": system_instruction}
-]
+# Use Gemini 3.1 Flash Lite as it has 15 RPM and 500 RPD
+model = genai.GenerativeModel(
+    model_name="gemini-3.1-flash-lite-preview",
+    system_instruction=system_instruction
+)
+
+chat = model.start_chat(history=[])
 
 def clean_json(text):
     text = text.strip()
@@ -97,9 +101,9 @@ async def main():
         print(f"\n{'='*40}\nTurn {turn+1}/{max_turns}\n{'='*40}")
         print("⏳ Waiting for bot to reply...")
         
-        # Wait 15 seconds to let bot messages arrive AND to avoid hitting
-        # the free tier rate limit of 5 requests per minute for Gemini.
-        await asyncio.sleep(15) 
+        # Wait 6 seconds to let bot messages arrive AND to safely respect
+        # the 15 RPM limit for Gemini 3.1 Flash Lite.
+        await asyncio.sleep(6) 
         
         # Get recent messages
         msgs = await client.get_messages(BOT_USERNAME, limit=5)
@@ -133,24 +137,18 @@ async def main():
         # Get LLM response
         print("\n🧠 LLM is thinking...")
         
-        chat_history.append({"role": "user", "content": prompt_text})
-        
         max_retries = 3
         llm_reply_raw = None
         for attempt in range(max_retries):
             try:
-                response = await openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=chat_history,
-                    temperature=0.7
-                )
-                llm_reply_raw = response.choices[0].message.content
-                chat_history.append({"role": "assistant", "content": llm_reply_raw})
+                response = chat.send_message(prompt_text)
+                llm_reply_raw = response.text
                 break
             except Exception as e:
                 error_msg = str(e)
                 if "429" in error_msg or "Quota" in error_msg:
-                    print(f"⏳ Rate limit hit! Waiting 60 seconds before retrying... (Attempt {attempt+1}/{max_retries})")
+                    print(f"⏳ Rate limit/Quota hit: {error_msg}")
+                    print(f"Waiting 60 seconds before retrying... (Attempt {attempt+1}/{max_retries})")
                     import time
                     time.sleep(60) # Wait for quota to refresh
                 else:
