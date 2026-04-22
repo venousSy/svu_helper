@@ -76,21 +76,34 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
         date_str = f"{year:04d}-{month:02d}-{day:02d}"
         current_state = await state.get_state()
         
-        # Remove the calendar
-        try:
-            await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
-
         if current_state == ProjectOrder.deadline.state:
             await state.update_data(deadline=date_str)
+            try:
+                await callback.message.edit_text(
+                    text=f"✅ **تم اختيار تاريخ التسليم:** `{date_str}`",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
             await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
             await state.set_state(ProjectOrder.details)
             
         elif current_state == AdminStates.waiting_for_delivery.state:
             await state.update_data(delivery=date_str)
+            try:
+                await callback.message.edit_text(
+                    text=f"✅ **تم اختيار موعد التسليم:** `{date_str}`",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
             await callback.message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())
             await state.set_state(AdminStates.waiting_for_notes_decision)
+        else:
+            try:
+                await callback.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
 
     # Always answer the callback to dismiss the spinner, regardless of state
     await callback.answer()

@@ -370,9 +370,38 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for pay in payments:
             p_id = pay["id"]
+            status = pay.get("status", "pending")
+            
+            if status == "accepted":
+                icon = "✅"
+            elif status == "rejected":
+                icon = "❌"
+            else:
+                icon = "⏳"
+                
+            created_at = pay.get("created_at")
+            date_str = format_datetime(created_at, "%d/%m") if created_at else ""
+            
+            user_name = pay.get("user_full_name") or pay.get("username") or str(pay.get("user_id", ""))
+            project_name = pay.get("project_name") or f"Proj #{pay.get('project_id', '')}"
+            
+            # Shorten names to fit Telegram button limit (~64 bytes)
+            user_name = user_name[:15]
+            project_name = project_name[:15]
+            
+            parts = [f"#{p_id}", icon]
+            if date_str:
+                parts.append(date_str)
+            parts.append(user_name)
+            parts.append(project_name)
+            
+            btn_text = " | ".join(parts)
+            if len(btn_text) > 64:
+                btn_text = btn_text[:61] + "..."
+
             builder.row(
                 types.InlineKeyboardButton(
-                    text=f"{_BTN_VIEW_RECEIPT} #{p_id}",
+                    text=btn_text,
                     callback_data=PaymentCallback(
                         action=PaymentAction.view_receipt, id=p_id
                     ).pack(),

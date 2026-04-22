@@ -48,5 +48,42 @@ class PaymentRepository:
         skip: int = 0,
     ) -> List[Dict[str, Any]]:
         limit = min(limit, MAX_PAGE_SIZE)
-        cursor = self._db.payments.find().sort("id", -1).skip(skip).limit(limit)
+        pipeline = [
+            {
+                "$lookup": {
+                    "from": "projects",
+                    "localField": "project_id",
+                    "foreignField": "id",
+                    "as": "project"
+                }
+            },
+            {
+                "$unwind": {
+                    "path": "$project",
+                    "preserveNullAndEmptyArrays": True
+                }
+            },
+            {
+                "$addFields": {
+                    "project_name": "$project.subject_name",
+                    "username": "$project.username",
+                    "user_full_name": "$project.user_full_name",
+                    "is_pending": {"$cond": [{"$eq": ["$status", "pending"]}, 1, 0]}
+                }
+            },
+            {
+                "$project": {
+                    "project": 0
+                }
+            },
+            {
+                "$sort": {
+                    "is_pending": -1,
+                    "id": -1
+                }
+            },
+            { "$skip": skip },
+            { "$limit": limit }
+        ]
+        cursor = self._db.payments.aggregate(pipeline)
         return await cursor.to_list(length=limit)
