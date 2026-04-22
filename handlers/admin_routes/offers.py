@@ -142,6 +142,10 @@ async def start_offer_flow(
     await state.set_state(AdminStates.waiting_for_price)
 
 
+async def _ask_delivery(message: types.Message):
+    """Helper to send the delivery date prompt with the calendar inline keyboard."""
+    await message.answer(MSG_ASK_DELIVERY, reply_markup=build_calendar())
+
 @router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.admin_ids))
 async def process_price(message: types.Message, state: FSMContext):
     price_text = message.text.strip()
@@ -150,7 +154,7 @@ async def process_price(message: types.Message, state: FSMContext):
     if len(price_text) > 50:
         return await message.answer("⚠️ النص طويل جداً. الرجاء إدخال سعر مختصر (مثلاً: 50,000 ل.س).")
     await state.update_data(price=price_text)
-    await message.answer(MSG_ASK_DELIVERY, reply_markup=build_calendar())
+    await _ask_delivery(message)
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
@@ -160,14 +164,17 @@ from domain.entities import _parse_deadline
 async def process_delivery(message: types.Message, state: FSMContext):
     delivery_text = message.text.strip()
     if not delivery_text:
-        return await message.answer("⚠️ الرجاء إدخال موعد صالح.")
+        await message.answer("⚠️ الرجاء إدخال موعد صالح.")
+        return await _ask_delivery(message)
     if len(delivery_text) > 50:
-        return await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
+        await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
+        return await _ask_delivery(message)
         
     try:
         valid_date = _parse_deadline(delivery_text)
     except ValueError as e:
-        return await message.answer(f"⚠️ {e}")
+        await message.answer(f"⚠️ {e}")
+        return await _ask_delivery(message)
         
     await state.update_data(delivery=valid_date)
     await message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())

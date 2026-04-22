@@ -56,6 +56,10 @@ async def process_subject(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.tutor)
 
 
+async def _ask_deadline(message: types.Message):
+    """Helper to send the deadline prompt with the calendar inline keyboard."""
+    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown", reply_markup=build_calendar())
+
 @router.message(ProjectOrder.tutor, F.text, ~F.text.startswith('/'))
 async def process_tutor(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_TUTOR_LENGTH:
@@ -63,7 +67,7 @@ async def process_tutor(message: types.Message, state: FSMContext):
             f"⚠️ اسم المدرس طويل جداً. الحد الأقصى {AddProjectService.MAX_TUTOR_LENGTH} حرف."
         )
     await state.update_data(tutor=message.text)
-    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown", reply_markup=build_calendar())
+    await _ask_deadline(message)
     await state.set_state(ProjectOrder.deadline)
 
 
@@ -72,13 +76,15 @@ from domain.entities import _parse_deadline
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
 async def process_deadline(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
-        return await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
+        await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
+        return await _ask_deadline(message)
         
     try:
         valid_date = _parse_deadline(message.text)
     except ValueError as e:
         # e contains the user-friendly Arabic error message from _parse_deadline
-        return await message.answer(f"⚠️ {e}")
+        await message.answer(f"⚠️ {e}")
+        return await _ask_deadline(message)
         
     await state.update_data(deadline=valid_date)
     await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
