@@ -36,11 +36,15 @@ async def admin_view_receipt(
     file_type = payment.get("file_type", "document")
     status    = payment["status"]
     caption   = f"📄 **Detail View: Payment #{payment_id}**\nStatus: {status}"
+    
+    from keyboards.factory import KeyboardFactory
+    kb = KeyboardFactory.payment_verify(payment_id) if status not in ("accepted", "rejected") else None
+    
     try:
         if file_type == "photo":
-            await bot.send_photo(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
+            await bot.send_photo(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown", reply_markup=kb)
         else:
-            await bot.send_document(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown")
+            await bot.send_document(callback.from_user.id, file_id, caption=caption, parse_mode="Markdown", reply_markup=kb)
         await callback.answer()
     except Exception as e:
         logger.warning("Failed to send receipt file", payment_id=payment_id, error=str(e))

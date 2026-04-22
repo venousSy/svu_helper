@@ -366,9 +366,9 @@ class KeyboardFactory:
 
     @staticmethod
     def payment_history(payments: list) -> types.InlineKeyboardMarkup:
-        """Links to view receipts for the 10 most-recent payments."""
+        """Links to view receipts for the given list of payments."""
         builder = InlineKeyboardBuilder()
-        for pay in payments[:10]:
+        for pay in payments:
             p_id = pay["id"]
             builder.row(
                 types.InlineKeyboardButton(
