@@ -157,6 +157,9 @@ MSG_PAYMENT_DOC_INVALID = _msgs["client_prompts"]["payment_doc_invalid"]
 MSG_CANCEL_DONE = _msgs["client_prompts"]["cancel_done"]
 MSG_DETAILS_RECEIVED = _msgs["client_prompts"]["details_received"]
 MSG_SEND_NEXT = _msgs["client_prompts"]["send_next"]
+MSG_INVALID_DATE_FORMAT = _msgs["client_prompts"]["invalid_date_format"]
+MSG_INVALID_DATE_VALUES = _msgs["client_prompts"]["invalid_date_values"]
+MSG_DATE_IN_PAST = _msgs["client_prompts"]["date_in_past"]
 
 # --- TICKET MESSAGES ---
 MSG_TICKET_SUPPORT_HUB = _msgs["tickets"]["support_hub"]

@@ -17,6 +17,7 @@ class MenuAction(str, Enum):
     admin_tickets = "admin_tickets"
     back_to_admin = "back_to_admin"
     close_list = "close_list"
+    cancel_flow = "cancel_flow"
 
 class ProjectAction(str, Enum):
     accept = "accept"
