@@ -154,6 +154,8 @@ async def process_price(message: types.Message, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
+from domain.entities import _parse_deadline
+
 @router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(settings.admin_ids))
 async def process_delivery(message: types.Message, state: FSMContext):
     delivery_text = message.text.strip()
@@ -161,7 +163,13 @@ async def process_delivery(message: types.Message, state: FSMContext):
         return await message.answer("⚠️ الرجاء إدخال موعد صالح.")
     if len(delivery_text) > 50:
         return await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
-    await state.update_data(delivery=delivery_text)
+        
+    try:
+        valid_date = _parse_deadline(delivery_text)
+    except ValueError as e:
+        return await message.answer(f"⚠️ {e}")
+        
+    await state.update_data(delivery=valid_date)
     await message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())
     await state.set_state(AdminStates.waiting_for_notes_decision)
 
