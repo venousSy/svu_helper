@@ -353,6 +353,12 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
+                text=BTN_MANAGE_PROJECT,
+                callback_data=ProjectCallback(action=ProjectAction.manage, id=p_id).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
                 text=BTN_SEND_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.make_offer, id=p_id).pack(),
             )
