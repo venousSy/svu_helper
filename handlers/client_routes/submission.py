@@ -25,6 +25,10 @@ from utils.constants import (
     MSG_DEADLINE_TOO_LONG,
     BTN_NEW_PROJECT,
     MSG_PROJECT_SUBMITTED,
+    BTN_SEND_MORE,
+    BTN_DONE,
+    MSG_DETAILS_RECEIVED,
+    MSG_SEND_NEXT,
 )
 from utils.formatters import format_admin_notification
 from utils.helpers import get_file_id, get_file_size, notify_admins
@@ -104,34 +108,45 @@ async def reject_media_early(message: types.Message):
     await message.answer(MSG_MEDIA_BEFORE_TEXT)
 
 
-@router.message(ProjectOrder.details)
-async def process_details(
+def _build_details_kb():
+    from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=BTN_SEND_MORE)],
+            [KeyboardButton(text=BTN_DONE)]
+        ],
+        resize_keyboard=True
+    )
+
+@router.message(ProjectOrder.details, F.text == BTN_SEND_MORE)
+async def ask_more_details(message: types.Message):
+    await message.answer(MSG_SEND_NEXT, reply_markup=_build_details_kb())
+
+@router.message(ProjectOrder.details, F.text == BTN_DONE)
+async def finalize_project(
     message: types.Message,
     state: FSMContext,
     bot,
     project_repo: ProjectRepository,
 ):
-    file_size = get_file_size(message)
-    if file_size and file_size > MAX_FILE_SIZE_BYTES:
-        await message.answer(MSG_FILE_TOO_LARGE.format(MAX_FILE_SIZE_MB))
-        return
-
     data = await state.get_data()
-    file_id, file_type = get_file_id(message)
-    details_text = message.text or message.caption or MSG_NO_DESC
-    user = message.from_user
+    attachments = data.get("attachments", [])
+    details_text = data.get("details_text", "").strip()
 
+    if not attachments and not details_text:
+        details_text = MSG_NO_DESC
+
+    user = message.from_user
     try:
         project_id = await AddProjectService(project_repo).execute(
             user_id=user.id,
             username=user.username,
             user_full_name=user.full_name,
-            subject=data["subject"],
-            tutor=data["tutor"],
-            deadline=data["deadline"],
+            subject=data.get("subject", ""),
+            tutor=data.get("tutor", ""),
+            deadline=data.get("deadline", ""),
             details=details_text,
-            file_id=file_id,
-            file_type=file_type,
+            attachments=attachments,
         )
         await message.answer(
             MSG_PROJECT_SUBMITTED.format(project_id),
@@ -139,7 +154,7 @@ async def process_details(
             reply_markup=types.ReplyKeyboardRemove(),
         )
         admin_text = format_admin_notification(
-            project_id, data["subject"], data["deadline"], details_text,
+            project_id, data.get("subject", ""), data.get("deadline", ""), details_text,
             user_name=user.full_name, username=user.username,
         )
         await notify_admins(
@@ -158,3 +173,39 @@ async def process_details(
             reply_markup=types.ReplyKeyboardRemove(),
         )
         await state.clear()
+
+@router.message(ProjectOrder.details)
+async def process_details_accumulation(
+    message: types.Message,
+    state: FSMContext,
+):
+    file_size = get_file_size(message)
+    if file_size and file_size > MAX_FILE_SIZE_BYTES:
+        await message.answer(MSG_FILE_TOO_LARGE.format(MAX_FILE_SIZE_MB))
+        return
+
+    data = await state.get_data()
+    attachments = data.get("attachments", [])
+    details_text = data.get("details_text", "")
+
+    file_id, file_type = get_file_id(message)
+    if file_id and file_type:
+        attachments.append({"file_id": file_id, "file_type": file_type})
+
+    # Append text or caption
+    text_content = message.text or message.caption
+    if text_content and text_content not in (BTN_SEND_MORE, BTN_DONE):
+        if details_text:
+            details_text += "\n" + text_content
+        else:
+            details_text = text_content
+
+    await state.update_data(attachments=attachments, details_text=details_text)
+    
+    # Calculate total received items (files + non-empty text blocks)
+    total_received = len(attachments) + (1 if details_text else 0)
+    
+    await message.answer(
+        MSG_DETAILS_RECEIVED.format(total_received),
+        reply_markup=_build_details_kb()
+    )
