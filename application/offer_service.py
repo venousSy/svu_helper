@@ -31,8 +31,7 @@ class ProjectDetail:
     tutor: str            # raw
     deadline: str         # raw
     details: str          # raw
-    file_id: Optional[str]
-    file_type: Optional[str]
+    attachments: list
     user_id: int
     user_full_name: str   # raw
     username: Optional[str]  # raw, may be None
@@ -90,8 +89,7 @@ class GetProjectDetailService:
             tutor=project["tutor_name"],
             deadline=project["deadline"],
             details=project["details"],
-            file_id=project.get("file_id"),
-            file_type=project.get("file_type"),
+            attachments=project.get("attachments", []),
             user_id=project["user_id"],
             user_full_name=project.get("user_full_name") or "Unknown",
             username=project.get("username"),

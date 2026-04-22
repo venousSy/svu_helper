@@ -129,6 +129,8 @@ BTN_CLOSED_TICKETS_LOG = _msgs["buttons"]["closed_tickets_log"]
 BTN_SEND_REPLY = _msgs["buttons"]["send_reply"]
 BTN_CLOSE_TICKET = _msgs["buttons"]["close_ticket"]
 BTN_REOPEN_TICKET = _msgs["buttons"]["reopen_ticket"]
+BTN_SEND_MORE = _msgs["buttons"]["send_more"]
+BTN_DONE = _msgs["buttons"]["done"]
 
 # --- CLIENT PROMPTS ---
 MSG_ASK_SUBJECT = _msgs["client_prompts"]["ask_subject"]
@@ -153,6 +155,8 @@ MSG_PROJECT_SUBMIT_ERROR = _msgs["client_prompts"]["project_submit_error"]
 MSG_PAYMENT_UPLOAD_ERROR = _msgs["client_prompts"]["payment_upload_error"]
 MSG_PAYMENT_DOC_INVALID = _msgs["client_prompts"]["payment_doc_invalid"]
 MSG_CANCEL_DONE = _msgs["client_prompts"]["cancel_done"]
+MSG_DETAILS_RECEIVED = _msgs["client_prompts"]["details_received"]
+MSG_SEND_NEXT = _msgs["client_prompts"]["send_next"]
 
 # --- TICKET MESSAGES ---
 MSG_TICKET_SUPPORT_HUB = _msgs["tickets"]["support_hub"]

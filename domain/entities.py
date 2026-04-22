@@ -58,8 +58,7 @@ class Project(BaseModel):
     tutor_name: str
     deadline: str
     details: str
-    file_id: Optional[str] = None
-    file_type: Optional[str] = None
+    attachments: List[dict] = Field(default_factory=list)
     status: ProjectStatus = Field(default=ProjectStatus.PENDING)
     price: Optional[str] = None
     delivery_date: Optional[str] = None

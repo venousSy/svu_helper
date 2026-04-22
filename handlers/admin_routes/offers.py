@@ -81,19 +81,35 @@ async def view_project_details(
     )
     markup = KeyboardFactory.manage_project(detail.proj_id)
 
-    if detail.file_id:
+    if getattr(detail, "attachments", None):
+        header = MSG_PROJECT_DETAIL_FILE_HEADER.format(detail.proj_id)
         if len(text) > 1024:
-            header = MSG_PROJECT_DETAIL_FILE_HEADER.format(detail.proj_id)
-            await _send_media_safely(callback, detail.file_id, detail.file_type, header, markup=None)
             try:
-                await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
+                await callback.message.answer(text, parse_mode="Markdown")
             except Exception:
-                await callback.message.answer(text, parse_mode=None, reply_markup=markup)
+                await callback.message.answer(text, parse_mode=None)
+            
+            for idx, att in enumerate(detail.attachments):
+                is_last = (idx == len(detail.attachments) - 1)
+                await _send_media_safely(
+                    callback,
+                    att["file_id"],
+                    att["file_type"],
+                    caption=header if idx == 0 else "",
+                    markup=markup if is_last else None
+                )
             await callback.message.delete()
         else:
-            success = await _send_media_safely(callback, detail.file_id, detail.file_type, text, markup=markup)
-            if success:
-                await callback.message.delete()
+            for idx, att in enumerate(detail.attachments):
+                is_last = (idx == len(detail.attachments) - 1)
+                await _send_media_safely(
+                    callback,
+                    att["file_id"],
+                    att["file_type"],
+                    caption=text if is_last else (header if idx == 0 else ""),
+                    markup=markup if is_last else None
+                )
+            await callback.message.delete()
     else:
         try:
             await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
