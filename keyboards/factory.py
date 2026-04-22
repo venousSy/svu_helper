@@ -466,7 +466,9 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=BTN_BACK_ICON,
-                callback_data="menu:start",
+                callback_data=MenuCallback(
+                    action=MenuAction.close_list
+                ).pack(),
             )
         )
         return builder.as_markup()
