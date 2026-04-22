@@ -4,6 +4,7 @@ import sys
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
+from datetime import datetime, timedelta
 
 # Internal Project Imports
 import sentry_sdk
@@ -18,6 +19,7 @@ from middlewares.maintenance import MaintenanceMiddleware
 from middlewares.throttling import ThrottlingMiddleware
 from middlewares.db_injection import DbInjectionMiddleware
 from middlewares.correlation import CorrelationLoggingMiddleware
+from middlewares.activity_tracker import ActivityTrackerMiddleware
 from utils.storage import MongoStorage
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
@@ -55,10 +57,13 @@ storage = MongoStorage(mongo_client, db_name=settings.DB_NAME)
 dp = Dispatcher(storage=storage)
 
 # Register Middleware
-# Order matters: Correlation -> DB Injection -> Maintenance -> Throttling -> Error Handler
+# Order matters: Correlation -> Activity Tracker -> DB Injection -> Maintenance -> Throttling -> Error Handler
 dp.message.outer_middleware(CorrelationLoggingMiddleware())
 dp.callback_query.outer_middleware(CorrelationLoggingMiddleware())
 dp.edited_message.outer_middleware(CorrelationLoggingMiddleware())
+dp.message.outer_middleware(ActivityTrackerMiddleware())
+dp.callback_query.outer_middleware(ActivityTrackerMiddleware())
+dp.edited_message.outer_middleware(ActivityTrackerMiddleware())
 dp.message.middleware(DbInjectionMiddleware())
 dp.callback_query.middleware(DbInjectionMiddleware())
 dp.edited_message.middleware(DbInjectionMiddleware())
@@ -93,6 +98,46 @@ async def start_keepalive_server():
     await site.start()
     logger.info("Keep-alive server started", port=port)
     return runner
+
+
+async def session_timeout_worker(bot: Bot, storage: MongoStorage):
+    """
+    Background worker that runs every minute to check for inactive FSM sessions.
+    If a session has been inactive for 20 minutes and has an active state,
+    it clears the state and notifies the user.
+    """
+    while True:
+        try:
+            now = datetime.utcnow()
+            cutoff = now - timedelta(minutes=20)
+            
+            # Find users who have an active state but haven't interacted in 20 mins
+            expired_docs = storage.collection.find({
+                "last_activity": {"$lt": cutoff},
+                "state": {"$ne": None}
+            })
+            
+            async for doc in expired_docs:
+                chat_id = doc.get("chat_id")
+                user_id = doc.get("user_id")
+                
+                if chat_id and user_id:
+                    # Notify user
+                    msg = "⏳ عذراً، انتهت صلاحية الجلسة لعدم النشاط (20 دقيقة). تم إغلاق الجلسة السابقة وإعادة تعيين المحادثة."
+                    try:
+                        await bot.send_message(chat_id, msg)
+                    except Exception as e:
+                        logger.warning(f"Could not send timeout message to chat {chat_id}: {e}")
+                    
+                    # Clear state
+                    await storage.collection.update_one(
+                        {"_id": doc["_id"]},
+                        {"$unset": {"state": "", "data": ""}}
+                    )
+        except Exception as e:
+            logger.error("Error in session timeout worker", e=str(e), exc_info=True)
+            
+        await asyncio.sleep(60)
 
 
 # --- MAIN ENTRY POINT ---
@@ -141,6 +186,9 @@ async def main():
         # Start keep-alive web server for Railway
         runner = await start_keepalive_server()
         
+        # Start session timeout background worker
+        timeout_task = asyncio.create_task(session_timeout_worker(bot, storage))
+        
         await dp.start_polling(bot)
 
     except Exception as e:
@@ -150,6 +198,11 @@ async def main():
         try:
             if 'runner' in locals() and runner:
                 await runner.cleanup()
+        except Exception:
+            pass
+        try:
+            if 'timeout_task' in locals():
+                timeout_task.cancel()
         except Exception:
             pass
 
