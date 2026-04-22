@@ -208,24 +208,7 @@ def format_payment_list(
     header = f"💰 **سجل المدفوعات**\n{_SEP}\nإجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
     lines = [header]
 
-    for pay in slice_:
-        p_id    = pay["id"]
-        proj_id = pay["project_id"]
-        u_id    = pay["user_id"]
-        status  = pay["status"]
-
-        if status == "accepted":
-            icon = "✅"
-        elif status == "rejected":
-            icon = "❌"
-        else:
-            icon = "⏳"
-
-        lines.append(
-            f"{icon} **D#{p_id}** | 🆔 Proj: #{proj_id}\n"
-            f"   👤 User: [{u_id}](tg://user?id={u_id})\n"
-            f"   🏷 Status: {status}\n\n"
-        )
+    lines.append("\n💡 اضغط على الزر أدناه لعرض تفاصيل الإيصال واتخاذ إجراء.")
 
     return "".join(lines).strip(), total_pages
 
