@@ -5,6 +5,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 from config import settings
+from utils.constants import MSG_MAINTENANCE_ACTIVE
 
 
 class MaintenanceMiddleware(BaseMiddleware):
@@ -28,7 +29,7 @@ class MaintenanceMiddleware(BaseMiddleware):
         settings_repo = data.get("settings_repo")
         if settings_repo and await settings_repo.get_maintenance_mode():
             await event.answer(
-                "⚠️ **النظام تحت الصيانة حالياً.**\nالرجاء المحاولة لاحقاً."
+                MSG_MAINTENANCE_ACTIVE
             )
             return None
 

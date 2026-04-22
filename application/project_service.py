@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from domain.entities import _parse_deadline
 from domain.enums import ProjectStatus
 from infrastructure.repositories import ProjectRepository
+from utils.constants import MSG_PERMISSION_DENIED
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +90,7 @@ class VerifyProjectOwnershipService:
     async def execute(self, proj_id: int, user_id: int) -> Dict[str, Any]:
         project = await self._repo.get_project_by_id(proj_id)
         if not project or project["user_id"] != user_id:
-            raise PermissionError("غير مصرح لك بذلك")
+            raise PermissionError(MSG_PERMISSION_DENIED)
         return project
 
 
@@ -155,5 +156,5 @@ class GetOfferDetailService:
     async def execute(self, proj_id: int, user_id: int) -> Dict[str, Any]:
         project = await self._repo.get_project_by_id(proj_id)
         if not project or project["user_id"] != user_id:
-            raise PermissionError("غير مصرح لك بذلك")
+            raise PermissionError(MSG_PERMISSION_DENIED)
         return project

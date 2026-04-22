@@ -5,6 +5,8 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import TelegramObject, Message, CallbackQuery
 import structlog
 
+from utils.constants import MSG_GENERIC_ERROR, MSG_GENERIC_ERROR_SHORT
+
 logger = structlog.get_logger()
 
 class GlobalErrorHandler(BaseMiddleware):
@@ -27,13 +29,13 @@ class GlobalErrorHandler(BaseMiddleware):
             # Check if we can reply to the user (Message or CallbackQuery)
             if isinstance(event, Message):
                 try:
-                    await event.answer("⚠️ حدث خطأ غير متوقع. تم إبلاغ المسؤولين.")
+                    await event.answer(MSG_GENERIC_ERROR)
                 except Exception:
                     pass # Only fails if we can't send messages (blocked etc)
             
             elif isinstance(event, CallbackQuery):
                 try:
-                    await event.answer("⚠️ حدث خطأ غير متوقع.", show_alert=True)
+                    await event.answer(MSG_GENERIC_ERROR_SHORT, show_alert=True)
                 except Exception:
                     pass
             

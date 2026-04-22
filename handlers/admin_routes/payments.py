@@ -6,9 +6,11 @@ from config import settings
 from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.callbacks import PaymentCallback, PaymentAction
 from utils.constants import (
+    MSG_FILE_SEND_ERROR,
     MSG_PAYMENT_CONFIRMED_ADMIN,
     MSG_PAYMENT_CONFIRMED_CLIENT,
     MSG_PAYMENT_REJECTED_ADMIN,
+    MSG_PAYMENT_REJECTED_TO_STUDENT,
 )
 from utils.formatters import escape_md
 
@@ -48,7 +50,7 @@ async def admin_view_receipt(
         await callback.answer()
     except Exception as e:
         logger.warning("Failed to send receipt file", payment_id=payment_id, error=str(e))
-        await callback.answer("⚠️ تعذر إرسال الملف.", show_alert=True)
+        await callback.answer(MSG_FILE_SEND_ERROR, show_alert=True)
 
 
 @router.callback_query(
@@ -102,7 +104,7 @@ async def reject_payment(
     if result.user_id:
         await bot.send_message(
             result.user_id,
-            "❌ **تم رفض عملية الدفع.**\nالرجاء التأكد من الإيصال وإعادة المحاولة من قائمة 'عروضي'.",
+            MSG_PAYMENT_REJECTED_TO_STUDENT,
             parse_mode="Markdown",
         )
     await callback.message.edit_caption(

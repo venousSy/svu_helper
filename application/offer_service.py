@@ -16,6 +16,7 @@ from typing import Optional
 
 from domain.enums import ProjectStatus
 from infrastructure.repositories import ProjectRepository
+from utils.constants import MSG_PERMISSION_DENIED
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +195,7 @@ class DenyProjectService:
     async def execute_student_deny(self, proj_id: int, user_id: int) -> DenyResult:
         project = await self._repo.get_project_by_id(proj_id)
         if not project or project["user_id"] != user_id:
-            raise PermissionError("غير مصرح لك بذلك")
+            raise PermissionError(MSG_PERMISSION_DENIED)
         await self._repo.update_status(proj_id, ProjectStatus.DENIED_STUDENT)
         return DenyResult(
             proj_id=proj_id,

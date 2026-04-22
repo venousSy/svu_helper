@@ -16,6 +16,8 @@ from utils.constants import (
     MSG_ASK_DETAILS,
     MSG_ASK_NOTES,
     MSG_CANCELLED,
+    MSG_DATE_SELECTED_DEADLINE,
+    MSG_DATE_SELECTED_DELIVERY,
     MSG_HELP,
     MSG_NO_ACTIVE_PROCESS,
     MSG_WELCOME,
@@ -80,7 +82,7 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
             await state.update_data(deadline=date_str)
             try:
                 await callback.message.edit_text(
-                    text=f"✅ **تم اختيار تاريخ التسليم:** `{date_str}`",
+                    text=MSG_DATE_SELECTED_DEADLINE.format(date_str),
                     parse_mode="Markdown"
                 )
             except Exception:
@@ -92,7 +94,7 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
             await state.update_data(delivery=date_str)
             try:
                 await callback.message.edit_text(
-                    text=f"✅ **تم اختيار موعد التسليم:** `{date_str}`",
+                    text=MSG_DATE_SELECTED_DELIVERY.format(date_str),
                     parse_mode="Markdown"
                 )
             except Exception:

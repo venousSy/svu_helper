@@ -14,6 +14,13 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 from infrastructure.repositories.ticket import TicketRepository
+from utils.constants import (
+    MSG_TICKET_ADMIN_REPLY_HEADER,
+    MSG_TICKET_CLOSED_WARNING,
+    MSG_TICKET_NEW_HEADER,
+    MSG_TICKET_STUDENT_REPLY,
+    MSG_TICKET_TOPIC_NAME,
+)
 
 logger = structlog.get_logger()
 
@@ -61,7 +68,7 @@ class TicketService:
                 await self._repo.set_thread_id(ticket_id, thread_id)
                 await self._send_to_topic(
                     thread_id, text, file_id, file_type,
-                    header=f"🎫 تذكرة جديدة #{ticket_id}\n👤 المستخدم: {user_id}",
+                    header=MSG_TICKET_NEW_HEADER.format(ticket_id, user_id),
                 )
 
         return ticket_id
@@ -94,7 +101,7 @@ class TicketService:
         if thread_id and self._forum_group_id:
             await self._send_to_topic(
                 thread_id, text, file_id, file_type,
-                header="💬 رد من الطالب:",
+                header=MSG_TICKET_STUDENT_REPLY,
             )
 
         return True
@@ -125,7 +132,7 @@ class TicketService:
                     await self._bot.send_message(
                         chat_id=self._forum_group_id,
                         message_thread_id=message_thread_id,
-                        text="⚠️ هذه التذكرة مغلقة. لا يمكن إرسال ردود.",
+                        text=MSG_TICKET_CLOSED_WARNING,
                     )
                 except Exception:
                     pass
@@ -141,7 +148,7 @@ class TicketService:
 
         # Forward the reply to the student
         user_id = ticket["user_id"]
-        header = f"📩 رد من الدعم الفني (تذكرة #{ticket['ticket_id']}):"
+        header = MSG_TICKET_ADMIN_REPLY_HEADER.format(ticket['ticket_id'])
         await self._send_to_user(user_id, text, file_id, file_type, header=header)
 
         return ticket
@@ -257,7 +264,7 @@ class TicketService:
         try:
             topic = await self._bot.create_forum_topic(
                 chat_id=self._forum_group_id,
-                name=f"🎫 تذكرة #{ticket_id} — {user_id}",
+                name=MSG_TICKET_TOPIC_NAME.format(ticket_id, user_id),
             )
             logger.info(
                 "Forum topic created",

@@ -12,6 +12,7 @@ from config import settings
 from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.callbacks import MenuCallback, PageCallback, PageAction, MenuAction
 from keyboards.factory import KeyboardFactory
+from utils.constants import MSG_ONGOING_PROJECTS_HEADER, MSG_PENDING_PROJECTS_HEADER
 from utils.formatters import (
     format_master_report,
     format_payment_list,
@@ -84,7 +85,7 @@ async def _render_pending(
     callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
 ) -> None:
     projects = await GetPendingProjectsService(project_repo).execute()
-    text, total_pages = format_project_list(projects, "📊 مشاريع قيد الانتظار", page=page)
+    text, total_pages = format_project_list(projects, MSG_PENDING_PROJECTS_HEADER, page=page)
 
     slice_, _, _ = paginate(projects, page)
     item_kb = KeyboardFactory.pending_projects(slice_)
@@ -129,7 +130,7 @@ async def _render_accepted(
     callback: types.CallbackQuery, project_repo: ProjectRepository, page: int
 ) -> None:
     projects = await GetOngoingProjectsService(project_repo).execute()
-    text, total_pages = format_project_list(projects, "🚀 مشاريع جارية", page=page)
+    text, total_pages = format_project_list(projects, MSG_ONGOING_PROJECTS_HEADER, page=page)
 
     slice_, _, _ = paginate(projects, page)
     item_kb = KeyboardFactory.accepted_projects(slice_)
