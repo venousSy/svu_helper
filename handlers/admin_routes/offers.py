@@ -1,4 +1,4 @@
-import logging
+import structlog
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 
@@ -10,10 +10,9 @@ from application.offer_service import (
 )
 from config import settings
 from infrastructure.repositories import ProjectRepository
-from keyboards.admin_kb import get_cancel_kb, get_manage_project_kb, get_notes_decision_kb
 from keyboards.calendar_kb import build_calendar
-from keyboards.client_kb import get_offer_actions_kb
 from keyboards.callbacks import ProjectCallback, ProjectAction
+from keyboards.factory import KeyboardFactory
 from states import AdminStates
 from utils.constants import (
     BTN_YES,
@@ -33,10 +32,10 @@ from utils.constants import (
     MSG_WORK_FINISHED_ALERT,
 )
 from utils.formatters import escape_md
-from utils.helpers import get_file_id
+from utils.helpers import extract_message_content, notify_admins
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # ── PROJECT DETAIL VIEW ─────────────────────────────────────────────────────
 
@@ -65,7 +64,7 @@ async def view_project_details(
         f"*الموعد:* {escape_md(detail.deadline)}\n"
         f"*التفاصيل:* {escape_md(detail.details)}"
     )
-    markup = get_manage_project_kb(detail.proj_id)
+    markup = KeyboardFactory.manage_project(detail.proj_id)
 
     if detail.file_id:
         if len(text) > 1024:
@@ -139,7 +138,7 @@ async def start_offer_flow(
 ):
     proj_id = callback_data.id
     await state.update_data(offer_proj_id=proj_id)
-    await callback.message.answer(MSG_ASK_PRICE.format(proj_id), reply_markup=get_cancel_kb())
+    await callback.message.answer(MSG_ASK_PRICE.format(proj_id), reply_markup=KeyboardFactory.cancel())
     await state.set_state(AdminStates.waiting_for_price)
 
 
@@ -163,7 +162,7 @@ async def process_delivery(message: types.Message, state: FSMContext):
     if len(delivery_text) > 50:
         return await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
     await state.update_data(delivery=delivery_text)
-    await message.answer(MSG_ASK_NOTES, reply_markup=get_notes_decision_kb())
+    await message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())
     await state.set_state(AdminStates.waiting_for_notes_decision)
 
 
@@ -178,7 +177,7 @@ async def process_notes_decision(
     elif text == BTN_NO:
         await _finalize_offer(message, state, bot, project_repo, notes=MSG_NO_NOTES)
     else:
-        await message.answer("⚠️ الرجاء اختيار 'نعم' أو 'لا' من لوحة المفاتيح المرفقة.", reply_markup=get_notes_decision_kb())
+        await message.answer("⚠️ الرجاء اختيار 'نعم' أو 'لا' من لوحة المفاتيح المرفقة.", reply_markup=KeyboardFactory.notes_decision())
 
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.admin_ids))
@@ -210,7 +209,7 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
         
         await bot.send_message(
             result.user_id, offer_text, parse_mode="Markdown",
-            reply_markup=get_offer_actions_kb(result.proj_id),
+            reply_markup=KeyboardFactory.offer_actions(result.proj_id),
         )
         await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
@@ -232,7 +231,7 @@ async def manage_accepted_project(
     proj_id = callback_data.id
     await state.update_data(finish_proj_id=proj_id)
     await state.set_state(AdminStates.waiting_for_finished_work)
-    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=get_cancel_kb())
+    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=KeyboardFactory.cancel())
     await callback.answer()
 
 
@@ -250,17 +249,19 @@ async def process_finished_work(
             MSG_WORK_FINISHED_ALERT.format(escape_md(result.subject), result.proj_id),
             parse_mode="Markdown",
         )
-        file_id, file_type = get_file_id(message)
-        if file_type == "document":
-            await bot.send_document(result.user_id, file_id, caption=message.caption)
-        elif file_type == "photo":
-            await bot.send_photo(result.user_id, file_id, caption=message.caption)
-        elif file_type == "video":
-            await bot.send_video(result.user_id, file_id, caption=message.caption)
-        elif file_type == "audio":
-            await bot.send_audio(result.user_id, file_id, caption=message.caption)
-        elif file_type == "voice":
-            await bot.send_voice(result.user_id, file_id, caption=message.caption)
+        text, file_id, file_type = extract_message_content(message)
+        if file_id:
+            # Dispatch the media to the student using the _dispatch pattern
+            methods = {
+                "photo": bot.send_photo,
+                "video": bot.send_video,
+                "document": bot.send_document,
+                "audio": bot.send_audio,
+                "voice": bot.send_voice,
+            }
+            send_method = methods.get(file_type, bot.send_document)
+            media_kwarg = {file_type or "document": file_id}
+            await send_method(result.user_id, **media_kwarg, caption=message.caption)
         else:
             text = message.text or "✅ تم رفع ملف بدون رسالة نصية."
             await bot.send_message(result.user_id, text)
@@ -291,8 +292,7 @@ async def handle_deny(
                 await bot.send_message(result.student_user_id, MSG_PROJECT_DENIED_CLIENT.format(proj_id))
         else:
             result = await service.execute_student_deny(proj_id, callback.from_user.id)
-            for admin_id in settings.admin_ids:
-                await bot.send_message(admin_id, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id))
+            await notify_admins(bot, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id))
     except PermissionError as e:
         return await callback.answer(f"⚠️ {e}", show_alert=True)
 

@@ -9,12 +9,12 @@ sys.path.append(os.getcwd())
 async def test_extensions():
     print("Testing new extensions...")
     try:
-        from keyboards.admin_kb import get_new_project_alert_kb
+        from keyboards.factory import KeyboardFactory
 
         print("[OK] get_new_project_alert_kb imported")
 
         # Simulate creating the keyboard
-        kb = get_new_project_alert_kb(123)
+        kb = KeyboardFactory.new_project_alert(123)
         print("[OK] Keyboard generated successfully")
 
         return True

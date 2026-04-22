@@ -1,4 +1,4 @@
-import logging
+import structlog
 from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -7,9 +7,9 @@ from aiogram.exceptions import TelegramAPIError
 from application.project_service import AddProjectService
 from config import settings
 from infrastructure.repositories import ProjectRepository
-from keyboards.admin_kb import get_new_project_alert_kb
 from keyboards.callbacks import MenuCallback, MenuAction
 from keyboards.calendar_kb import build_calendar, CalendarCallback
+from keyboards.factory import KeyboardFactory
 from states import ProjectOrder
 from utils.constants import (
     MSG_ASK_DEADLINE,
@@ -21,10 +21,10 @@ from utils.constants import (
     MSG_PROJECT_SUBMITTED,
 )
 from utils.formatters import format_admin_notification
-from utils.helpers import get_file_id, get_file_size
+from utils.helpers import get_file_id, get_file_size, notify_admins
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 MAX_FILE_SIZE_MB = AddProjectService.MAX_FILE_SIZE_MB
 MAX_FILE_SIZE_BYTES = AddProjectService.MAX_FILE_SIZE_BYTES
@@ -123,14 +123,10 @@ async def process_details(
             project_id, data["subject"], data["deadline"], details_text,
             user_name=user.full_name, username=user.username,
         )
-        for admin_id in settings.admin_ids:
-            try:
-                await bot.send_message(
-                    admin_id, admin_text, parse_mode="Markdown",
-                    reply_markup=get_new_project_alert_kb(project_id),
-                )
-            except TelegramAPIError as e:
-                logger.error("Failed to notify admin", admin_id=admin_id, error=str(e))
+        await notify_admins(
+            bot, admin_text,
+            reply_markup=KeyboardFactory.new_project_alert(project_id),
+        )
         await state.clear()
 
     except ValueError as e:

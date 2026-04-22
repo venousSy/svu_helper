@@ -9,8 +9,7 @@ Handlers should import from this module instead of calling helper
 functions in admin_kb / client_kb / common_kb directly.
 
 The individual keyboard-builder modules (admin_kb.py, client_kb.py,
-common_kb.py) delegate to this factory so that callers external to the
-keyboards package require no changes during the transition.
+common_kb.py) have been removed — import directly from this module.
 """
 
 from aiogram import types
@@ -37,6 +36,7 @@ from utils.constants import (
     BTN_NO,
     BTN_YES,
 )
+from utils.formatters import format_datetime
 
 # ---------------------------------------------------------------------------
 # Additional button constants that were previously hard-coded inline
@@ -449,11 +449,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for t in tickets:
             tid = t["ticket_id"]
-            created = t.get("created_at", "")
-            if hasattr(created, "strftime"):
-                created = created.strftime("%m/%d %H:%M")
-            else:
-                created = str(created)[:16]
+            created = format_datetime(t.get("created_at", ""))
             msg_count = len(t.get("messages", []))
             btn_text = f"🎫 #{tid}  |  💬 {msg_count}  |  {created}"
             builder.row(
@@ -528,11 +524,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for t in tickets:
             tid = t["ticket_id"]
-            created = t.get("created_at", "")
-            if hasattr(created, "strftime"):
-                created = created.strftime("%m/%d %H:%M")
-            else:
-                created = str(created)[:16]
+            created = format_datetime(t.get("created_at", ""))
             msg_count = len(t.get("messages", []))
             btn_text = f"🔒 #{tid}  |  💬 {msg_count}  |  {created}"
             builder.row(

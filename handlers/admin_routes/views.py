@@ -1,4 +1,4 @@
-import logging
+import structlog
 from aiogram import Router, F, types
 
 from application.admin_service import (
@@ -18,10 +18,10 @@ from utils.formatters import (
     format_project_history,
     format_project_list,
 )
-from utils.pagination import build_nav_keyboard
+from utils.pagination import build_nav_keyboard, paginate
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ── HELPER: render a single page and answer the callback ────────────────────
@@ -86,9 +86,6 @@ async def _render_pending(
     projects = await GetPendingProjectsService(project_repo).execute()
     text, total_pages = format_project_list(projects, "📊 مشاريع قيد الانتظار", page=page)
 
-    # Build item buttons only for the visible page slice
-    from keyboards.factory import KeyboardFactory
-    from utils.pagination import paginate
     slice_, _, _ = paginate(projects, page)
     item_kb = KeyboardFactory.pending_projects(slice_)
 
@@ -134,8 +131,6 @@ async def _render_accepted(
     projects = await GetOngoingProjectsService(project_repo).execute()
     text, total_pages = format_project_list(projects, "🚀 مشاريع جارية", page=page)
 
-    from keyboards.factory import KeyboardFactory
-    from utils.pagination import paginate
     slice_, _, _ = paginate(projects, page)
     item_kb = KeyboardFactory.accepted_projects(slice_)
 

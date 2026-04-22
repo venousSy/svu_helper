@@ -1,15 +1,16 @@
-import logging
+import structlog
 from aiogram import F, Router, types
 from aiogram.filters import Command
 
 from application.project_service import GetOfferDetailService, GetStudentOffersService, GetStudentProjectsService
 from infrastructure.repositories import ProjectRepository
-from keyboards.client_kb import get_offer_actions_kb, get_offers_list_kb
 from keyboards.callbacks import MenuCallback, PageCallback, ProjectCallback, ProjectAction, PageAction, MenuAction
+from keyboards.factory import KeyboardFactory
 from utils.constants import (
     BTN_MY_PROJECTS,
     BTN_MY_OFFERS,
     MSG_OFFER_DETAILS,
+    MSG_WELCOME,
 )
 from utils.formatters import (
     escape_md,
@@ -20,7 +21,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.pagination import build_nav_keyboard, paginate
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.my_projects))
@@ -78,7 +79,7 @@ async def cb_view_offers(
 
 def _build_offers_kb(slice_, page: int, total_pages: int):
     builder = InlineKeyboardBuilder()
-    item_kb = get_offers_list_kb(slice_)
+    item_kb = KeyboardFactory.offers_list(slice_)
     for row in item_kb.inline_keyboard:
         builder.row(*row)
     
@@ -144,16 +145,14 @@ async def show_specific_offer(
     price = escape_md(res["price"])
     delivery = escape_md(res["delivery_date"])
     text = MSG_OFFER_DETAILS.format(subject, price, delivery, escape_md(proj_id))
-    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=get_offer_actions_kb(proj_id))
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=KeyboardFactory.offer_actions(proj_id))
 
 
 # ── CLOSE ACTIONS ────────────────────────────────────────────────────────
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.close_list))
 async def cb_close_list(callback: types.CallbackQuery):
     try:
-        from keyboards.common_kb import get_student_main_kb
-        from utils.constants import MSG_WELCOME
-        await callback.message.edit_text(MSG_WELCOME, parse_mode="Markdown", reply_markup=get_student_main_kb())
+        await callback.message.edit_text(MSG_WELCOME, parse_mode="Markdown", reply_markup=KeyboardFactory.student_main())
     except Exception:
         pass
     await callback.answer()

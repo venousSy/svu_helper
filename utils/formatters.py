@@ -7,6 +7,9 @@ caller can attach the standard pagination keyboard.  Single-item formatters
 """
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Union
+
 from utils.constants import (
     MSG_NO_OFFERS,
     MSG_NO_PROJECTS,
@@ -21,6 +24,24 @@ from utils.constants import (
 from utils.pagination import paginate, PAGE_SIZE
 
 _SEP = "━━━━━━━━━━━━━"
+
+
+# ---------------------------------------------------------------------------
+# Date / time helper
+# ---------------------------------------------------------------------------
+
+def format_datetime(
+    value: Union[datetime, str, None], fmt: str = "%m/%d %H:%M"
+) -> str:
+    """Convert a datetime (or stringy fallback) to a short display string.
+
+    Used by keyboards and handlers that render ticket/project timestamps.
+    """
+    if value is None:
+        return ""
+    if hasattr(value, "strftime"):
+        return value.strftime(fmt)
+    return str(value)[:16]
 
 
 # ---------------------------------------------------------------------------

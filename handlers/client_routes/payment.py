@@ -1,4 +1,4 @@
-import logging
+import structlog
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
@@ -7,15 +7,14 @@ from application.project_service import VerifyProjectOwnershipService
 from application.payment_service import SubmitPaymentService
 from config import settings
 from infrastructure.repositories import PaymentRepository, ProjectRepository
-from keyboards.admin_kb import get_payment_verify_kb
-from keyboards.client_kb import get_cancel_payment_kb
 from keyboards.callbacks import MenuCallback, ProjectCallback, ProjectAction, MenuAction
+from keyboards.factory import KeyboardFactory
 from states import ProjectOrder
 from utils.constants import MSG_OFFER_ACCEPTED, MSG_RECEIPT_RECEIVED, MSG_PAYMENT_CANCELLED, MSG_PAYMENT_PROOF_HINT
 from utils.helpers import get_file_id
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 MAX_FILE_SIZE_MB = 20
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -44,7 +43,7 @@ async def student_accept_offer(
     await callback.message.edit_text(
         MSG_OFFER_ACCEPTED.format(proj_id),
         parse_mode="Markdown",
-        reply_markup=get_cancel_payment_kb(),
+        reply_markup=KeyboardFactory.cancel_payment(),
     )
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
     await callback.answer()
@@ -108,13 +107,13 @@ async def process_payment_proof(
                     await bot.send_photo(
                         admin_id, result.file_id,
                         caption=f"verify_pay_{result.payment_id}",
-                        reply_markup=get_payment_verify_kb(result.payment_id),
+                        reply_markup=KeyboardFactory.payment_verify(result.payment_id),
                     )
                 else:
                     await bot.send_document(
                         admin_id, result.file_id,
                         caption=f"verify_pay_{result.payment_id}",
-                        reply_markup=get_payment_verify_kb(result.payment_id),
+                        reply_markup=KeyboardFactory.payment_verify(result.payment_id),
                     )
             except TelegramAPIError as e:
                 logger.error("Failed to relay receipt to admin", payment_id=result.payment_id, admin_id=admin_id, error=str(e))

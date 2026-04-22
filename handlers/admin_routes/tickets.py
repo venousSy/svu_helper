@@ -19,22 +19,13 @@ import structlog
 
 from config import settings
 from infrastructure.repositories.ticket import TicketRepository
-from services.ticket_service import TicketService
+from utils.helpers import build_ticket_service, extract_message_content
 
 logger = structlog.get_logger()
 router = Router()
 
 
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
-def _build_ticket_service(
-    ticket_repo: TicketRepository, bot: Bot
-) -> TicketService:
-    forum_id = getattr(settings, "ADMIN_FORUM_GROUP_ID", None)
-    return TicketService(
-        ticket_repo=ticket_repo, bot=bot, forum_group_id=forum_id
-    )
+
 
 
 def _get_forum_group_id() -> Optional[int]:
@@ -73,27 +64,9 @@ async def admin_forum_reply(
     if message.from_user and message.from_user.is_bot:
         return
 
-    service = _build_ticket_service(ticket_repo, bot)
+    service = build_ticket_service(ticket_repo, bot)
 
-    # Extract content
-    text: Optional[str] = None
-    file_id: Optional[str] = None
-    file_type: Optional[str] = None
-
-    if message.photo:
-        file_id = message.photo[-1].file_id
-        file_type = "photo"
-        text = message.caption
-    elif message.document:
-        file_id = message.document.file_id
-        file_type = "document"
-        text = message.caption
-    elif message.video:
-        file_id = message.video.file_id
-        file_type = "video"
-        text = message.caption
-    elif message.text:
-        text = message.text
+    text, file_id, file_type = extract_message_content(message)
 
     if not text and not file_id:
         return  # Empty message (sticker, etc.) — ignore
