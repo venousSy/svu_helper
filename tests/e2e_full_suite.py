@@ -97,7 +97,7 @@ async def submit_project(
     await wait_for_message(student, ["تم تقديم", "بنجاح"], timeout=15)
 
 
-async def admin_make_offer(admin, price="30000", delivery="3 Days", notes="لا يوجد"):
+async def admin_make_offer(admin, price="30000", delivery="2026-12-01", notes="لا يوجد"):
     """Helper: Admin dispatches a pricing offer from an incoming alert."""
     alert = await wait_for_message(admin, ["مشروع جديد"], timeout=15)
     await click_inline_button(admin, alert, "إرسال عرض")
