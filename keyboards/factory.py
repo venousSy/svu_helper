@@ -487,9 +487,9 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for t in tickets:
             tid = t["ticket_id"]
-            created = format_datetime(t.get("created_at", ""))
+            created = format_datetime(t.get("created_at", ""), "%d/%m")
             msg_count = len(t.get("messages", []))
-            btn_text = f"🎫 #{tid}  |  💬 {msg_count}  |  {created}"
+            btn_text = f"🎫 #{tid} | 💬 {msg_count} | {created}"
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
@@ -562,9 +562,9 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for t in tickets:
             tid = t["ticket_id"]
-            created = format_datetime(t.get("created_at", ""))
+            created = format_datetime(t.get("created_at", ""), "%d/%m")
             msg_count = len(t.get("messages", []))
-            btn_text = f"🔒 #{tid}  |  💬 {msg_count}  |  {created}"
+            btn_text = f"🔒 #{tid} | 💬 {msg_count} | {created}"
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
@@ -621,6 +621,20 @@ class KeyboardFactory:
                 callback_data=TicketCallback(
                     action=TicketAction.cancel_action
                 ).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def inline_cancel(callback_data: str = None) -> types.InlineKeyboardMarkup:
+        """Inline cancel button for FSM states."""
+        if callback_data is None:
+            callback_data = MenuCallback(action=MenuAction.cancel_flow).pack()
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_CANCEL,
+                callback_data=callback_data
             )
         )
         return builder.as_markup()

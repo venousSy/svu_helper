@@ -42,7 +42,11 @@ MAX_FILE_SIZE_BYTES = AddProjectService.MAX_FILE_SIZE_BYTES
 
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.new_project))
 async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(MSG_ASK_SUBJECT, parse_mode="Markdown")
+    await callback.message.answer(
+        MSG_ASK_SUBJECT, 
+        parse_mode="Markdown",
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await state.set_state(ProjectOrder.subject)
     await callback.answer()
 
@@ -50,7 +54,11 @@ async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
 @router.message(F.text == BTN_NEW_PROJECT)
 @router.message(Command("new_project"))
 async def start_project(message: types.Message, state: FSMContext):
-    await message.answer(MSG_ASK_SUBJECT, parse_mode="Markdown")
+    await message.answer(
+        MSG_ASK_SUBJECT, 
+        parse_mode="Markdown",
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await state.set_state(ProjectOrder.subject)
 
 
@@ -61,13 +69,22 @@ async def process_subject(message: types.Message, state: FSMContext):
             MSG_SUBJECT_TOO_LONG.format(AddProjectService.MAX_SUBJECT_LENGTH)
         )
     await state.update_data(subject=message.text)
-    await message.answer(MSG_ASK_TUTOR, parse_mode="Markdown")
+    await message.answer(
+        MSG_ASK_TUTOR, 
+        parse_mode="Markdown",
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await state.set_state(ProjectOrder.tutor)
 
 
 async def _ask_deadline(message: types.Message):
     """Helper to send the deadline prompt with the calendar inline keyboard."""
-    await message.answer(MSG_ASK_DEADLINE, parse_mode="Markdown", reply_markup=build_calendar())
+    cancel_data = MenuCallback(action=MenuAction.cancel_flow).pack()
+    await message.answer(
+        MSG_ASK_DEADLINE, 
+        parse_mode="Markdown", 
+        reply_markup=build_calendar(cancel_callback_data=cancel_data)
+    )
 
 @router.message(ProjectOrder.tutor, F.text, ~F.text.startswith('/'))
 async def process_tutor(message: types.Message, state: FSMContext):

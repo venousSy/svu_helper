@@ -169,13 +169,20 @@ async def start_offer_flow(
 ):
     proj_id = callback_data.id
     await state.update_data(offer_proj_id=proj_id)
-    await callback.message.answer(MSG_ASK_PRICE.format(proj_id), reply_markup=KeyboardFactory.cancel())
+    await callback.message.answer(
+        MSG_ASK_PRICE.format(proj_id), 
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await state.set_state(AdminStates.waiting_for_price)
 
 
 async def _ask_delivery(message: types.Message):
     """Helper to send the delivery date prompt with the calendar inline keyboard."""
-    await message.answer(MSG_ASK_DELIVERY, reply_markup=build_calendar())
+    cancel_data = MenuCallback(action=MenuAction.cancel_flow).pack()
+    await message.answer(
+        MSG_ASK_DELIVERY, 
+        reply_markup=build_calendar(cancel_callback_data=cancel_data)
+    )
 
 @router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.admin_ids))
 async def process_price(message: types.Message, state: FSMContext):
@@ -277,7 +284,10 @@ async def manage_accepted_project(
     proj_id = callback_data.id
     await state.update_data(finish_proj_id=proj_id)
     await state.set_state(AdminStates.waiting_for_finished_work)
-    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=KeyboardFactory.cancel())
+    await callback.message.answer(
+        MSG_UPLOAD_FINISHED_WORK.format(proj_id), 
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await callback.answer()
 
 
