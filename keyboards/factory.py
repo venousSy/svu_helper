@@ -28,41 +28,42 @@ from keyboards.callbacks import (
     TicketAction,
 )
 from utils.constants import (
+    BTN_ACCEPT_OFFER,
+    BTN_ADMIN_TICKETS,
     BTN_BACK,
+    BTN_BACK_ICON,
+    BTN_BROADCAST,
     BTN_CANCEL,
+    BTN_CANCEL_PAY,
+    BTN_CLOSE_TICKET,
+    BTN_CLOSED_TICKETS_LOG,
+    BTN_CONFIRM_PAYMENT,
+    BTN_DENY_OFFER,
+    BTN_FINISH_PROJECT,
+    BTN_HELP,
+    BTN_MANAGE_PROJECT,
     BTN_MY_OFFERS,
+    BTN_MY_OPEN_TICKETS,
     BTN_MY_PROJECTS,
     BTN_NEW_PROJECT,
+    BTN_NEW_TICKET,
     BTN_NO,
+    BTN_NO_SUBJECT,
+    BTN_REJECT,
+    BTN_REJECT_PAYMENT,
+    BTN_REOPEN_TICKET,
+    BTN_SEND_OFFER,
+    BTN_SEND_REPLY,
+    BTN_SUPPORT,
+    BTN_VIEW_ACCEPTED,
+    BTN_VIEW_ALL,
+    BTN_VIEW_HISTORY,
+    BTN_VIEW_PAYMENTS,
+    BTN_VIEW_PENDING,
+    BTN_VIEW_RECEIPT,
     BTN_YES,
 )
 from utils.formatters import format_datetime
-
-# ---------------------------------------------------------------------------
-# Additional button constants that were previously hard-coded inline
-# ---------------------------------------------------------------------------
-# Admin dashboard buttons
-_BTN_VIEW_ALL = "📑 قائمة المشاريع الكاملة"
-_BTN_VIEW_PENDING = "📊 مشاريع قيد الانتظار"
-_BTN_VIEW_ACCEPTED = "✅ مشاريع مقبولة/جارية"
-_BTN_VIEW_HISTORY = "📜 سجل المشاريع"
-_BTN_VIEW_PAYMENTS = "💰 سجل المدفوعات"
-_BTN_BROADCAST = "📢 إرسال إعلان"
-_BTN_ADMIN_TICKETS = "🎫 التذاكر المفتوحة"
-
-# Shared action buttons
-_BTN_BACK_ICON = "⬅️ رجوع"
-_BTN_SEND_OFFER = "💰 إرسال عرض"
-_BTN_REJECT = "❌ رفض"
-_BTN_CONFIRM_PAYMENT = "✅ تأكيد الدفع"
-_BTN_REJECT_PAYMENT = "❌ رفض الدفع"
-_BTN_ACCEPT_OFFER = "✅ قبول"
-_BTN_DENY_OFFER = "❌ رفض"
-_BTN_CANCEL_PAY = "❌ إلغاء"
-_BTN_FINISH_PROJECT = "📤 إنهاء"
-_BTN_MANAGE_PROJECT = "📂 إدارة"
-_BTN_SUPPORT = "📩 الدعم الفني"
-_BTN_VIEW_RECEIPT = "📄 عرض الإيصال"
 
 
 class KeyboardFactory:
@@ -89,11 +90,11 @@ class KeyboardFactory:
             callback_data=MenuCallback(action=MenuAction.my_offers).pack(),
         )
         builder.button(
-            text=_BTN_SUPPORT,
+            text=BTN_SUPPORT,
             callback_data=MenuCallback(action=MenuAction.support).pack(),
         )
         builder.button(
-            text="ℹ️ المساعدة",
+            text=BTN_HELP,
             callback_data=MenuCallback(action=MenuAction.help).pack(),
         )
         builder.adjust(1)
@@ -105,17 +106,17 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_ACCEPT_OFFER,
+                text=BTN_ACCEPT_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.accept, id=proj_id).pack(),
             ),
             types.InlineKeyboardButton(
-                text=_BTN_DENY_OFFER,
+                text=BTN_DENY_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.deny, id=proj_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(action=MenuAction.my_offers).pack(),
             )
         )
@@ -127,7 +128,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for item in offers:
             p_id = item["id"]
-            subject = item.get("subject_name", "بدون مادة")
+            subject = item.get("subject_name", BTN_NO_SUBJECT)
             tutor = item.get("tutor_name", "")
             
             parts = [f"#{p_id}"]
@@ -151,7 +152,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_CANCEL_PAY,
+                text=BTN_CANCEL_PAY,
                 callback_data=MenuCallback(action=MenuAction.cancel_pay).pack(),
             )
         )
@@ -167,43 +168,43 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_VIEW_ALL,
+                text=BTN_VIEW_ALL,
                 callback_data=MenuCallback(action=MenuAction.view_all_master).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_VIEW_PENDING,
+                text=BTN_VIEW_PENDING,
                 callback_data=MenuCallback(action=MenuAction.view_pending).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_VIEW_ACCEPTED,
+                text=BTN_VIEW_ACCEPTED,
                 callback_data=MenuCallback(action=MenuAction.view_accepted).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_VIEW_HISTORY,
+                text=BTN_VIEW_HISTORY,
                 callback_data=MenuCallback(action=MenuAction.view_history).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_VIEW_PAYMENTS,
+                text=BTN_VIEW_PAYMENTS,
                 callback_data=MenuCallback(action=MenuAction.view_payments).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BROADCAST,
+                text=BTN_BROADCAST,
                 callback_data=MenuCallback(action=MenuAction.admin_broadcast).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_ADMIN_TICKETS,
+                text=BTN_ADMIN_TICKETS,
                 callback_data=MenuCallback(action=MenuAction.admin_tickets).pack(),
             )
         )
@@ -217,7 +218,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON, callback_data=callback_data
+                text=BTN_BACK_ICON, callback_data=callback_data
             )
         )
         return builder
@@ -249,7 +250,7 @@ class KeyboardFactory:
             )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
@@ -284,7 +285,7 @@ class KeyboardFactory:
             )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
@@ -296,19 +297,19 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_SEND_OFFER,
+                text=BTN_SEND_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.make_offer, id=p_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_REJECT,
+                text=BTN_REJECT,
                 callback_data=ProjectCallback(action=ProjectAction.deny, id=p_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(action=MenuAction.view_pending).pack(),
             )
         )
@@ -320,11 +321,11 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_CONFIRM_PAYMENT,
+                text=BTN_CONFIRM_PAYMENT,
                 callback_data=PaymentCallback(action=PaymentAction.confirm, id=payment_id).pack(),
             ),
             types.InlineKeyboardButton(
-                text=_BTN_REJECT_PAYMENT,
+                text=BTN_REJECT_PAYMENT,
                 callback_data=PaymentCallback(action=PaymentAction.reject, id=payment_id).pack(),
             ),
         )
@@ -352,13 +353,13 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_SEND_OFFER,
+                text=BTN_SEND_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.make_offer, id=p_id).pack(),
             )
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_REJECT,
+                text=BTN_REJECT,
                 callback_data=ProjectCallback(action=ProjectAction.deny, id=p_id).pack(),
             )
         )
@@ -409,7 +410,7 @@ class KeyboardFactory:
             )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
@@ -440,7 +441,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text="🆕 فتح تذكرة جديدة",
+                text=BTN_NEW_TICKET,
                 callback_data=TicketCallback(
                     action=TicketAction.open_new
                 ).pack(),
@@ -448,7 +449,7 @@ class KeyboardFactory:
         )
         builder.row(
             types.InlineKeyboardButton(
-                text="📋 تذاكري المفتوحة",
+                text=BTN_MY_OPEN_TICKETS,
                 callback_data=TicketCallback(
                     action=TicketAction.list_active
                 ).pack(),
@@ -456,7 +457,7 @@ class KeyboardFactory:
         )
         builder.row(
             types.InlineKeyboardButton(
-                text="📜 سجل التذاكر المغلقة",
+                text=BTN_CLOSED_TICKETS_LOG,
                 callback_data=TicketCallback(
                     action=TicketAction.list_closed
                 ).pack(),
@@ -464,7 +465,7 @@ class KeyboardFactory:
         )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data="menu:start",
             )
         )
@@ -491,7 +492,7 @@ class KeyboardFactory:
             )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(
                     action=MenuAction.support
                 ).pack(),
@@ -510,7 +511,7 @@ class KeyboardFactory:
         if not is_closed:
             builder.row(
                 types.InlineKeyboardButton(
-                    text="✏️ إرسال رد",
+                    text=BTN_SEND_REPLY,
                     callback_data=TicketCallback(
                         action=TicketAction.reply, id=ticket_id
                     ).pack(),
@@ -518,7 +519,7 @@ class KeyboardFactory:
             )
             builder.row(
                 types.InlineKeyboardButton(
-                    text="🔒 إغلاق التذكرة",
+                    text=BTN_CLOSE_TICKET,
                     callback_data=TicketCallback(
                         action=TicketAction.close, id=ticket_id
                     ).pack(),
@@ -527,7 +528,7 @@ class KeyboardFactory:
         else:
             builder.row(
                 types.InlineKeyboardButton(
-                    text="🔓 إعادة فتح التذكرة",
+                    text=BTN_REOPEN_TICKET,
                     callback_data=TicketCallback(
                         action=TicketAction.reopen, id=ticket_id
                     ).pack(),
@@ -537,7 +538,7 @@ class KeyboardFactory:
         back_action = TicketAction.list_closed if is_closed else TicketAction.list_active
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=TicketCallback(
                     action=back_action
                 ).pack(),
@@ -566,7 +567,7 @@ class KeyboardFactory:
             )
         builder.row(
             types.InlineKeyboardButton(
-                text=_BTN_BACK_ICON,
+                text=BTN_BACK_ICON,
                 callback_data=MenuCallback(
                     action=MenuAction.support
                 ).pack(),
@@ -587,7 +588,7 @@ class KeyboardFactory:
         # Action buttons below pagination
         builder.row(
             types.InlineKeyboardButton(
-                text="✏️ إرسال رد",
+                text=BTN_SEND_REPLY,
                 callback_data=TicketCallback(
                     action=TicketAction.reply, id=ticket_id
                 ).pack(),
@@ -608,7 +609,7 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
-                text="❌ إلغاء",
+                text=BTN_CANCEL,
                 callback_data=TicketCallback(
                     action=TicketAction.cancel_action
                 ).pack(),

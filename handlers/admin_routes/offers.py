@@ -21,12 +21,27 @@ from utils.constants import (
     MSG_ASK_NOTES,
     MSG_ASK_NOTES_TEXT,
     MSG_ASK_PRICE,
+    MSG_DELIVERY_EMPTY,
+    MSG_DELIVERY_TOO_LONG,
+    MSG_FINISH_ERROR,
     MSG_FINISHED_CONFIRM,
+    MSG_FINISHED_NO_TEXT,
+    MSG_MEDIA_FALLBACK_CAPTION,
     MSG_NO_NOTES,
+    MSG_NOTES_CHOOSE_HINT,
+    MSG_OFFER_NOTIFICATION,
+    MSG_OFFER_SEND_ERROR,
     MSG_OFFER_SENT,
+    MSG_PRICE_EMPTY,
+    MSG_PRICE_TOO_LONG,
     MSG_PROJECT_CLOSED,
     MSG_PROJECT_DENIED_CLIENT,
     MSG_PROJECT_DENIED_STUDENT_TO_ADMIN,
+    MSG_PROJECT_DETAIL_DEADLINE,
+    MSG_PROJECT_DETAIL_DETAILS,
+    MSG_PROJECT_DETAIL_SUBJECT,
+    MSG_PROJECT_DETAIL_TUTOR,
+    MSG_PROJECT_DETAIL_FILE_HEADER,
     MSG_PROJECT_DETAILS_HEADER,
     MSG_UPLOAD_FINISHED_WORK,
     MSG_WORK_FINISHED_ALERT,
@@ -59,16 +74,16 @@ async def view_project_details(
     text = (
         MSG_PROJECT_DETAILS_HEADER.format(detail.proj_id) + "\n"
         f"{user_line}\n"
-        f"*المادة:* {escape_md(detail.subject)}\n"
-        f"*المدرس:* {escape_md(detail.tutor)}\n"
-        f"*الموعد:* {escape_md(detail.deadline)}\n"
-        f"*التفاصيل:* {escape_md(detail.details)}"
+        f"{MSG_PROJECT_DETAIL_SUBJECT.format(escape_md(detail.subject))}\n"
+        f"{MSG_PROJECT_DETAIL_TUTOR.format(escape_md(detail.tutor))}\n"
+        f"{MSG_PROJECT_DETAIL_DEADLINE.format(escape_md(detail.deadline))}\n"
+        f"{MSG_PROJECT_DETAIL_DETAILS.format(escape_md(detail.details))}"
     )
     markup = KeyboardFactory.manage_project(detail.proj_id)
 
     if detail.file_id:
         if len(text) > 1024:
-            header = f"📁 *المشروع #{detail.proj_id}* (التفاصيل في الرسالة التالية)"
+            header = MSG_PROJECT_DETAIL_FILE_HEADER.format(detail.proj_id)
             await _send_media_safely(callback, detail.file_id, detail.file_type, header, markup=None)
             try:
                 await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
@@ -118,7 +133,7 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
     try:
         await callback.message.answer_document(
             file_id,
-            caption="⚠️ لم نتمكن من عرض التفاصيل (مشكلة في صيغة الرسالة).",
+            caption=MSG_MEDIA_FALLBACK_CAPTION,
             reply_markup=markup,
         )
         return True
@@ -150,9 +165,9 @@ async def _ask_delivery(message: types.Message):
 async def process_price(message: types.Message, state: FSMContext):
     price_text = message.text.strip()
     if not price_text:
-        return await message.answer("⚠️ الرجاء إدخال سعر صالح.")
+        return await message.answer(MSG_PRICE_EMPTY)
     if len(price_text) > 50:
-        return await message.answer("⚠️ النص طويل جداً. الرجاء إدخال سعر مختصر (مثلاً: 50,000 ل.س).")
+        return await message.answer(MSG_PRICE_TOO_LONG)
     await state.update_data(price=price_text)
     await _ask_delivery(message)
     await state.set_state(AdminStates.waiting_for_delivery)
@@ -164,10 +179,10 @@ from domain.entities import _parse_deadline
 async def process_delivery(message: types.Message, state: FSMContext):
     delivery_text = message.text.strip()
     if not delivery_text:
-        await message.answer("⚠️ الرجاء إدخال موعد صالح.")
+        await message.answer(MSG_DELIVERY_EMPTY)
         return await _ask_delivery(message)
     if len(delivery_text) > 50:
-        await message.answer("⚠️ النص طويل جداً. حاول الاختصار (مثلاً: 2024-05-01).")
+        await message.answer(MSG_DELIVERY_TOO_LONG)
         return await _ask_delivery(message)
         
     try:
@@ -192,7 +207,7 @@ async def process_notes_decision(
     elif text == BTN_NO:
         await _finalize_offer(message, state, bot, project_repo, notes=MSG_NO_NOTES)
     else:
-        await message.answer("⚠️ الرجاء اختيار 'نعم' أو 'لا' من لوحة المفاتيح المرفقة.", reply_markup=KeyboardFactory.notes_decision())
+        await message.answer(MSG_NOTES_CHOOSE_HINT, reply_markup=KeyboardFactory.notes_decision())
 
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.admin_ids))
@@ -213,11 +228,11 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
             delivery=data["delivery"],
             notes=notes,
         )
-        offer_text = (
-            f"🎁 **عرض جديد لمشروع: {escape_md(result.subject)}!**\n━━━━━━━━━━━━━\n"
-            f"💰 **السعر:** {escape_md(result.price)}\n"
-            f"📅 **التسليم:** {escape_md(result.delivery)}\n"
-            f"📝 **ملاحظات:** {escape_md(result.notes)}\n━━━━━━━━━━━━━"
+        offer_text = MSG_OFFER_NOTIFICATION.format(
+            escape_md(result.subject),
+            escape_md(result.price),
+            escape_md(result.delivery),
+            escape_md(result.notes),
         )
         
         await bot.send_chat_action(result.user_id, "typing")
@@ -230,7 +245,7 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
         await state.clear()
     except Exception as e:
         logger.error("Failed to send offer", project_id=proj_id, error=str(e), exc_info=True)
-        await message.answer("⚠️ حدث خطأ أثناء إرسال العرض.", reply_markup=types.ReplyKeyboardRemove())
+        await message.answer(MSG_OFFER_SEND_ERROR, reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
 
 
@@ -278,12 +293,12 @@ async def process_finished_work(
             media_kwarg = {file_type or "document": file_id}
             await send_method(result.user_id, **media_kwarg, caption=message.caption)
         else:
-            text = message.text or "✅ تم رفع ملف بدون رسالة نصية."
+            text = message.text or MSG_FINISHED_NO_TEXT
             await bot.send_message(result.user_id, text)
         await message.answer(MSG_FINISHED_CONFIRM.format(result.proj_id), reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
         logger.error("Failed to finish project", project_id=proj_id, error=str(e), exc_info=True)
-        await message.answer("⚠️ حدث خطأ أثناء إنهاء المشروع.")
+        await message.answer(MSG_FINISH_ERROR)
     await state.clear()
 
 

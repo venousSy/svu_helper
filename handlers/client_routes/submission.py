@@ -16,7 +16,13 @@ from utils.constants import (
     MSG_ASK_DETAILS,
     MSG_ASK_SUBJECT,
     MSG_ASK_TUTOR,
+    MSG_FILE_TOO_LARGE,
+    MSG_MEDIA_BEFORE_TEXT,
     MSG_NO_DESC,
+    MSG_PROJECT_SUBMIT_ERROR,
+    MSG_SUBJECT_TOO_LONG,
+    MSG_TUTOR_TOO_LONG,
+    MSG_DEADLINE_TOO_LONG,
     BTN_NEW_PROJECT,
     MSG_PROJECT_SUBMITTED,
 )
@@ -49,7 +55,7 @@ async def start_project(message: types.Message, state: FSMContext):
 async def process_subject(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_SUBJECT_LENGTH:
         return await message.answer(
-            f"⚠️ اسم المادة طويل جداً. الحد الأقصى {AddProjectService.MAX_SUBJECT_LENGTH} حرف."
+            MSG_SUBJECT_TOO_LONG.format(AddProjectService.MAX_SUBJECT_LENGTH)
         )
     await state.update_data(subject=message.text)
     await message.answer(MSG_ASK_TUTOR, parse_mode="Markdown")
@@ -64,7 +70,7 @@ async def _ask_deadline(message: types.Message):
 async def process_tutor(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_TUTOR_LENGTH:
         return await message.answer(
-            f"⚠️ اسم المدرس طويل جداً. الحد الأقصى {AddProjectService.MAX_TUTOR_LENGTH} حرف."
+            MSG_TUTOR_TOO_LONG.format(AddProjectService.MAX_TUTOR_LENGTH)
         )
     await state.update_data(tutor=message.text)
     await _ask_deadline(message)
@@ -76,7 +82,7 @@ from domain.entities import _parse_deadline
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
 async def process_deadline(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
-        await message.answer("⚠️ التاريخ طويل جداً. الرجاء الاختصار.")
+        await message.answer(MSG_DEADLINE_TOO_LONG)
         return await _ask_deadline(message)
         
     try:
@@ -95,9 +101,7 @@ async def process_deadline(message: types.Message, state: FSMContext):
 @router.message(ProjectOrder.tutor)
 @router.message(ProjectOrder.deadline)
 async def reject_media_early(message: types.Message):
-    await message.answer(
-        "⚠️ الرجاء إدخال النص مطلوب أولاً. يمكنك رفع الملفات في الخطوة التالية."
-    )
+    await message.answer(MSG_MEDIA_BEFORE_TEXT)
 
 
 @router.message(ProjectOrder.details)
@@ -109,7 +113,7 @@ async def process_details(
 ):
     file_size = get_file_size(message)
     if file_size and file_size > MAX_FILE_SIZE_BYTES:
-        await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
+        await message.answer(MSG_FILE_TOO_LARGE.format(MAX_FILE_SIZE_MB))
         return
 
     data = await state.get_data()
@@ -150,7 +154,7 @@ async def process_details(
     except Exception as e:
         logger.error("Failed to submit project", error=str(e), exc_info=True)
         await message.answer(
-            "⚠️ حدث خطأ أثناء حفظ المشروع. حاول مرة أخرى لاحقاً.",
+            MSG_PROJECT_SUBMIT_ERROR,
             reply_markup=types.ReplyKeyboardRemove(),
         )
         await state.clear()

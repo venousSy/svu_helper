@@ -29,6 +29,39 @@ from keyboards.callbacks import (
 from keyboards.factory import KeyboardFactory
 from infrastructure.repositories.ticket import TicketRepository
 from states import TicketStates
+from utils.constants import (
+    MSG_TICKET_CANCEL_ANSWER,
+    MSG_TICKET_CANCELLED,
+    MSG_TICKET_CLOSE_ERROR,
+    MSG_TICKET_CLOSED_CONFIRM,
+    MSG_TICKET_CLOSED_HEADER,
+    MSG_TICKET_CLOSED_OR_MISSING,
+    MSG_TICKET_CREATED,
+    MSG_TICKET_EMPTY_MESSAGE,
+    MSG_TICKET_ERROR_REOPEN,
+    MSG_TICKET_FILE_LABEL,
+    MSG_TICKET_NEW_PROMPT,
+    MSG_TICKET_NO_CLOSED,
+    MSG_TICKET_NO_MESSAGES,
+    MSG_TICKET_NO_OPEN,
+    MSG_TICKET_NOT_FOUND,
+    MSG_TICKET_OPEN_HEADER,
+    MSG_TICKET_PAGE_FOOTER,
+    MSG_TICKET_REOPEN_ERROR,
+    MSG_TICKET_REOPENED,
+    MSG_TICKET_REPLY_ERROR,
+    MSG_TICKET_REPLY_PROMPT,
+    MSG_TICKET_REPLY_SUCCESS,
+    MSG_TICKET_SEND_REPLY,
+    MSG_TICKET_SEND_TEXT,
+    MSG_TICKET_SENDER_SUPPORT,
+    MSG_TICKET_SENDER_USER,
+    MSG_TICKET_STATUS_CLOSED,
+    MSG_TICKET_STATUS_OPEN,
+    MSG_TICKET_SUPPORT_HUB,
+    MSG_TICKET_VIEW_HEADER,
+)
+from utils.formatters import format_datetime
 from utils.helpers import build_ticket_service, extract_message_content
 
 logger = structlog.get_logger()
@@ -37,31 +70,24 @@ router = Router()
 MESSAGES_PER_PAGE = 10
 
 
-
-
-
 def _format_messages(messages: list) -> str:
     """Format a list of message dicts into a readable conversation."""
     if not messages:
-        return "📭 لا توجد رسائل بعد."
+        return MSG_TICKET_NO_MESSAGES
 
     lines = []
     for msg in messages:
-        sender = "👤 أنت" if msg["sender"] == "user" else "🛡 الدعم"
-        ts = msg.get("timestamp", "")
-        if hasattr(ts, "strftime"):
-            ts = ts.strftime("%m/%d %H:%M")
-        else:
-            ts = str(ts)[:16]
+        sender = MSG_TICKET_SENDER_USER if msg["sender"] == "user" else MSG_TICKET_SENDER_SUPPORT
+        ts = format_datetime(msg.get("timestamp", ""))
 
         content_parts = []
         if msg.get("text"):
             content_parts.append(msg["text"])
         if msg.get("file_id"):
-            ft = msg.get("file_type", "ملف")
+            ft = msg.get("file_type", MSG_TICKET_FILE_LABEL)
             content_parts.append(f"[📎 {ft}]")
 
-        content = " ".join(content_parts) if content_parts else "[رسالة فارغة]"
+        content = " ".join(content_parts) if content_parts else f"[{MSG_TICKET_EMPTY_MESSAGE}]"
         lines.append(f"<b>{sender}</b> <i>({ts})</i>:\n<blockquote>{content}</blockquote>")
 
     return "\n\n".join(lines)
@@ -75,8 +101,7 @@ async def show_support_menu(callback: types.CallbackQuery, state: FSMContext):
     """Show the support sub-menu."""
     await state.clear()
     await callback.message.edit_text(
-        "📩 <b>الدعم الفني</b>\n\n"
-        "يمكنك فتح تذكرة جديدة أو متابعة تذاكرك المفتوحة.",
+        MSG_TICKET_SUPPORT_HUB,
         reply_markup=KeyboardFactory.support_menu(),
         parse_mode="HTML",
     )
@@ -95,8 +120,7 @@ async def start_new_ticket(
     """Prompt user to type/send their support message."""
     await state.set_state(TicketStates.waiting_for_message)
     await callback.message.edit_text(
-        "✏️ <b>فتح تذكرة جديدة</b>\n\n"
-        "أرسل رسالتك أو صورة/ملف يوضح مشكلتك.",
+        MSG_TICKET_NEW_PROMPT,
         reply_markup=KeyboardFactory.inline_cancel_ticket_action(),
         parse_mode="HTML",
     )
@@ -114,9 +138,7 @@ async def receive_new_ticket_message(
     text, file_id, file_type = extract_message_content(message)
 
     if not text and not file_id:
-        await message.answer(
-            "⚠️ أرسل نصاً أو صورة/ملف لفتح التذكرة."
-        )
+        await message.answer(MSG_TICKET_SEND_TEXT)
         return
 
     service = build_ticket_service(ticket_repo, bot)
@@ -131,9 +153,7 @@ async def receive_new_ticket_message(
 
     await state.clear()
     await message.answer(
-        f"✅ <b>تم فتح التذكرة #{ticket_id} بنجاح!</b>\n\n"
-        "سيتم الرد عليك في أقرب وقت.\n"
-        "يمكنك متابعة التذكرة من قائمة الدعم الفني.",
+        MSG_TICKET_CREATED.format(ticket_id),
         reply_markup=KeyboardFactory.support_menu(),
         parse_mode="HTML",
     )
@@ -151,13 +171,11 @@ async def cancel_ticket_action(
     """Cancel the current FSM state and return to support menu."""
     await state.clear()
     await callback.message.edit_text(
-        "تم إلغاء العملية.\n\n"
-        "📩 <b>الدعم الفني</b>\n"
-        "يمكنك فتح تذكرة جديدة أو متابعة تذاكرك المفتوحة.",
+        MSG_TICKET_CANCELLED,
         reply_markup=KeyboardFactory.support_menu(),
         parse_mode="HTML",
     )
-    await callback.answer("تم الإلغاء")
+    await callback.answer(MSG_TICKET_CANCEL_ANSWER)
 
 
 # ------------------------------------------------------------------
@@ -178,8 +196,7 @@ async def list_active_tickets(
     if not tickets:
         try:
             await callback.message.edit_text(
-                "📭 <b>لا توجد تذاكر مفتوحة حالياً.</b>\n\n"
-                "يمكنك فتح تذكرة جديدة من القائمة.",
+                MSG_TICKET_NO_OPEN,
                 reply_markup=KeyboardFactory.support_menu(),
                 parse_mode="HTML",
             )
@@ -189,8 +206,7 @@ async def list_active_tickets(
         return
 
     await callback.message.edit_text(
-        f"📋 <b>تذاكرك المفتوحة ({len(tickets)})</b>\n\n"
-        "اختر تذكرة لعرض المحادثة:",
+        MSG_TICKET_OPEN_HEADER.format(len(tickets)),
         reply_markup=KeyboardFactory.active_tickets_list(tickets),
         parse_mode="HTML",
     )
@@ -215,7 +231,7 @@ async def view_ticket(
     ticket = await service.get_ticket(callback_data.id)
 
     if not ticket:
-        await callback.answer("❌ التذكرة غير موجودة.", show_alert=True)
+        await callback.answer(MSG_TICKET_NOT_FOUND, show_alert=True)
         return
 
     # Store ticket_id in FSM data for pagination
@@ -227,17 +243,17 @@ async def view_ticket(
     total = await service.get_message_count(callback_data.id)
     total_pages = max(1, math.ceil(total / MESSAGES_PER_PAGE))
 
-    status_label = "🟢 مفتوحة" if ticket["status"] == "open" else "🔴 مغلقة"
+    status_label = MSG_TICKET_STATUS_OPEN if ticket["status"] == "open" else MSG_TICKET_STATUS_CLOSED
     is_closed = ticket["status"] == "closed"
 
     header = (
-        f"🎫 <b>تذكرة #{callback_data.id}</b>  |  {status_label}\n"
+        MSG_TICKET_VIEW_HEADER.format(callback_data.id, status_label) + "\n"
         f"{'─' * 28}\n\n"
     )
     body = _format_messages(messages)
 
     if total_pages > 1:
-        footer = f"\n\n📄 صفحة 1/{total_pages}  |  إجمالي الرسائل: {total}"
+        footer = MSG_TICKET_PAGE_FOOTER.format(1, total_pages, total)
         kb = KeyboardFactory.ticket_message_pagination(
             callback_data.id, 0, total_pages
         )
@@ -272,7 +288,7 @@ async def paginate_ticket_messages(
     data = await state.get_data()
     ticket_id = data.get("viewing_ticket_id")
     if not ticket_id:
-        await callback.answer("⚠️ حدث خطأ. أعد فتح التذكرة.", show_alert=True)
+        await callback.answer(MSG_TICKET_ERROR_REOPEN, show_alert=True)
         return
 
     page = callback_data.page
@@ -285,11 +301,11 @@ async def paginate_ticket_messages(
     total_pages = max(1, math.ceil(total / MESSAGES_PER_PAGE))
 
     header = (
-        f"🎫 <b>تذكرة #{ticket_id}</b>\n"
+        MSG_TICKET_VIEW_HEADER.format(ticket_id, "") + "\n"
         f"{'─' * 28}\n\n"
     )
     body = _format_messages(messages)
-    footer = f"\n\n📄 صفحة {page + 1}/{total_pages}  |  إجمالي الرسائل: {total}"
+    footer = MSG_TICKET_PAGE_FOOTER.format(page + 1, total_pages, total)
 
     kb = KeyboardFactory.ticket_message_pagination(
         ticket_id, page, total_pages
@@ -318,8 +334,7 @@ async def start_ticket_reply(
     await state.set_state(TicketStates.waiting_for_reply)
     await state.update_data(reply_ticket_id=callback_data.id)
     await callback.message.edit_text(
-        f"✏️ <b>الرد على تذكرة #{callback_data.id}</b>\n\n"
-        "أرسل رسالتك أو صورة/ملف.",
+        MSG_TICKET_REPLY_PROMPT.format(callback_data.id),
         reply_markup=KeyboardFactory.inline_cancel_ticket_action(),
         parse_mode="HTML",
     )
@@ -338,13 +353,13 @@ async def receive_ticket_reply(
     ticket_id = data.get("reply_ticket_id")
     if not ticket_id:
         await state.clear()
-        await message.answer("⚠️ حدث خطأ. حاول مرة أخرى.")
+        await message.answer(MSG_TICKET_REPLY_ERROR)
         return
 
     text, file_id, file_type = extract_message_content(message)
 
     if not text and not file_id:
-        await message.answer("⚠️ أرسل نصاً أو صورة/ملف للرد.")
+        await message.answer(MSG_TICKET_SEND_REPLY)
         return
 
     service = build_ticket_service(ticket_repo, bot)
@@ -359,12 +374,12 @@ async def receive_ticket_reply(
 
     if success:
         await message.answer(
-            f"✅ تم إرسال ردك على التذكرة #{ticket_id}.",
+            MSG_TICKET_REPLY_SUCCESS.format(ticket_id),
             reply_markup=KeyboardFactory.support_menu(),
         )
     else:
         await message.answer(
-            "❌ التذكرة غير موجودة أو مغلقة.",
+            MSG_TICKET_CLOSED_OR_MISSING,
             reply_markup=KeyboardFactory.support_menu(),
         )
 
@@ -387,13 +402,12 @@ async def close_ticket_handler(
 
     if success:
         await callback.message.edit_text(
-            f"🔒 <b>تم إغلاق التذكرة #{callback_data.id}.</b>\n\n"
-            "شكراً لتواصلك مع الدعم الفني!",
+            MSG_TICKET_CLOSED_CONFIRM.format(callback_data.id),
             reply_markup=KeyboardFactory.support_menu(),
             parse_mode="HTML",
         )
     else:
-        await callback.answer("❌ خطأ في إغلاق التذكرة.", show_alert=True)
+        await callback.answer(MSG_TICKET_CLOSE_ERROR, show_alert=True)
 
     await callback.answer()
 
@@ -416,8 +430,7 @@ async def list_closed_tickets(
     if not tickets:
         try:
             await callback.message.edit_text(
-                "📭 <b>لا توجد تذاكر مغلقة.</b>\n\n"
-                "سجل التذاكر المغلقة سيظهر هنا بعد إغلاق تذكرة.",
+                MSG_TICKET_NO_CLOSED,
                 reply_markup=KeyboardFactory.support_menu(),
                 parse_mode="HTML",
             )
@@ -428,8 +441,7 @@ async def list_closed_tickets(
 
     try:
         await callback.message.edit_text(
-            f"📜 <b>التذاكر المغلقة ({len(tickets)})</b>\n\n"
-            "اختر تذكرة لعرض المحادثة أو إعادة فتحها:",
+            MSG_TICKET_CLOSED_HEADER.format(len(tickets)),
             reply_markup=KeyboardFactory.closed_tickets_list(tickets),
             parse_mode="HTML",
         )
@@ -456,12 +468,11 @@ async def reopen_ticket_handler(
 
     if success:
         await callback.message.edit_text(
-            f"🔓 <b>تم إعادة فتح التذكرة #{callback_data.id}.</b>\n\n"
-            "يمكنك الآن الرد عليها من جديد.",
+            MSG_TICKET_REOPENED.format(callback_data.id),
             reply_markup=KeyboardFactory.support_menu(),
             parse_mode="HTML",
         )
     else:
-        await callback.answer("❌ خطأ في إعادة فتح التذكرة.", show_alert=True)
+        await callback.answer(MSG_TICKET_REOPEN_ERROR, show_alert=True)
 
     await callback.answer()

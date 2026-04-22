@@ -10,7 +10,17 @@ from infrastructure.repositories import PaymentRepository, ProjectRepository
 from keyboards.callbacks import MenuCallback, ProjectCallback, ProjectAction, MenuAction
 from keyboards.factory import KeyboardFactory
 from states import ProjectOrder
-from utils.constants import MSG_OFFER_ACCEPTED, MSG_RECEIPT_RECEIVED, MSG_PAYMENT_CANCELLED, MSG_PAYMENT_PROOF_HINT
+from utils.constants import (
+    MSG_CANCEL_DONE,
+    MSG_FILE_TOO_LARGE,
+    MSG_NEW_PAYMENT_ADMIN_ALERT,
+    MSG_OFFER_ACCEPTED,
+    MSG_PAYMENT_DOC_INVALID,
+    MSG_PAYMENT_UPLOAD_ERROR,
+    MSG_RECEIPT_RECEIVED,
+    MSG_PAYMENT_CANCELLED,
+    MSG_PAYMENT_PROOF_HINT,
+)
 from utils.helpers import get_file_id
 
 router = Router()
@@ -56,7 +66,7 @@ async def cancel_payment_process(callback: types.CallbackQuery, state: FSMContex
         MSG_PAYMENT_CANCELLED,
         parse_mode="Markdown"
     )
-    await callback.answer("تم الإلغاء ✓")
+    await callback.answer(MSG_CANCEL_DONE)
 
 
 @router.message(ProjectOrder.waiting_for_payment_proof, F.text)
@@ -75,13 +85,13 @@ async def process_payment_proof(
     """Student sends receipt – SubmitPaymentService persists it, handler sends notifications."""
     if message.document:
         if message.document.file_size > MAX_FILE_SIZE_BYTES:
-            await message.answer(f"⚠️ حجم الملف كبير جداً. الحد الأقصى هو {MAX_FILE_SIZE_MB}MB.")
+            await message.answer(MSG_FILE_TOO_LARGE.format(MAX_FILE_SIZE_MB))
             return
         if (
             message.document.mime_type not in ALLOWED_DOCUMENT_MIMES
             and "image" not in message.document.mime_type
         ):
-            await message.answer("⚠️ الرجاء رفع صورة أو ملف PDF/Word كإثبات للدفع.")
+            await message.answer(MSG_PAYMENT_DOC_INVALID)
             return
 
     data = await state.get_data()
@@ -100,7 +110,7 @@ async def process_payment_proof(
             try:
                 await bot.send_message(
                     admin_id,
-                    f"💰 **إيصال دفع جديد (رقم #{result.payment_id})**\nللمشروع: #{result.proj_id}",
+                    MSG_NEW_PAYMENT_ADMIN_ALERT.format(result.payment_id, result.proj_id),
                     parse_mode="Markdown",
                 )
                 if result.file_type == "photo":
@@ -121,5 +131,5 @@ async def process_payment_proof(
 
     except Exception as e:
         logger.error("Payment upload failed", error=str(e), exc_info=True)
-        await message.answer("⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.")
+        await message.answer(MSG_PAYMENT_UPLOAD_ERROR)
         await state.clear()

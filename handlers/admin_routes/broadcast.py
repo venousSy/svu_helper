@@ -9,7 +9,7 @@ from keyboards.callbacks import MenuCallback, MenuAction
 from keyboards.factory import KeyboardFactory
 from states import AdminStates
 from utils.broadcaster import Broadcaster
-from utils.constants import BTN_CANCEL, MSG_BROADCAST_PROMPT, MSG_BROADCAST_SUCCESS
+from utils.constants import BTN_CANCEL, MSG_BROADCAST_ERROR, MSG_BROADCAST_PROMPT, MSG_BROADCAST_SENDING, MSG_BROADCAST_SUCCESS, MSG_BROADCAST_WRAPPER
 
 router = Router()
 logger = structlog.get_logger()
@@ -36,9 +36,9 @@ async def execute_broadcast(
     """GetAllUserIdsService fetches recipients; handler drives the broadcast loop."""
     try:
         users = await GetAllUserIdsService(project_repo).execute()
-        status_msg = await message.answer("🔄 **جاري عملية الأرسال...**")
+        status_msg = await message.answer(MSG_BROADCAST_SENDING)
         success_count = await Broadcaster(bot).broadcast(
-            users, f"🔔 **إعلان هام:**\n\n{message.text}"
+            users, MSG_BROADCAST_WRAPPER.format(message.text)
         )
         await status_msg.delete()
         await message.answer(
@@ -47,6 +47,6 @@ async def execute_broadcast(
         )
     except Exception as e:
         logger.error("Broadcast failed", error=str(e), exc_info=True)
-        await message.answer("⚠️ حدث خطأ أثناء عملية الإرسال.")
+        await message.answer(MSG_BROADCAST_ERROR)
     finally:
         await state.clear()
