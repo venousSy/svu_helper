@@ -71,13 +71,20 @@ async def click_inline_button(client, msg, text_match, error_msg="Button not fou
     await asyncio.sleep(2)
 
 
+from datetime import datetime, timedelta
+
+def get_future_date(days=30):
+    return (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+
 async def submit_project(
     student,
     subject="E2E Subject",
     tutor="E2E Tutor",
-    deadline="2026-12-31",
+    deadline=None,
     details="E2E details text.",
 ):
+    if deadline is None:
+        deadline = get_future_date(30)
     """
     Full project submission FSM — now uses the multi-attachment accumulation flow.
     Steps 1-3 are the same; step 4 sends details text, waits for ack, then presses انتهى.
@@ -97,7 +104,9 @@ async def submit_project(
     await wait_for_message(student, ["تم تقديم", "بنجاح"], timeout=15)
 
 
-async def admin_make_offer(admin, price="30000", delivery="2026-12-01", notes="لا يوجد"):
+async def admin_make_offer(admin, price="30000", delivery=None, notes="لا يوجد"):
+    if delivery is None:
+        delivery = get_future_date(15)
     """Helper: Admin dispatches a pricing offer from an incoming alert."""
     alert = await wait_for_message(admin, ["مشروع جديد"], timeout=15)
     await click_inline_button(admin, alert, "إرسال عرض")
@@ -193,40 +202,36 @@ async def test_help(student):
     print("  ✅ /help responded without error.")
 
 
-async def test_submit_text_only(student, admin):
-    """Full submission with plain text details (no file)."""
-    await submit_project(student, subject="Text Only Subject")
-    await wait_for_message(admin, ["مشروع جديد"], timeout=15)
-    print("  ✅ Text-only project submitted and admin notified.")
-
-
-async def test_pdf_upload(student, admin):
-    """Submit a project using a PDF attachment in the accumulation step."""
+async def test_ai_date_parsing(student, admin):
+    """Test Gemini AI fallback for date parsing."""
     await student.send_message(BOT_USERNAME, "/new_project")
     await wait_for_message(student, ["[1/4]", "المادة"])
-    await student.send_message(BOT_USERNAME, "PDF Test Subject")
+    await student.send_message(BOT_USERNAME, "AI Date Subject")
     await wait_for_message(student, ["[2/4]", "المدرس"])
-    await student.send_message(BOT_USERNAME, "PDF Tutor")
+    await student.send_message(BOT_USERNAME, "AI Tutor")
     await wait_for_message(student, ["[3/4]", "التسليم", "Deadline"])
-    await student.send_message(BOT_USERNAME, "2026-12-31")
-    await wait_for_message(student, ["[4/4]", "التفاصيل", "وصف"])
-
-    with open("dummy_test.pdf", "w", encoding="utf-8") as f:
-        f.write("%PDF-1.4\nE2E dummy PDF content for testing.")
-    await student.send_file(BOT_USERNAME, "dummy_test.pdf")
-    os.remove("dummy_test.pdf")
-
-    # After upload the bot acks and shows انتهى button
-    await wait_for_message(student, ["تم استلام", "المرفق", "انتهى"])
-    print("  ✅ Bot acknowledged PDF upload.")
-
-    # Finalize
+    
+    # Send a conversational date
+    await student.send_message(BOT_USERNAME, "بعد اسبوع")
+    
+    # Bot should reply with Gemini confirmation
+    confirm_msg = await wait_for_message(student, ["هل تقصد", "تأكيد"])
+    
+    # Click Accept ("نعم التاريخ صحيح")
+    await click_inline_button(student, confirm_msg, "نعم")
+    
+    # Should proceed to details
+    await wait_for_message(student, ["[4/4]", "التفاصيل"])
+    
+    # Finish the submission
+    await student.send_message(BOT_USERNAME, "Some details")
+    await wait_for_message(student, ["تم استلام", "انتهى"])
     await student.send_message(BOT_USERNAME, BTN_DONE)
     await wait_for_message(student, ["تم تقديم", "بنجاح"], timeout=15)
-    print("  ✅ PDF project submission accepted by bot.")
+    print("  ✅ AI Date Parsing flow completed.")
 
     await wait_for_message(admin, ["مشروع جديد"], timeout=15)
-    print("  ✅ Admin received PDF project alert.")
+    print("  ✅ Admin received AI Date project alert.")
 
 
 async def test_multi_attachment(student, admin):
@@ -237,7 +242,7 @@ async def test_multi_attachment(student, admin):
     await wait_for_message(student, ["[2/4]", "المدرس"])
     await student.send_message(BOT_USERNAME, "Multi Tutor")
     await wait_for_message(student, ["[3/4]", "التسليم"])
-    await student.send_message(BOT_USERNAME, "2026-11-01")
+    await student.send_message(BOT_USERNAME, get_future_date(60))
     await wait_for_message(student, ["[4/4]", "التفاصيل"])
 
     # First item
@@ -270,7 +275,7 @@ async def test_cancel_during_accumulation(student):
     await wait_for_message(student, ["[2/4]", "المدرس"])
     await student.send_message(BOT_USERNAME, "Cancel Tutor")
     await wait_for_message(student, ["[3/4]", "التسليم"])
-    await student.send_message(BOT_USERNAME, "2026-10-01")
+    await student.send_message(BOT_USERNAME, get_future_date(45))
     await wait_for_message(student, ["[4/4]", "التفاصيل"])
     await student.send_message(BOT_USERNAME, "Some details before cancel")
     await wait_for_message(student, ["تم استلام", "انتهى"])
@@ -491,11 +496,8 @@ async def run_full_suite():
     await run_test("TEST 5: Help Command",
                    test_help(student))
 
-    await run_test("TEST 6: Text-Only Project Submission",
-                   test_submit_text_only(student, admin))
-
-    await run_test("TEST 7: File Upload — PDF Document",
-                   test_pdf_upload(student, admin))
+    await run_test("TEST 6: AI Date Parsing Flow",
+                   test_ai_date_parsing(student, admin))
 
     await run_test("TEST 8: Multi-Attachment Submission",
                    test_multi_attachment(student, admin))
