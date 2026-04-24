@@ -20,7 +20,7 @@ logger = structlog.get_logger(__name__)
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DAMASCUS_TZ = ZoneInfo("Asia/Damascus")
 
-# Model priority: primary → fallback on rate-limit
+# Model priority: primary → fallback on any error
 _PRIMARY_MODEL = "gemini-3.1-flash-lite"
 _FALLBACK_MODEL = "gemini-2.5-flash-lite"
 
@@ -102,23 +102,21 @@ async def parse_date_with_gemini(user_input: str, api_key: str) -> str | None:
 
         except Exception as exc:
             exc_type = type(exc).__name__
-            is_rate_limit = (
-                "429" in str(exc)
-                or "RESOURCE_EXHAUSTED" in str(exc).upper()
-                or "rate" in str(exc).lower()
-            )
 
-            if is_rate_limit and model_name == _PRIMARY_MODEL:
+            if model_name == _PRIMARY_MODEL:
+                # Any error from primary → fall back to secondary
                 logger.warning(
-                    "Gemini rate limited, falling back to secondary model",
+                    "Primary model failed, falling back to secondary",
                     model=model_name,
+                    fallback=_FALLBACK_MODEL,
                     error_type=exc_type,
                     error=str(exc),
                 )
                 continue  # try fallback model
 
+            # Secondary model also failed — give up
             logger.error(
-                "Gemini API call failed",
+                "Gemini API call failed (both models)",
                 model=model_name,
                 error_type=exc_type,
                 error=str(exc),
@@ -128,3 +126,4 @@ async def parse_date_with_gemini(user_input: str, api_key: str) -> str | None:
 
     # Both models failed
     return None
+

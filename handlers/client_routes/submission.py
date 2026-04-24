@@ -175,6 +175,12 @@ async def accept_gemini_date(
     except Exception:
         pass
 
+    from utils.constants import MSG_DATE_SELECTED_DEADLINE
+    await callback.message.answer(
+        MSG_DATE_SELECTED_DEADLINE.format(confirmed_date),
+        parse_mode="Markdown",
+    )
+
     await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
     await callback.answer()
