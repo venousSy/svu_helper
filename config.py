@@ -32,6 +32,9 @@ class Settings(BaseSettings):
         description="Telegram Forum Supergroup ID for support tickets"
     )
     
+    # Gemini AI Configuration
+    GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key for AI date parsing")
+
     # Logging Configuration
     LOG_FILE: str = Field(default="bot.log", description="Log file path")
 

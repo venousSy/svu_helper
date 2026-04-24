@@ -21,11 +21,13 @@ from keyboards.callbacks import (
     PaymentCallback,
     ProjectCallback,
     TicketCallback,
+    DateConfirmCallback,
     MenuAction,
     PageAction,
     PaymentAction,
     ProjectAction,
     TicketAction,
+    DateConfirmAction,
 )
 from utils.constants import (
     BTN_ACCEPT_OFFER,
@@ -62,6 +64,8 @@ from utils.constants import (
     BTN_VIEW_PENDING,
     BTN_VIEW_RECEIPT,
     BTN_YES,
+    BTN_CONFIRM_DATE,
+    BTN_REJECT_DATE,
 )
 from utils.formatters import format_datetime
 
@@ -154,6 +158,28 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=BTN_CANCEL_PAY,
                 callback_data=MenuCallback(action=MenuAction.cancel_pay).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def confirm_date(date_str: str) -> types.InlineKeyboardMarkup:
+        """Accept / Reject buttons for Gemini-parsed date confirmation."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_CONFIRM_DATE,
+                callback_data=DateConfirmCallback(
+                    action=DateConfirmAction.accept, date=date_str
+                ).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_REJECT_DATE,
+                callback_data=DateConfirmCallback(
+                    action=DateConfirmAction.reject, date=date_str
+                ).pack(),
             )
         )
         return builder.as_markup()

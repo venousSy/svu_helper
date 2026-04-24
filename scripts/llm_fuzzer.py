@@ -50,10 +50,17 @@ system_instruction = (
     "- When it asks for specific input (like a date), try providing it in a slightly conversational or non-standard format.\n"
     "- Try asking a clarifying question in the middle of a multi-step submission flow.\n"
     "- Use Arabic for the message_to_send, as the bot is in Arabic.\n"
+    "- You MUST comprehensively test ALL of the following areas before finishing:\n"
+    "  1. Submit a New Project (مشروع جديد) with edge cases.\n"
+    "  2. Check My Projects (مشاريعي) or Offers (عروضي).\n"
+    "  3. Open a Support Ticket (الدعم الفني).\n"
+    "- IMPORTANT: When you finish one path, send '/start' or 'إلغاء' to return to the main menu and test the next path.\n"
+    "- DO NOT set \"done\": true until you have explored ALL the areas listed above.\n"
     "You must output ONLY valid JSON in the following format. Do not use markdown blocks:\n"
     "{\n"
     '  "thought": "Your reasoning about what to test next based on the bot\'s response",\n'
-    '  "message_to_send": "The exact text to send to the bot"\n'
+    '  "message_to_send": "The exact text to send to the bot",\n'
+    '  "done": false\n'
     "}"
 )
 
@@ -96,7 +103,7 @@ async def main():
     print("\n>> Sending /start to bot")
     await client.send_message(BOT_USERNAME, "/start")
     
-    max_turns = 10
+    max_turns = 75
     for turn in range(max_turns):
         print(f"\n{'='*40}\nTurn {turn+1}/{max_turns}\n{'='*40}")
         print("⏳ Waiting for bot to reply...")
@@ -163,13 +170,20 @@ async def main():
             parsed = json.loads(clean_json(llm_reply_raw))
             thought = parsed.get("thought", "")
             message_to_send = parsed.get("message_to_send", "")
+            is_done = parsed.get("done", False)
         except json.JSONDecodeError:
             print("⚠️ Failed to parse LLM JSON. Raw output:")
             print(llm_reply_raw)
             message_to_send = "مرحبا" # fallback
             thought = "Parse error"
+            is_done = False
 
         print(f"\n💡 LLM THOUGHT: {thought}")
+        
+        if is_done:
+            print("🏁 LLM has decided the testing is comprehensive and complete!")
+            break
+            
         print(f"💬 LLM SENDING: {message_to_send}")
         
         # Send to bot

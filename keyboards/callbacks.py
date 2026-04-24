@@ -75,3 +75,12 @@ class TicketCallback(CallbackData, prefix="tkt"):
     action: TicketAction
     id: int = 0   # ticket_id (0 = N/A for menu-level actions)
 
+class DateConfirmAction(str, Enum):
+    accept = "accept"
+    reject = "reject"
+
+class DateConfirmCallback(CallbackData, prefix="dateconf"):
+    """Callback for Gemini-parsed date confirmation."""
+    action: DateConfirmAction
+    date: str  # YYYY-MM-DD
+
