@@ -131,6 +131,8 @@ BTN_CLOSE_TICKET = _msgs["buttons"]["close_ticket"]
 BTN_REOPEN_TICKET = _msgs["buttons"]["reopen_ticket"]
 BTN_SEND_MORE = _msgs["buttons"]["send_more"]
 BTN_DONE = _msgs["buttons"]["done"]
+BTN_CONFIRM_DATE = _msgs["buttons"]["confirm_date"]
+BTN_REJECT_DATE = _msgs["buttons"]["reject_date"]
 
 # --- CLIENT PROMPTS ---
 MSG_ASK_SUBJECT = _msgs["client_prompts"]["ask_subject"]
@@ -160,6 +162,10 @@ MSG_SEND_NEXT = _msgs["client_prompts"]["send_next"]
 MSG_INVALID_DATE_FORMAT = _msgs["client_prompts"]["invalid_date_format"]
 MSG_INVALID_DATE_VALUES = _msgs["client_prompts"]["invalid_date_values"]
 MSG_DATE_IN_PAST = _msgs["client_prompts"]["date_in_past"]
+MSG_GEMINI_DATE_CONFIRM = _msgs["client_prompts"]["gemini_date_confirm"]
+MSG_GEMINI_DATE_INVALID = _msgs["client_prompts"]["gemini_date_invalid"]
+MSG_GEMINI_DATE_ACCEPTED = _msgs["client_prompts"]["gemini_date_accepted"]
+MSG_GEMINI_DATE_REJECTED = _msgs["client_prompts"]["gemini_date_rejected"]
 
 # --- TICKET MESSAGES ---
 MSG_TICKET_SUPPORT_HUB = _msgs["tickets"]["support_hub"]
