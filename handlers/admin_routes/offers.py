@@ -11,7 +11,7 @@ from application.offer_service import (
 from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.calendar_kb import build_calendar
-from keyboards.callbacks import ProjectCallback, ProjectAction
+from keyboards.callbacks import ProjectCallback, ProjectAction, MenuCallback, MenuAction
 from keyboards.factory import KeyboardFactory
 from states import AdminStates
 from utils.constants import (
