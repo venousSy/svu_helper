@@ -21,7 +21,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DAMASCUS_TZ = ZoneInfo("Asia/Damascus")
 
 # Model priority: primary → fallback on any error
-_PRIMARY_MODEL = "gemini-3.1-flash-lite"
+_PRIMARY_MODEL = "gemini-3.1-flash-lite-preview"
 _FALLBACK_MODEL = "gemini-2.5-flash-lite"
 
 
