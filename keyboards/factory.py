@@ -21,11 +21,13 @@ from keyboards.callbacks import (
     PaymentCallback,
     ProjectCallback,
     TicketCallback,
+    DateConfirmCallback,
     MenuAction,
     PageAction,
     PaymentAction,
     ProjectAction,
     TicketAction,
+    DateConfirmAction,
 )
 from utils.constants import (
     BTN_ACCEPT_OFFER,
@@ -62,6 +64,8 @@ from utils.constants import (
     BTN_VIEW_PENDING,
     BTN_VIEW_RECEIPT,
     BTN_YES,
+    BTN_CONFIRM_DATE,
+    BTN_REJECT_DATE,
 )
 from utils.formatters import format_datetime
 
@@ -154,6 +158,28 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=BTN_CANCEL_PAY,
                 callback_data=MenuCallback(action=MenuAction.cancel_pay).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def confirm_date(date_str: str) -> types.InlineKeyboardMarkup:
+        """Accept / Reject buttons for Gemini-parsed date confirmation."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_CONFIRM_DATE,
+                callback_data=DateConfirmCallback(
+                    action=DateConfirmAction.accept, date=date_str
+                ).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_REJECT_DATE,
+                callback_data=DateConfirmCallback(
+                    action=DateConfirmAction.reject, date=date_str
+                ).pack(),
             )
         )
         return builder.as_markup()
@@ -353,6 +379,12 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         builder.row(
             types.InlineKeyboardButton(
+                text=BTN_MANAGE_PROJECT,
+                callback_data=ProjectCallback(action=ProjectAction.manage, id=p_id).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
                 text=BTN_SEND_OFFER,
                 callback_data=ProjectCallback(action=ProjectAction.make_offer, id=p_id).pack(),
             )
@@ -466,7 +498,9 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=BTN_BACK_ICON,
-                callback_data="menu:start",
+                callback_data=MenuCallback(
+                    action=MenuAction.close_list
+                ).pack(),
             )
         )
         return builder.as_markup()
@@ -479,9 +513,9 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for t in tickets:
             tid = t["ticket_id"]
-            created = format_datetime(t.get("created_at", ""))
+            created = format_datetime(t.get("created_at", ""), "%d/%m")
             msg_count = len(t.get("messages", []))
-            btn_text = f"🎫 #{tid}  |  💬 {msg_count}  |  {created}"
+            btn_text = f"🎫 #{tid} | 💬 {msg_count} | {created}"
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
@@ -554,9 +588,9 @@ class KeyboardFactory:
         builder = InlineKeyboardBuilder()
         for t in tickets:
             tid = t["ticket_id"]
-            created = format_datetime(t.get("created_at", ""))
+            created = format_datetime(t.get("created_at", ""), "%d/%m")
             msg_count = len(t.get("messages", []))
-            btn_text = f"🔒 #{tid}  |  💬 {msg_count}  |  {created}"
+            btn_text = f"🔒 #{tid} | 💬 {msg_count} | {created}"
             builder.row(
                 types.InlineKeyboardButton(
                     text=btn_text,
@@ -613,6 +647,20 @@ class KeyboardFactory:
                 callback_data=TicketCallback(
                     action=TicketAction.cancel_action
                 ).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def inline_cancel(callback_data: str = None) -> types.InlineKeyboardMarkup:
+        """Inline cancel button for FSM states."""
+        if callback_data is None:
+            callback_data = MenuCallback(action=MenuAction.cancel_flow).pack()
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_CANCEL,
+                callback_data=callback_data
             )
         )
         return builder.as_markup()

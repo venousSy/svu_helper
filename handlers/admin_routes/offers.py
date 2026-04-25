@@ -11,7 +11,7 @@ from application.offer_service import (
 from config import settings
 from infrastructure.repositories import ProjectRepository
 from keyboards.calendar_kb import build_calendar
-from keyboards.callbacks import ProjectCallback, ProjectAction
+from keyboards.callbacks import ProjectCallback, ProjectAction, MenuCallback, MenuAction
 from keyboards.factory import KeyboardFactory
 from states import AdminStates
 from utils.constants import (
@@ -81,19 +81,35 @@ async def view_project_details(
     )
     markup = KeyboardFactory.manage_project(detail.proj_id)
 
-    if detail.file_id:
+    if getattr(detail, "attachments", None):
+        header = MSG_PROJECT_DETAIL_FILE_HEADER.format(detail.proj_id)
         if len(text) > 1024:
-            header = MSG_PROJECT_DETAIL_FILE_HEADER.format(detail.proj_id)
-            await _send_media_safely(callback, detail.file_id, detail.file_type, header, markup=None)
             try:
-                await callback.message.answer(text, parse_mode="Markdown", reply_markup=markup)
+                await callback.message.answer(text, parse_mode="Markdown")
             except Exception:
-                await callback.message.answer(text, parse_mode=None, reply_markup=markup)
+                await callback.message.answer(text, parse_mode=None)
+            
+            for idx, att in enumerate(detail.attachments):
+                is_last = (idx == len(detail.attachments) - 1)
+                await _send_media_safely(
+                    callback,
+                    att["file_id"],
+                    att["file_type"],
+                    caption=header if idx == 0 else "",
+                    markup=markup if is_last else None
+                )
             await callback.message.delete()
         else:
-            success = await _send_media_safely(callback, detail.file_id, detail.file_type, text, markup=markup)
-            if success:
-                await callback.message.delete()
+            for idx, att in enumerate(detail.attachments):
+                is_last = (idx == len(detail.attachments) - 1)
+                await _send_media_safely(
+                    callback,
+                    att["file_id"],
+                    att["file_type"],
+                    caption=text if is_last else (header if idx == 0 else ""),
+                    markup=markup if is_last else None
+                )
+            await callback.message.delete()
     else:
         try:
             await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=markup)
@@ -153,13 +169,20 @@ async def start_offer_flow(
 ):
     proj_id = callback_data.id
     await state.update_data(offer_proj_id=proj_id)
-    await callback.message.answer(MSG_ASK_PRICE.format(proj_id), reply_markup=KeyboardFactory.cancel())
+    await callback.message.answer(
+        MSG_ASK_PRICE.format(proj_id), 
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await state.set_state(AdminStates.waiting_for_price)
 
 
 async def _ask_delivery(message: types.Message):
     """Helper to send the delivery date prompt with the calendar inline keyboard."""
-    await message.answer(MSG_ASK_DELIVERY, reply_markup=build_calendar())
+    cancel_data = MenuCallback(action=MenuAction.cancel_flow).pack()
+    await message.answer(
+        MSG_ASK_DELIVERY, 
+        reply_markup=build_calendar(cancel_callback_data=cancel_data)
+    )
 
 @router.message(AdminStates.waiting_for_price, F.from_user.id.in_(settings.admin_ids))
 async def process_price(message: types.Message, state: FSMContext):
@@ -261,7 +284,10 @@ async def manage_accepted_project(
     proj_id = callback_data.id
     await state.update_data(finish_proj_id=proj_id)
     await state.set_state(AdminStates.waiting_for_finished_work)
-    await callback.message.answer(MSG_UPLOAD_FINISHED_WORK.format(proj_id), reply_markup=KeyboardFactory.cancel())
+    await callback.message.answer(
+        MSG_UPLOAD_FINISHED_WORK.format(proj_id), 
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await callback.answer()
 
 

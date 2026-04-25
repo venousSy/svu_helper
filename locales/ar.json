@@ -17,7 +17,7 @@
         "admin_dashboard": "🛠 **لوحة تحكم المسؤول**",
         "broadcast_prompt": "📢 أدخل رسالة الإعلان:",
         "broadcast_success": "✅ تم الإرسال إلى {} مستخدم.",
-        "broadcast_sending": "🔄 **جاري عملية الأرسال...**",
+        "broadcast_sending": "🔄 **جاري عملية الإرسال...**",
         "broadcast_wrapper": "🔔 **إعلان هام:**\n\n{}",
         "broadcast_error": "⚠️ حدث خطأ أثناء عملية الإرسال.",
         "project_details_header": "📑 **المشروع #{}**\n━━━━━━━━━━━━━",
@@ -82,7 +82,7 @@
         "new_project": "📚 مشروع جديد",
         "my_projects": "📂 مشاريعي",
         "my_offers": "🎁 عروضي",
-        "back": "🔙 رجوع",
+        "back": "⬅️ رجوع",
         "yes": "نعم",
         "no": "لا",
         "cancel": "❌ إلغاء",
@@ -102,7 +102,7 @@
         "deny_offer": "❌ رفض",
         "cancel_pay": "❌ إلغاء",
         "finish_project": "📤 إنهاء",
-        "manage_project": "📂 إدارة",
+        "manage_project": "📂 تفاصيل",
         "support": "📩 الدعم الفني",
         "view_receipt": "📄 عرض الإيصال",
         "help_btn": "ℹ️ المساعدة",
@@ -112,7 +112,11 @@
         "closed_tickets_log": "📜 سجل التذاكر المغلقة",
         "send_reply": "✏️ إرسال رد",
         "close_ticket": "🔒 إغلاق التذكرة",
-        "reopen_ticket": "🔓 إعادة فتح التذكرة"
+        "reopen_ticket": "🔓 إعادة فتح التذكرة",
+        "send_more": "إرسال المزيد من الملفات أو التفاصيل",
+        "done": "انتهى",
+        "confirm_date": "نعم التاريخ صحيح",
+        "reject_date": "لا، قم باعادة ادخال التاريخ"
     },
     "client_prompts": {
         "ask_subject": "[1/4] 📚 ما **اسم المادة**؟\n\n_(أرسل /cancel في أي وقت للإلغاء)_",
@@ -136,7 +140,16 @@
         "project_submit_error": "⚠️ حدث خطأ أثناء حفظ المشروع. حاول مرة أخرى لاحقاً.",
         "payment_upload_error": "⚠️ حدث خطأ أثناء رفع الإيصال. حاول مرة أخرى.",
         "payment_doc_invalid": "⚠️ الرجاء رفع صورة أو ملف PDF/Word كإثبات للدفع.",
-        "cancel_done": "تم الإلغاء ✓"
+        "cancel_done": "تم الإلغاء ✓",
+        "details_received": "✅ تم استلام المرفق/النص (العدد الإجمالي: {}).\nأرسل المزيد من التفاصيل أو الملفات\nأو اضغط \"انتهى\" لتقديم المشروع",
+        "send_next": "يرجى إرسال الملف أو النص التالي...",
+        "invalid_date_format": "صيغة التاريخ غير صحيحة. استخدم DD/MM/YYYY أو YYYY-MM-DD (مثال: 31/12/2025 أو 2025-12-31).",
+        "invalid_date_values": "التاريخ غير صحيح (يوم/شهر/سنة). تأكد من صحة القيم.",
+        "date_in_past": "التاريخ الذي أدخلته في الماضي. الرجاء إدخال تاريخ في المستقبل.",
+        "gemini_date_confirm": "🤖 هل تقصد هذا التاريخ: **{}**؟",
+        "gemini_date_invalid": "⚠️ لم أتمكن من فهم التاريخ. الرجاء إعادة إدخاله بصيغة DD/MM/YYYY أو YYYY-MM-DD.",
+        "gemini_date_accepted": "✅ تم تأكيد التاريخ.",
+        "gemini_date_rejected": "🔄 حسناً، أعد إدخال التاريخ."
     },
     "tickets": {
         "support_hub": "📩 <b>الدعم الفني</b>\n\nيمكنك فتح تذكرة جديدة أو متابعة تذاكرك المفتوحة.",

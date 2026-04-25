@@ -158,3 +158,35 @@ async def view_admin_tickets_page(
 ):
     service = build_ticket_service(ticket_repo, bot)
     await _render_admin_tickets(callback, service, callback_data.page)
+
+
+import asyncio
+
+@router.message(Command("run_fuzzer"), F.from_user.id.in_(settings.admin_ids))
+async def admin_run_fuzzer(message: types.Message):
+    await message.answer("🚀 Starting the LLM Fuzzer in the background. This will take a few minutes...")
+    
+    try:
+        # Run the fuzzer as a subprocess
+        process = await asyncio.create_subprocess_exec(
+            "python", "scripts/llm_fuzzer.py",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT
+        )
+        
+        stdout, _ = await process.communicate()
+        output = stdout.decode('utf-8')
+        
+        # Save output to a file and send it
+        filename = "fuzzer_report.txt"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(output)
+            
+        file = types.FSInputFile(filename)
+        await message.answer_document(file, caption="✅ Fuzzer test complete! Here is the detailed transcript.")
+        
+        import os
+        if os.path.exists(filename):
+            os.remove(filename)
+    except Exception as e:
+        await message.answer(f"❌ Failed to run fuzzer: {e}")

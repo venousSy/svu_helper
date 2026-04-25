@@ -45,8 +45,7 @@ class AddProjectService:
         tutor: str,
         deadline: str,
         details: str,
-        file_id: Optional[str],
-        file_type: Optional[str],
+        attachments: List[dict],
     ) -> int:
         """Validates inputs and persists the project. Returns the new project ID."""
         self._validate(subject, tutor, deadline, details)
@@ -58,8 +57,7 @@ class AddProjectService:
             tutor=tutor,
             deadline=deadline,
             details=details,
-            file_id=file_id,
-            file_type=file_type,
+            attachments=attachments,
         )
 
     def _validate(self, subject: str, tutor: str, deadline: str, details: str) -> None:

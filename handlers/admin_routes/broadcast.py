@@ -20,7 +20,10 @@ logger = structlog.get_logger()
     F.from_user.id.in_(settings.admin_ids),
 )
 async def trigger_broadcast(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(MSG_BROADCAST_PROMPT, reply_markup=KeyboardFactory.cancel())
+    await callback.message.answer(
+        MSG_BROADCAST_PROMPT, 
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
     await state.set_state(AdminStates.waiting_for_broadcast)
 
 

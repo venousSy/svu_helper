@@ -60,6 +60,18 @@ async def global_cancel(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(MSG_CANCELLED, reply_markup=types.ReplyKeyboardRemove())
 
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.cancel_flow))
+async def cb_global_cancel(callback: types.CallbackQuery, state: FSMContext):
+    """Inline cancel button handler to reset FSM state."""
+    await state.clear()
+    # Try to edit the message to remove the inline keyboard, if possible
+    try:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await callback.message.answer(MSG_CANCELLED, reply_markup=types.ReplyKeyboardRemove())
+    await callback.answer()
+
 @router.callback_query(CalendarCallback.filter())
 async def process_calendar(callback: types.CallbackQuery, callback_data: CalendarCallback, state: FSMContext):
     action = callback_data.action
