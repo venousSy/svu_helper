@@ -24,8 +24,7 @@ class ProjectRepository:
         tutor: str,
         deadline: str,
         details: str,
-        file_id: Optional[str],
-        file_type: Optional[str],
+        attachments: List[dict],
     ) -> int:
         project_id = await Database.get_next_sequence("project_id")
 
@@ -38,8 +37,7 @@ class ProjectRepository:
             tutor_name=tutor,
             deadline=deadline,
             details=details,
-            file_id=file_id,
-            file_type=file_type,
+            attachments=attachments,
         )
 
         await self._db.projects.insert_one(project_model.model_dump())

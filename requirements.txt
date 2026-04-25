@@ -15,3 +15,5 @@ sentry-sdk
 telethon
 cachetools
 structlog>=24.0.0
+google-genai
+tzdata

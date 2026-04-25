@@ -11,6 +11,11 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from domain.enums import PaymentStatus, ProjectStatus, TicketStatus
+from utils.constants import (
+    MSG_INVALID_DATE_FORMAT,
+    MSG_INVALID_DATE_VALUES,
+    MSG_DATE_IN_PAST
+)
 
 # Accepted deadline formats: DD/MM/YYYY  or  YYYY-MM-DD (ISO 8601)
 _DEADLINE_RE = re.compile(
@@ -27,26 +32,30 @@ def _parse_deadline(value: str) -> str:
     value = value.strip()
     m = _DEADLINE_RE.match(value)
     if not m:
-        raise ValueError(
-            "صيغة التاريخ غير صحيحة. استخدم DD/MM/YYYY أو YYYY-MM-DD "
-            "(مثال: 31/12/2025 أو 2025-12-31)."
-        )
+        raise ValueError(MSG_INVALID_DATE_FORMAT)
+    
+    parsed_date = None
     if m.group("dmy"):
         # Convert DD/MM/YYYY → YYYY-MM-DD for consistent storage
         day, month, year = value.split("/")
         try:
-            datetime(int(year), int(month), int(day))
+            parsed_date = datetime(int(year), int(month), int(day)).date()
         except ValueError:
-            raise ValueError(
-                "التاريخ غير صحيح (يوم/شهر/سنة). تأكد من صحة القيم."
-            )
-        return f"{year}-{month}-{day}"
-    # ISO path – verify the calendar date is real
-    try:
-        datetime.fromisoformat(value)
-    except ValueError:
-        raise ValueError("التاريخ غير صحيح. تأكد من صحة اليوم والشهر والسنة.")
-    return value
+            raise ValueError(MSG_INVALID_DATE_VALUES)
+        iso_value = f"{year}-{month}-{day}"
+    else:
+        # ISO path – verify the calendar date is real
+        try:
+            parsed_date = datetime.fromisoformat(value).date()
+        except ValueError:
+            raise ValueError(MSG_INVALID_DATE_VALUES)
+        iso_value = value
+        
+    # Check if date is in the past
+    if parsed_date < datetime.now(timezone.utc).date():
+        raise ValueError(MSG_DATE_IN_PAST)
+        
+    return iso_value
 
 
 class Project(BaseModel):
@@ -58,8 +67,7 @@ class Project(BaseModel):
     tutor_name: str
     deadline: str
     details: str
-    file_id: Optional[str] = None
-    file_type: Optional[str] = None
+    attachments: List[dict] = Field(default_factory=list)
     status: ProjectStatus = Field(default=ProjectStatus.PENDING)
     price: Optional[str] = None
     delivery_date: Optional[str] = None
