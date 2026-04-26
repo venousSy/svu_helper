@@ -20,7 +20,8 @@ from middlewares.throttling import ThrottlingMiddleware
 from middlewares.db_injection import DbInjectionMiddleware
 from middlewares.correlation import CorrelationLoggingMiddleware
 from middlewares.activity_tracker import ActivityTrackerMiddleware
-from utils.storage import MongoStorage
+from utils.constants import MSG_SESSION_TIMEOUT
+from aiogram.fsm.storage.redis import RedisStorage
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
 if sys.stdout.encoding.lower() != "utf-8":
@@ -52,8 +53,12 @@ else:
 # --- BOT INITIALIZATION ---
 bot = Bot(token=settings.BOT_TOKEN)
 
-# Use MongoDB for persistent storage — must use the SAME DB as app data
-storage = MongoStorage(mongo_client, db_name=settings.DB_NAME)
+# Use Redis for fast, ephemeral FSM storage with 20-minute automatic expiration
+storage = RedisStorage.from_url(
+    settings.REDIS_URI,
+    state_ttl=timedelta(minutes=20),
+    data_ttl=timedelta(minutes=20)
+)
 dp = Dispatcher(storage=storage)
 
 # Register Middleware
@@ -98,46 +103,6 @@ async def start_keepalive_server():
     await site.start()
     logger.info("Keep-alive server started", port=port)
     return runner
-
-
-async def session_timeout_worker(bot: Bot, storage: MongoStorage):
-    """
-    Background worker that runs every minute to check for inactive FSM sessions.
-    If a session has been inactive for 20 minutes and has an active state,
-    it clears the state and notifies the user.
-    """
-    while True:
-        try:
-            now = datetime.utcnow()
-            cutoff = now - timedelta(minutes=20)
-            
-            # Find users who have an active state but haven't interacted in 20 mins
-            expired_docs = storage.collection.find({
-                "last_activity": {"$lt": cutoff},
-                "state": {"$ne": None}
-            })
-            
-            async for doc in expired_docs:
-                chat_id = doc.get("chat_id")
-                user_id = doc.get("user_id")
-                
-                if chat_id and user_id:
-                    # Notify user
-                    msg = "⏳ عذراً، انتهت صلاحية الجلسة لعدم النشاط (20 دقيقة). تم إغلاق الجلسة السابقة وإعادة تعيين المحادثة."
-                    try:
-                        await bot.send_message(chat_id, msg)
-                    except Exception as e:
-                        logger.warning(f"Could not send timeout message to chat {chat_id}: {e}")
-                    
-                    # Clear state
-                    await storage.collection.update_one(
-                        {"_id": doc["_id"]},
-                        {"$unset": {"state": "", "data": ""}}
-                    )
-        except Exception as e:
-            logger.error("Error in session timeout worker", e=str(e), exc_info=True)
-            
-        await asyncio.sleep(60)
 
 
 # --- MAIN ENTRY POINT ---
@@ -186,9 +151,6 @@ async def main():
         # Start keep-alive web server for Railway
         runner = await start_keepalive_server()
         
-        # Start session timeout background worker
-        timeout_task = asyncio.create_task(session_timeout_worker(bot, storage))
-        
         await dp.start_polling(bot)
 
     except Exception as e:
@@ -198,11 +160,6 @@ async def main():
         try:
             if 'runner' in locals() and runner:
                 await runner.cleanup()
-        except Exception:
-            pass
-        try:
-            if 'timeout_task' in locals():
-                timeout_task.cancel()
         except Exception:
             pass
 

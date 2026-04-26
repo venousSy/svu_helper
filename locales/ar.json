@@ -76,7 +76,8 @@
         "ticket_student_reply": "💬 رد من الطالب:",
         "ticket_closed_warning": "⚠️ هذه التذكرة مغلقة. لا يمكن إرسال ردود.",
         "ticket_admin_reply_header": "📩 رد من الدعم الفني (تذكرة #{}):",
-        "ticket_topic_name": "🎫 تذكرة #{} — {}"
+        "ticket_topic_name": "🎫 تذكرة #{} — {}",
+        "session_timeout": "⏳ عذراً، انتهت صلاحية الجلسة لعدم النشاط (20 دقيقة). تم إغلاق الجلسة السابقة وإعادة تعيين المحادثة."
     },
     "buttons": {
         "new_project": "📚 مشروع جديد",

@@ -9,8 +9,10 @@ services:
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_IDS=${ADMIN_IDS}
       - MONGO_URI=mongodb://mongo:27017
+      - REDIS_URI=redis://redis:6379/0
     depends_on:
       - mongo
+      - redis
     volumes:
       - .:/app # Mounts current directory for hot-reloading (optional, good for dev)
 
@@ -22,6 +24,15 @@ services:
       - mongo_data:/data/db
     ports:
       - "27017:27017" # Expose to host if you want to connect from outside
+
+  redis:
+    image: redis:alpine
+    container_name: svu_helper_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   mongo-express:
     image: mongo-express
@@ -39,3 +50,4 @@ services:
 
 volumes:
   mongo_data:
+  redis_data:
