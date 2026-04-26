@@ -4,7 +4,7 @@ import sys
 from typing import List, Optional
 import functools
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import structlog
 
@@ -22,7 +22,11 @@ class Settings(BaseSettings):
     # Database Configuration
     MONGO_URI: str = Field(..., description="MongoDB Connection URI")
     DB_NAME: str = Field(default="svu_helper_bot", description="Database Name")
-    REDIS_URI: str = Field(default="redis://localhost:6379/0", description="Redis Connection URI")
+    REDIS_URI: str = Field(
+        default="redis://localhost:6379/0",
+        validation_alias=AliasChoices("REDIS_URL", "REDIS_URI"),
+        description="Redis Connection URI"
+    )
     
     # Sentry Configuration
     SENTRY_DSN: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
