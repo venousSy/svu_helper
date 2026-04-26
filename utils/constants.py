@@ -93,6 +93,7 @@ MSG_TICKET_STUDENT_REPLY = _msgs["messages"]["ticket_student_reply"]
 MSG_TICKET_CLOSED_WARNING = _msgs["messages"]["ticket_closed_warning"]
 MSG_TICKET_ADMIN_REPLY_HEADER = _msgs["messages"]["ticket_admin_reply_header"]
 MSG_TICKET_TOPIC_NAME = _msgs["messages"]["ticket_topic_name"]
+MSG_SESSION_TIMEOUT = _msgs["messages"]["session_timeout"]
 
 # --- MENU BUTTONS ---
 BTN_NEW_PROJECT = _msgs["buttons"]["new_project"]
