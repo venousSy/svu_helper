@@ -3,6 +3,7 @@
 ## High Priority (Important)
 - [x] **Fix Architecture Violation (i18n)**: Extract the hard-coded Arabic session timeout message in `main.py` and move it to `locales/ar.json` and `constants.py` to strictly comply with `AGENTS.md`.
 - [x] **State Separation (Redis)**: Implement Redis for Aiogram's FSM storage and rate-limiting (`ThrottlingMiddleware`) to offload ephemeral state from MongoDB, drastically improving responsiveness.
+- [ ] **Google Drive Backup**: Implement automated MongoDB backups to Google Drive every 6 hours according to `google_drive_backup_plan.md` to prevent data loss. *(Note: Remove the `google_drive_backup_plan.md` file once finished).*
 
 ## Needs More Study
 - [ ] **Telegram Mini Apps (Web Apps)**: Research the feasibility of upgrading the "New Project" text-based FSM flow to a mobile-native Telegram Mini App to streamline the user experience and reduce form abandonment.
