@@ -1,10 +1,8 @@
 
-import logging
-import sys
 from typing import List, Optional
 import functools
 
-from pydantic import Field, field_validator, AliasChoices
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import structlog
 
