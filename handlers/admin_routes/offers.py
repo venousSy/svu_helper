@@ -9,7 +9,9 @@ from application.offer_service import (
     SendOfferService,
 )
 from config import settings
-from infrastructure.repositories import ProjectRepository
+from infrastructure.repositories import ProjectRepository, AuditRepository
+from application.audit_service import AuditService
+from domain.enums import AuditEventType
 from keyboards.calendar_kb import build_calendar
 from keyboards.callbacks import ProjectCallback, ProjectAction, MenuCallback, MenuAction
 from keyboards.factory import KeyboardFactory
@@ -221,26 +223,26 @@ async def process_delivery(message: types.Message, state: FSMContext):
 
 @router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_decision(
-    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
+    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository, audit_repo: AuditRepository
 ):
     text = message.text.strip()
     if text == BTN_YES:
         await message.answer(MSG_ASK_NOTES_TEXT, reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(AdminStates.waiting_for_notes_text)
     elif text == BTN_NO:
-        await _finalize_offer(message, state, bot, project_repo, notes=MSG_NO_NOTES)
+        await _finalize_offer(message, state, bot, project_repo, audit_repo, notes=MSG_NO_NOTES)
     else:
         await message.answer(MSG_NOTES_CHOOSE_HINT, reply_markup=KeyboardFactory.notes_decision())
 
 
 @router.message(AdminStates.waiting_for_notes_text, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_text(
-    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
+    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository, audit_repo: AuditRepository
 ):
-    await _finalize_offer(message, state, bot, project_repo, notes=message.text)
+    await _finalize_offer(message, state, bot, project_repo, audit_repo, notes=message.text)
 
 
-async def _finalize_offer(message, state, bot, project_repo, notes: str):
+async def _finalize_offer(message, state, bot, project_repo, audit_repo, notes: str):
     """Calls SendOfferService and relays the offer to the student."""
     data = await state.get_data()
     proj_id = data["offer_proj_id"]
@@ -265,6 +267,21 @@ async def _finalize_offer(message, state, bot, project_repo, notes: str):
             reply_markup=KeyboardFactory.offer_actions(result.proj_id),
         )
         await message.answer(MSG_OFFER_SENT, reply_markup=types.ReplyKeyboardRemove())
+        
+        await AuditService(audit_repo).log_event(
+            user_id=message.from_user.id,
+            role="admin",
+            event_type=AuditEventType.OFFER_SENT,
+            entity_id=proj_id,
+        )
+        await AuditService(audit_repo).log_event(
+            user_id=message.from_user.id,
+            role="admin",
+            event_type=AuditEventType.PROJECT_STATUS_CHANGED,
+            entity_id=proj_id,
+            metadata={"new_status": "offered"}
+        )
+        
         await state.clear()
     except Exception as e:
         logger.error("Failed to send offer", project_id=proj_id, error=str(e), exc_info=True)
@@ -293,7 +310,7 @@ async def manage_accepted_project(
 
 @router.message(AdminStates.waiting_for_finished_work, F.from_user.id.in_(settings.admin_ids))
 async def process_finished_work(
-    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository
+    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository, audit_repo: AuditRepository
 ):
     """FinishProjectService marks the project done; handler relays the file."""
     data = await state.get_data()
@@ -322,6 +339,14 @@ async def process_finished_work(
             text = message.text or MSG_FINISHED_NO_TEXT
             await bot.send_message(result.user_id, text)
         await message.answer(MSG_FINISHED_CONFIRM.format(result.proj_id), reply_markup=types.ReplyKeyboardRemove())
+        
+        await AuditService(audit_repo).log_event(
+            user_id=message.from_user.id,
+            role="admin",
+            event_type=AuditEventType.PROJECT_STATUS_CHANGED,
+            entity_id=proj_id,
+            metadata={"new_status": "finished"}
+        )
     except Exception as e:
         logger.error("Failed to finish project", project_id=proj_id, error=str(e), exc_info=True)
         await message.answer(MSG_FINISH_ERROR)
@@ -336,6 +361,7 @@ async def handle_deny(
     bot,
     callback_data: ProjectCallback,
     project_repo: ProjectRepository,
+    audit_repo: AuditRepository,
 ):
     """DenyProjectService handles auth + status transition; handler sends notifications."""
     proj_id = callback_data.id
@@ -349,6 +375,15 @@ async def handle_deny(
         else:
             result = await service.execute_student_deny(proj_id, callback.from_user.id)
             await notify_admins(bot, MSG_PROJECT_DENIED_STUDENT_TO_ADMIN.format(proj_id))
+            
+        role = "admin" if callback.from_user.id in settings.admin_ids else "student"
+        await AuditService(audit_repo).log_event(
+            user_id=callback.from_user.id,
+            role=role,
+            event_type=AuditEventType.PROJECT_STATUS_CHANGED,
+            entity_id=proj_id,
+            metadata={"new_status": "denied"}
+        )
     except PermissionError as e:
         return await callback.answer(f"⚠️ {e}", show_alert=True)
 

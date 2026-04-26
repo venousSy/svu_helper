@@ -10,6 +10,6 @@
 
 ## Backlog (Can wait but should do)
 - [ ] **Observability & Admin Dashboard**: Implement a secure web dashboard (e.g., using FastAPI) alongside the bot to visually chart project volume, conversion rates, and revenue over time.
-- [ ] **Audit Trail (Business Events)**: Implement the MongoDB audit log feature according to `audit_trail_plan.md` to track state changes professionally. Remove the plan file once complete.
+- [x] **Audit Trail (Business Events)**: Implement the MongoDB audit log feature according to `audit_trail_plan.md` to track state changes professionally. Remove the plan file once complete.
 
 *(Note: AI-powered project triage and automated CI/CD pipelines were reviewed and explicitly skipped).*
