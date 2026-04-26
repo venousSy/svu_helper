@@ -3,7 +3,9 @@ from aiogram import Router, F, types
 
 from application.payment_service import ConfirmPaymentService, RejectPaymentService
 from config import settings
-from infrastructure.repositories import PaymentRepository, ProjectRepository
+from infrastructure.repositories import PaymentRepository, ProjectRepository, AuditRepository
+from application.audit_service import AuditService
+from domain.enums import AuditEventType
 from keyboards.callbacks import PaymentCallback, PaymentAction
 from utils.constants import (
     MSG_FILE_SEND_ERROR,
@@ -63,6 +65,7 @@ async def confirm_payment(
     callback_data: PaymentCallback,
     payment_repo: PaymentRepository,
     project_repo: ProjectRepository,
+    audit_repo: AuditRepository,
 ):
     """ConfirmPaymentService does the DB work; handler sends notifications."""
     payment_id = callback_data.id
@@ -81,6 +84,21 @@ async def confirm_payment(
         + f"\n(Payment #{result.payment_id} Accepted)",
         parse_mode="Markdown",
     )
+    
+    await AuditService(audit_repo).log_event(
+        user_id=callback.from_user.id,
+        role="admin",
+        event_type=AuditEventType.PAYMENT_APPROVED,
+        entity_id=payment_id,
+        metadata={"project_id": result.proj_id}
+    )
+    await AuditService(audit_repo).log_event(
+        user_id=callback.from_user.id,
+        role="admin",
+        event_type=AuditEventType.PROJECT_STATUS_CHANGED,
+        entity_id=result.proj_id,
+        metadata={"new_status": "accepted"}
+    )
 
 
 @router.callback_query(
@@ -93,6 +111,7 @@ async def reject_payment(
     callback_data: PaymentCallback,
     payment_repo: PaymentRepository,
     project_repo: ProjectRepository,
+    audit_repo: AuditRepository,
 ):
     """RejectPaymentService resets the project; handler notifies the student."""
     payment_id = callback_data.id
@@ -111,4 +130,19 @@ async def reject_payment(
         caption=MSG_PAYMENT_REJECTED_ADMIN.format(result.proj_id)
         + f"\n(Payment #{result.payment_id} Rejected)",
         parse_mode="Markdown",
+    )
+    
+    await AuditService(audit_repo).log_event(
+        user_id=callback.from_user.id,
+        role="admin",
+        event_type=AuditEventType.PAYMENT_REJECTED,
+        entity_id=payment_id,
+        metadata={"project_id": result.proj_id}
+    )
+    await AuditService(audit_repo).log_event(
+        user_id=callback.from_user.id,
+        role="admin",
+        event_type=AuditEventType.PROJECT_STATUS_CHANGED,
+        entity_id=result.proj_id,
+        metadata={"new_status": "rejected_payment"}
     )

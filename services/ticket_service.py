@@ -14,6 +14,9 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 from infrastructure.repositories.ticket import TicketRepository
+from infrastructure.repositories.audit import AuditRepository
+from application.audit_service import AuditService
+from domain.enums import AuditEventType
 from utils.constants import (
     MSG_TICKET_ADMIN_REPLY_HEADER,
     MSG_TICKET_CLOSED_WARNING,
@@ -37,6 +40,7 @@ class TicketService:
         self._repo = ticket_repo
         self._bot = bot
         self._forum_group_id = forum_group_id
+        self._audit_repo = AuditRepository(ticket_repo._db)
 
     # ------------------------------------------------------------------
     # Open a new ticket
@@ -70,6 +74,13 @@ class TicketService:
                     thread_id, text, file_id, file_type,
                     header=MSG_TICKET_NEW_HEADER.format(ticket_id, user_id),
                 )
+
+        await AuditService(self._audit_repo).log_event(
+            user_id=user_id,
+            role="student",
+            event_type=AuditEventType.TICKET_OPENED,
+            entity_id=ticket_id,
+        )
 
         return ticket_id
 
@@ -183,6 +194,13 @@ class TicketService:
                     thread_id=thread_id,
                     error=str(e),
                 )
+
+        await AuditService(self._audit_repo).log_event(
+            user_id=ticket["user_id"],
+            role="student",
+            event_type=AuditEventType.TICKET_RESOLVED,
+            entity_id=ticket_id,
+        )
 
         return True
 

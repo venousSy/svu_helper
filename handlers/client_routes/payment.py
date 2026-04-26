@@ -5,8 +5,10 @@ from aiogram.exceptions import TelegramAPIError
 
 from application.project_service import VerifyProjectOwnershipService
 from application.payment_service import SubmitPaymentService
+from application.audit_service import AuditService
+from domain.enums import AuditEventType
 from config import settings
-from infrastructure.repositories import PaymentRepository, ProjectRepository
+from infrastructure.repositories import PaymentRepository, ProjectRepository, AuditRepository
 from keyboards.callbacks import MenuCallback, ProjectCallback, ProjectAction, MenuAction
 from keyboards.factory import KeyboardFactory
 from states import ProjectOrder
@@ -41,6 +43,7 @@ async def student_accept_offer(
     state: FSMContext,
     callback_data: ProjectCallback,
     project_repo: ProjectRepository,
+    audit_repo: AuditRepository,
 ):
     """Student accepts an offer – validates ownership then enters payment FSM."""
     proj_id = callback_data.id
@@ -55,6 +58,14 @@ async def student_accept_offer(
         parse_mode="Markdown",
         reply_markup=KeyboardFactory.cancel_payment(),
     )
+    
+    await AuditService(audit_repo).log_event(
+        user_id=callback.from_user.id,
+        role="student",
+        event_type=AuditEventType.OFFER_ACCEPTED,
+        entity_id=proj_id,
+    )
+    
     await state.set_state(ProjectOrder.waiting_for_payment_proof)
     await callback.answer()
 
@@ -81,6 +92,7 @@ async def process_payment_proof(
     bot,
     project_repo: ProjectRepository,
     payment_repo: PaymentRepository,
+    audit_repo: AuditRepository,
 ):
     """Student sends receipt – SubmitPaymentService persists it, handler sends notifications."""
     if message.document:
@@ -127,6 +139,15 @@ async def process_payment_proof(
                     )
             except TelegramAPIError as e:
                 logger.error("Failed to relay receipt to admin", payment_id=result.payment_id, admin_id=admin_id, error=str(e))
+                
+        await AuditService(audit_repo).log_event(
+            user_id=message.from_user.id,
+            role="student",
+            event_type=AuditEventType.PAYMENT_SUBMITTED,
+            entity_id=result.payment_id,
+            metadata={"project_id": result.proj_id}
+        )
+        
         await state.clear()
 
     except Exception as e:

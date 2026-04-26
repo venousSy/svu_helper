@@ -31,3 +31,15 @@ class PaymentStatus(str, Enum):
 class TicketStatus(str, Enum):
     OPEN   = "open"
     CLOSED = "closed"
+
+
+class AuditEventType(str, Enum):
+    PROJECT_CREATED = "project_created"
+    PROJECT_STATUS_CHANGED = "project_status_changed"
+    OFFER_SENT = "offer_sent"
+    OFFER_ACCEPTED = "offer_accepted"
+    PAYMENT_SUBMITTED = "payment_submitted"
+    PAYMENT_APPROVED = "payment_approved"
+    PAYMENT_REJECTED = "payment_rejected"
+    TICKET_OPENED = "ticket_opened"
+    TICKET_RESOLVED = "ticket_resolved"

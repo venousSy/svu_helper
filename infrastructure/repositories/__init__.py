@@ -4,11 +4,12 @@ from .payment import PaymentRepository
 from .stats import StatsRepository
 from .settings import SettingsRepository
 from .ticket import TicketRepository
-
+from .audit import AuditRepository
 __all__ = [
     "ProjectRepository",
     "PaymentRepository",
     "StatsRepository",
     "SettingsRepository",
     "TicketRepository",
+    "AuditRepository",
 ]

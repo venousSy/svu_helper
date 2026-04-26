@@ -5,8 +5,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
 
 from application.project_service import AddProjectService
+from application.audit_service import AuditService
+from domain.enums import AuditEventType
 from config import settings
-from infrastructure.repositories import ProjectRepository
+from infrastructure.repositories import ProjectRepository, AuditRepository
 from keyboards.callbacks import MenuCallback, MenuAction
 from keyboards.calendar_kb import build_calendar, CalendarCallback
 from keyboards.factory import KeyboardFactory
@@ -229,6 +231,7 @@ async def finalize_project(
     state: FSMContext,
     bot,
     project_repo: ProjectRepository,
+    audit_repo: AuditRepository,
 ):
     data = await state.get_data()
     attachments = data.get("attachments", [])
@@ -262,6 +265,14 @@ async def finalize_project(
             bot, admin_text,
             reply_markup=KeyboardFactory.new_project_alert(project_id),
         )
+        
+        await AuditService(audit_repo).log_event(
+            user_id=user.id,
+            role="student",
+            event_type=AuditEventType.PROJECT_CREATED,
+            entity_id=project_id,
+        )
+        
         await state.clear()
 
     except ValueError as e:

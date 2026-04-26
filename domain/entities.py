@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from domain.enums import PaymentStatus, ProjectStatus, TicketStatus
+from domain.enums import PaymentStatus, ProjectStatus, TicketStatus, AuditEventType
 from utils.constants import (
     MSG_INVALID_DATE_FORMAT,
     MSG_INVALID_DATE_VALUES,
@@ -117,6 +117,20 @@ class Ticket(BaseModel):
     message_thread_id: Optional[int] = None  # Telegram Forum Topic ID
     status: TicketStatus = Field(default=TicketStatus.OPEN)
     messages: List[TicketMessage] = Field(default_factory=list)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class AuditLog(BaseModel):
+    id: str
+    user_id: int
+    role: str
+    event_type: AuditEventType
+    entity_id: int
+    metadata: Optional[dict] = Field(default_factory=dict)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
