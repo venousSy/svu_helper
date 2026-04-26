@@ -1,16 +1,15 @@
 import asyncio
-import logging
 import sys
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 # Internal Project Imports
 import sentry_sdk
 
 from config import settings
-from database.connection import init_db, mongo_client
+from database.connection import init_db
 from handlers.admin_routes import router as admin_router
 from handlers.client_routes import router as client_router
 from handlers.common import router as common_router
@@ -20,7 +19,6 @@ from middlewares.throttling import ThrottlingMiddleware
 from middlewares.db_injection import DbInjectionMiddleware
 from middlewares.correlation import CorrelationLoggingMiddleware
 from middlewares.activity_tracker import ActivityTrackerMiddleware
-from utils.constants import MSG_SESSION_TIMEOUT
 from aiogram.fsm.storage.redis import RedisStorage
 
 # Ensure console handles UTF-8 for emojis (especially on Windows)
