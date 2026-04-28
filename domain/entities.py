@@ -69,7 +69,7 @@ class Project(BaseModel):
     details: str
     attachments: List[dict] = Field(default_factory=list)
     status: ProjectStatus = Field(default=ProjectStatus.PENDING)
-    price: Optional[str] = None
+    price: Optional[int] = None
     delivery_date: Optional[str] = None
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)

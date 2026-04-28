@@ -80,7 +80,7 @@ class ProjectRepository:
         cursor = self._db.projects.find(query).sort("id", -1).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
 
-    async def update_offer(self, proj_id: int, price: str, delivery: str) -> None:
+    async def update_offer(self, proj_id: int, price: int, delivery: str) -> None:
         await self._db.projects.update_one(
             {"id": int(proj_id)},
             {
