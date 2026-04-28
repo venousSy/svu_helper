@@ -142,7 +142,7 @@ async def show_specific_offer(
         return await callback.answer(f"⚠️ {e}", show_alert=True)
 
     subject = escape_md(res["subject_name"])
-    price = escape_md(res["price"])
+    price = escape_md(str(res["price"]))
     delivery = escape_md(res["delivery_date"])
     text = MSG_OFFER_DETAILS.format(subject, price, delivery, escape_md(proj_id))
     await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=KeyboardFactory.offer_actions(proj_id))

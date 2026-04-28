@@ -1,3 +1,4 @@
+import re
 import structlog
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
@@ -193,7 +194,12 @@ async def process_price(message: types.Message, state: FSMContext):
         return await message.answer(MSG_PRICE_EMPTY)
     if len(price_text) > 50:
         return await message.answer(MSG_PRICE_TOO_LONG)
-    await state.update_data(price=price_text)
+    
+    digits = re.sub(r'[^\d]', '', price_text)
+    if not digits:
+        return await message.answer("⚠️ Please enter a valid numerical price.")
+        
+    await state.update_data(price=int(digits))
     await _ask_delivery(message)
     await state.set_state(AdminStates.waiting_for_delivery)
 
@@ -255,7 +261,7 @@ async def _finalize_offer(message, state, bot, project_repo, audit_repo, notes: 
         )
         offer_text = MSG_OFFER_NOTIFICATION.format(
             escape_md(result.subject),
-            escape_md(result.price),
+            escape_md(str(result.price)),
             escape_md(result.delivery),
             escape_md(result.notes),
         )
