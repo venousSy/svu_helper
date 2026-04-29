@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     # Gemini AI Configuration
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key for AI date parsing")
 
+    # Dashboard Configuration
+    DASHBOARD_USER: str = Field(default="admin", description="Dashboard Admin Username")
+    DASHBOARD_PASS: str = Field(..., description="Dashboard Admin Password")
+    JWT_SECRET_KEY: str = Field(..., description="JWT Secret Key for Authentication")
+    JWT_ALGORITHM: str = Field(default="HS256", description="Algorithm used for JWT")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=1440, description="Token expiration time in minutes")
+
     # Logging Configuration
     LOG_FILE: str = Field(default="bot.log", description="Log file path")
 

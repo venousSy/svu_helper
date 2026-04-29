@@ -1,65 +1,132 @@
-# Observability & Admin Dashboard Implementation Plan
+# Observability & Admin Dashboard — Implementation Plan
 
-This plan details the implementation of a secure web dashboard for the SVU Helper bot to visualize project volume, conversion rates, and revenue over time. 
+## Architecture Decision
 
-To minimize bugs and ensure stability, the work is divided into **5 verifiable phases**. We will complete and test each phase before moving to the next.
+The dashboard is built as **two separate services** from the Telegram bot:
 
----
+| Service | Technology | Purpose |
+|---------|-----------|---------|
+| `dashboard_api/` | FastAPI + Python | REST API that reads from MongoDB |
+| `dashboard_ui/` | React (Vite) + Tailwind CSS | Single-page admin frontend |
 
-## Phase 1: Data Cleanup & Model Updates
-*Goal: Ensure all price data in the database is strictly integer-based (Syrian Pounds) and clean up legacy data.*
-
-**Tasks:**
-1. **[NEW] `scripts/migrate_prices.py`:** Create a script to iterate over all projects. Strip non-numeric characters from the `price` field (e.g., "150$" -> `150`). **Hard-delete** any records containing unparseable strings.
-2. **[MODIFY] `domain/entities.py`:** Update the Pydantic schema for `price` to be strictly `int`.
-3. **[MODIFY] Handlers:** Update payment and offer handlers (e.g., `handlers/client_routes/payment.py`, `handlers/admin_routes/offers.py`) to ensure only integers are passed to the database.
-**Testing Checkpoint 1:** Run the bot locally, create a test project, and verify the price is saved as an integer. Run the migration script and verify old data is converted or deleted.
+Both services run alongside the bot via `docker-compose.yml`.
+Authentication uses **JWT tokens** (not Basic Auth).
+All prices are stored as **integers (Syrian Pounds)** — no string parsing in the dashboard.
 
 ---
 
-## Phase 2: FastAPI Backend Setup & Auth
-*Goal: Create the separate backend service and secure it with JWT.*
+## Progress Status
 
-**Tasks:**
-1. **[MODIFY] `docker-compose.yml`:** Add the `dashboard-api` service.
-2. **[NEW] `dashboard_api/main.py`:** Initialize the FastAPI app and configure CORS.
-3. **[NEW] `dashboard_api/auth.py`:** Implement a `/api/login` endpoint that checks `DASHBOARD_USER` and `DASHBOARD_PASS` from `config.py` and issues a JSON Web Token (JWT). Create a `get_current_user` dependency.
-**Testing Checkpoint 2:** Use an API client (like Postman or a simple Python script) to send a POST request to `/api/login` and verify a JWT is successfully returned.
+### ✅ Phase 1: Data Cleanup & Model Updates — COMPLETE
 
----
+**Goal:** Enforce integer-only prices across the entire codebase.
 
-## Phase 3: Backend Aggregation Services
-*Goal: Build the MongoDB queries to extract statistical data.*
+**What was done:**
 
-**Tasks:**
-1. **[NEW] `dashboard_api/services/stats.py`:** Write MongoDB aggregation pipelines for:
-   - Project volume over time.
-   - Project conversion rates (Accepted vs Pending vs Rejected).
-   - Total Revenue (sum of integer prices).
-2. **[NEW] `dashboard_api/routes.py`:** Create secure endpoints (e.g., `/api/stats/overview`) protected by the JWT dependency, returning the aggregated data.
-**Testing Checkpoint 3:** Make authenticated API requests to the new stats endpoints and verify the JSON data accurately reflects the database state.
+| File | Change |
+|------|--------|
+| `domain/entities.py` | `price: Optional[str]` → `price: Optional[int]` |
+| `infrastructure/repositories/project.py` | `update_offer(price: str)` → `update_offer(price: int)` |
+| `handlers/admin_routes/offers.py` | Admin price input is now parsed via `re.sub(r'[^\d]', '', text)` → stored as `int`. Invalid (non-numeric) input is rejected immediately. |
+| `handlers/client_routes/views.py` | `str(res["price"])` added before `escape_md()` to safely format int price for Markdown |
+| `scripts/migrate_prices.py` | One-time migration script ready. Converts string prices to int, hard-deletes unparseable records. Connection verified working against Atlas. |
+
+**Migration result:** `migrated=0, deleted=0, skipped=0` — Atlas projects collection is currently empty (all test data was created after this fix was applied). The script is ready to run on future legacy data if needed.
 
 ---
 
-## Phase 4: Frontend Scaffolding & Login
-*Goal: Set up the React application and build the authentication flow.*
+### ✅ Phase 2: FastAPI Backend Setup & JWT Auth — COMPLETE
+
+**Goal:** Create the separate API service with a secure login endpoint.
 
 **Tasks:**
-1. **[NEW] `dashboard_ui/`:** Initialize a new React project using Vite.
-2. **Setup:** Install `tailwindcss`, `axios`, and `react-router-dom`. Configure Tailwind.
-3. **[NEW] UI Components:** Build a sleek Login Page that accepts credentials, hits the FastAPI `/api/login` endpoint, and stores the JWT in `localStorage`.
-**Testing Checkpoint 4:** Start the Vite dev server (`npm run dev`), open the browser, and successfully log in through the UI.
+1. **`docker-compose.yml`** — Add `dashboard-api` service (Python/FastAPI container) alongside the bot.
+2. **`dashboard_api/__init__.py`** — Empty init file.
+3. **`dashboard_api/main.py`** — Initialize FastAPI app, configure CORS for the React frontend origin.
+4. **`dashboard_api/auth.py`** — Implement:
+   - `POST /api/login` endpoint accepting `username` + `password`.
+   - Validates against `settings.DASHBOARD_USER` and `settings.DASHBOARD_PASS` (to be added to `config.py` and `.env`).
+   - Returns a signed JWT token on success.
+   - `get_current_user` dependency to protect all stat endpoints.
+5. **`config.py`** — Add `DASHBOARD_USER: str` and `DASHBOARD_PASS: str` fields.
+6. **`.env`** — Add `DASHBOARD_USER=admin` and `DASHBOARD_PASS=<strong_password>` values.
+7. **`requirements.txt`** — Add `fastapi`, `uvicorn`, `python-jose[cryptography]`, `passlib[bcrypt]`.
+
+**Testing Checkpoint 2:**
+- Start the FastAPI service locally.
+- Send `POST /api/login` with correct credentials → expect a JWT token in response.
+- Send `POST /api/login` with wrong credentials → expect `401 Unauthorized`.
 
 ---
 
-## Phase 5: Frontend Dashboard UI
-*Goal: Visualize the statistical data using modern charts.*
+### ⬜ Phase 3: Backend Aggregation Services — TODO
+
+**Goal:** Expose MongoDB stats through secure REST endpoints.
 
 **Tasks:**
-1. **Setup:** Install `recharts` for charting.
-2. **[NEW] UI Components:** 
-   - Build the persistent layout (Sidebar + Header).
-   - Build the Overview Dashboard fetching data from `/api/stats/overview`.
-   - Create Stat Cards (Total Revenue, Total Projects).
-   - Create Charts (Revenue Line/Bar Chart, Project Volume Chart, Status Doughnut Chart).
-**Testing Checkpoint 5:** Log into the dashboard and verify that all charts render correctly, fetching live data from the FastAPI backend.
+1. **`dashboard_api/services/stats.py`** — Write MongoDB aggregation pipelines:
+   - **Project volume by day** — count of projects grouped by `created_at` date.
+   - **Conversion rates** — count per `status` field (Pending, Offered, Accepted, Finished, Denied).
+   - **Revenue over time** — sum of `price` (integer, SP) for `FINISHED` + `ACCEPTED` projects, grouped by date.
+2. **`dashboard_api/routes.py`** — Create JWT-protected endpoints:
+   - `GET /api/stats/overview` — returns all 3 aggregations as JSON.
+
+**Testing Checkpoint 3:**
+- Authenticate via `/api/login` to get token.
+- Call `GET /api/stats/overview` with `Authorization: Bearer <token>` header.
+- Verify JSON response accurately reflects the database state.
+
+---
+
+### ⬜ Phase 4: Frontend Scaffolding & Login — TODO
+
+**Goal:** Create the React application and implement the login flow.
+
+**Tasks:**
+1. **`dashboard_ui/`** — Initialize a Vite + React project: `npm create vite@latest dashboard_ui -- --template react`.
+2. **Install dependencies:** `tailwindcss`, `axios`, `react-router-dom`.
+3. **Configure Tailwind CSS** in the project.
+4. **`LoginPage` component** — A polished login screen that:
+   - POSTs credentials to `POST /api/login`.
+   - Stores the JWT in `localStorage`.
+   - Redirects to the dashboard on success.
+   - Shows an error message on failure.
+5. **Protected route** — Redirect unauthenticated users to `/login`.
+
+**Testing Checkpoint 4:**
+- Run `npm run dev`.
+- Open the browser, submit correct credentials → redirected to dashboard.
+- Submit wrong credentials → error message shown.
+
+---
+
+### ⬜ Phase 5: Frontend Dashboard UI — TODO
+
+**Goal:** Visualize live data with modern charts.
+
+**Tasks:**
+1. **Install:** `recharts` for charts.
+2. **Layout component** — Persistent sidebar with navigation + top header showing logged-in admin name.
+3. **Dashboard page** — Fetches from `GET /api/stats/overview` (with JWT), renders:
+   - **Stat Cards:** Total Revenue (SP), Total Projects, Conversion Rate (%).
+   - **Revenue Chart:** `recharts` AreaChart — revenue over time.
+   - **Project Volume Chart:** LineChart — new projects per day/week.
+   - **Status Breakdown:** PieChart / RadialBarChart — project status distribution.
+4. **Logout button** — Clears JWT from `localStorage` and redirects to `/login`.
+
+**Testing Checkpoint 5:**
+- Log in through the UI.
+- Verify all charts render with live data from the FastAPI backend.
+- Verify logout clears the session.
+
+---
+
+## Key Decisions Already Made
+
+| Decision | Choice | Reason |
+|----------|--------|--------|
+| Deployment | Separate service in `docker-compose.yml` | Isolates dashboard crashes from the bot |
+| Auth | JWT | Industry standard, scalable, supports future roles |
+| Frontend | React + Tailwind | Scalable, easy feature additions |
+| Charts | Recharts | React-native, no CDN dependency |
+| Price unit | Syrian Pounds (SP) as `int` | Clean, no parsing needed at dashboard level |
