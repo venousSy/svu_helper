@@ -18,3 +18,7 @@ structlog>=24.0.0
 google-genai
 tzdata
 redis>=5.0.0
+fastapi
+uvicorn
+python-jose[cryptography]
+passlib[bcrypt]
