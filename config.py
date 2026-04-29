@@ -40,8 +40,8 @@ class Settings(BaseSettings):
 
     # Dashboard Configuration
     DASHBOARD_USER: str = Field(default="admin", description="Dashboard Admin Username")
-    DASHBOARD_PASS: str = Field(..., description="Dashboard Admin Password")
-    JWT_SECRET_KEY: str = Field(..., description="JWT Secret Key for Authentication")
+    DASHBOARD_PASS: Optional[str] = Field(default=None, description="Dashboard Admin Password")
+    JWT_SECRET_KEY: Optional[str] = Field(default=None, description="JWT Secret Key for Authentication")
     JWT_ALGORITHM: str = Field(default="HS256", description="Algorithm used for JWT")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=1440, description="Token expiration time in minutes")
 
