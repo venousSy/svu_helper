@@ -4,9 +4,9 @@ import { useStats } from '../hooks/useStats';
 import { colors, chart } from '../styles/tokens';
 import {
   AreaChart, Area, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Banknote, FolderOpen, TrendingUp, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Banknote, FolderOpen, TrendingUp, CheckCircle, Loader2, AlertCircle, BarChart2 } from 'lucide-react';
 
 // All color values come from src/styles/tokens.js — no hardcoded hex here
 const STATUS_COLORS = colors.status;
@@ -40,7 +40,16 @@ function ErrorMessage({ message, onRetry }) {
 }
 
 function SectionTitle({ children }) {
-  return <h2 className="text-base font-semibold text-slate-300 mb-4">{children}</h2>;
+  return <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-5">{children}</h2>;
+}
+
+function EmptyChart({ label }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-48 gap-3 rounded-lg border border-dashed border-slate-700">
+      <BarChart2 className="w-8 h-8 text-slate-700" />
+      <p className="text-slate-600 text-sm">{label}</p>
+    </div>
+  );
 }
 
 // Custom tooltip for charts
@@ -141,7 +150,7 @@ export default function Dashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-slate-500 text-sm text-center h-48 flex items-center justify-center">No revenue data yet.</p>
+                <EmptyChart label="Revenue data will appear as projects are completed" />
               )}
             </div>
 
@@ -159,7 +168,7 @@ export default function Dashboard() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-slate-500 text-sm text-center h-48 flex items-center justify-center">No project data yet.</p>
+                <EmptyChart label="Project volume will appear as submissions come in" />
               )}
             </div>
           </div>
@@ -199,7 +208,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <p className="text-slate-500 text-sm text-center h-48 flex items-center justify-center">No status data yet.</p>
+              <EmptyChart label="Status breakdown will appear once projects exist" />
             )}
           </div>
 

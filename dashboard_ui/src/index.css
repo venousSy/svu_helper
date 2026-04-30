@@ -1,3 +1,6 @@
+/* ─── Google Font ──────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 /* ─── Design Tokens (must be first) ─────────────────────── */
 @import './styles/tokens.css';
 
@@ -9,18 +12,45 @@
   body {
     background-color: var(--color-bg-base);
     color: var(--color-text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Thin, themed scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
 }
 
 @layer utilities {
   /**
    * Glassmorphism utility. Uses tokens from tokens.css.
    * DO NOT duplicate this inline in components — always use class="glass".
+   * Note: glass already includes a border. Don't add another border class on top.
    */
   .glass {
     background-color: var(--color-bg-glass);
     backdrop-filter: blur(var(--blur-glass));
-    border: 1px solid var(--color-border-subtle);
+    -webkit-backdrop-filter: blur(var(--blur-glass));
   }
+
+  /* Animated blob gradient for login background */
+  .animate-blob {
+    animation: blob 8s infinite;
+  }
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+@keyframes blob {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  33%  { transform: translate(30px, -20px) scale(1.1); }
+  66%  { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
 }
