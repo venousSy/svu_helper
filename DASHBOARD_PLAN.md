@@ -125,8 +125,35 @@ All prices are stored as **integers (Syrian Pounds)** — no string parsing in t
 
 | Decision | Choice | Reason |
 |----------|--------|--------|
-| Deployment | Separate service in `docker-compose.yml` | Isolates dashboard crashes from the bot |
+| Deployment | Single Railway service (`nixpacks.toml`) | FastAPI serves both API + built React SPA |
 | Auth | JWT | Industry standard, scalable, supports future roles |
 | Frontend | React + Tailwind | Scalable, easy feature additions |
 | Charts | Recharts | React-native, no CDN dependency |
 | Price unit | Syrian Pounds (SP) as `int` | Clean, no parsing needed at dashboard level |
+
+---
+
+## Railway Deployment
+
+**How it works:** `nixpacks.toml` runs `npm run build` in `dashboard_ui/`, then starts `uvicorn`. FastAPI detects `dashboard_ui/dist/` and serves it as static files + SPA fallback.
+
+**Required Railway environment variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGO_URI` | ✅ | Atlas connection string |
+| `DASHBOARD_USER` | ✅ | Admin login username |
+| `DASHBOARD_PASS` | ✅ | Admin login password |
+| `JWT_SECRET_KEY` | ✅ | Secret for JWTs (use `openssl rand -hex 32`) |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | ➖ | Default: 1440 (24h) |
+| `DASHBOARD_CORS_ORIGIN` | ➖ | Optional when API and UI share the same Railway domain |
+
+---
+
+## Local Development
+
+1. Start API: `python -m uvicorn dashboard_api.main:app --host 0.0.0.0 --port 8000 --reload`
+2. Start UI: `cd dashboard_ui && npm run dev`
+3. Open `http://localhost:5173` — Vite proxies `/api/*` → `localhost:8000`
+4. Add to `.env`: `DASHBOARD_USER=admin`, `DASHBOARD_PASS=admin`, `JWT_SECRET_KEY=<any-secret>`
+
