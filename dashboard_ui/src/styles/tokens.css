@@ -1,0 +1,74 @@
+/**
+ * Design Tokens — Single Source of Truth
+ *
+ * All hardcoded visual values (colors, radii, spacing, blur, shadows, timing)
+ * are declared here as CSS custom properties.
+ *
+ * Rules:
+ *  - NEVER hard-code a hex color, opacity value, or px/rem size inside a component.
+ *  - ALWAYS reference a token from this file via var(--token-name).
+ *  - To add a new value, add it here first, then use it via Tailwind or var().
+ */
+
+:root {
+  /* ─── Brand Palette ─────────────────────────────────────── */
+  --color-brand-primary:     #3b82f6;   /* blue-500  */
+  --color-brand-primary-dim: #1d4ed8;   /* blue-700  */
+  --color-brand-accent:      #8b5cf6;   /* purple-500 */
+  --color-brand-success:     #10b981;   /* emerald-500 */
+  --color-brand-warning:     #f59e0b;   /* amber-500 */
+  --color-brand-danger:      #ef4444;   /* red-500 */
+
+  /* ─── Status Colors (mirrors bot domain/entities.py status slugs) ── */
+  --color-status-pending:    #f59e0b;
+  --color-status-offered:    #3b82f6;
+  --color-status-accepted:   #8b5cf6;
+  --color-status-finished:   #10b981;
+  --color-status-denied:     #ef4444;
+
+  /* ─── Surface / Background ──────────────────────────────── */
+  --color-bg-base:      #020617;  /* slate-950 */
+  --color-bg-surface:   #0f172a;  /* slate-900 */
+  --color-bg-elevated:  #1e293b;  /* slate-800 */
+  --color-bg-glass:     rgba(255, 255, 255, 0.05);
+
+  /* ─── Text ──────────────────────────────────────────────── */
+  --color-text-primary:   #f1f5f9;  /* slate-100 */
+  --color-text-secondary: #94a3b8;  /* slate-400 */
+  --color-text-muted:     #475569;  /* slate-600 */
+
+  /* ─── Borders ───────────────────────────────────────────── */
+  --color-border-default: #1e293b;  /* slate-800 */
+  --color-border-subtle:  rgba(255, 255, 255, 0.10);
+
+  /* ─── Border Radius ─────────────────────────────────────── */
+  --radius-sm:  0.5rem;   /* 8px  */
+  --radius-md:  0.75rem;  /* 12px */
+  --radius-lg:  1rem;     /* 16px */
+  --radius-xl:  1.5rem;   /* 24px */
+
+  /* ─── Blur ──────────────────────────────────────────────── */
+  --blur-glass: 16px;
+
+  /* ─── Shadows ───────────────────────────────────────────── */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.40);
+  --shadow-brand: 0 4px 16px rgba(59, 130, 246, 0.25);
+
+  /* ─── Chart Dimensions ──────────────────────────────────── */
+  --chart-height-default: 250px;
+  --chart-height-pie:     260px;
+  --chart-inner-radius:   70px;
+  --chart-outer-radius:   110px;
+  --chart-dot-radius:     4px;
+  --chart-active-dot-radius: 6px;
+
+  /* ─── Animation ─────────────────────────────────────────── */
+  --duration-fast:   150ms;
+  --duration-normal: 200ms;
+  --duration-slow:   300ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ─── Layout ────────────────────────────────────────────── */
+  --sidebar-width: 16rem;  /* 256px */
+  --header-height: 4rem;   /* 64px  */
+}
