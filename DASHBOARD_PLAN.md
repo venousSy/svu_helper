@@ -59,7 +59,7 @@ All prices are stored as **integers (Syrian Pounds)** — no string parsing in t
 
 ---
 
-### ⬜ Phase 3: Backend Aggregation Services — TODO
+### ✅ Phase 3: Backend Aggregation Services — COMPLETE
 
 **Goal:** Expose MongoDB stats through secure REST endpoints.
 
@@ -78,7 +78,7 @@ All prices are stored as **integers (Syrian Pounds)** — no string parsing in t
 
 ---
 
-### ⬜ Phase 4: Frontend Scaffolding & Login — TODO
+### ✅ Phase 4: Frontend Scaffolding & Login — COMPLETE
 
 **Goal:** Create the React application and implement the login flow.
 
@@ -100,7 +100,7 @@ All prices are stored as **integers (Syrian Pounds)** — no string parsing in t
 
 ---
 
-### ⬜ Phase 5: Frontend Dashboard UI — TODO
+### ✅ Phase 5: Frontend Dashboard UI — COMPLETE
 
 **Goal:** Visualize live data with modern charts.
 

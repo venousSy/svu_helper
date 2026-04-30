@@ -1,0 +1,26 @@
+/* ─── Design Tokens (must be first) ─────────────────────── */
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  /**
+   * Glassmorphism utility. Uses tokens from tokens.css.
+   * DO NOT duplicate this inline in components — always use class="glass".
+   */
+  .glass {
+    background-color: var(--color-bg-glass);
+    backdrop-filter: blur(var(--blur-glass));
+    border: 1px solid var(--color-border-subtle);
+  }
+}
