@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import settings
-from infrastructure.mongo_db import Database
+
 
 # Import routers
 from dashboard_api.api.routers.auth import router as auth_router
@@ -20,12 +20,18 @@ _DIST_DIR = os.path.join(os.path.dirname(__file__), "..", "dashboard_ui", "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup — just establish the DB handle; index creation is the bot's responsibility.
     logger.info("Starting Dashboard API, connecting to MongoDB...")
-    await Database.connect()
+    try:
+        from infrastructure.mongo_db import get_db
+        await get_db()
+        logger.info("Dashboard API connected to MongoDB")
+    except Exception as exc:
+        logger.error("Dashboard API failed to connect to MongoDB at startup", error=str(exc))
+        # Don't crash — requests will fail gracefully via get_db() per-request
     yield
-    # Shutdown
-    pass
+    # Shutdown (nothing to tear down for Motor — the client manages its own pool)
+    logger.info("Dashboard API shutting down")
 
 app = FastAPI(
     title="SVU Helper Dashboard API",
