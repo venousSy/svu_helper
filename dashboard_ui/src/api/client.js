@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// Create an Axios instance
+// When served from FastAPI on Railway, the API is on the same host.
+// Use VITE_API_URL env variable for overrides (e.g. local dev pointing to localhost:8000).
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },

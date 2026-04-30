@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: Optional[str] = Field(default=None, description="JWT Secret Key for Authentication")
     JWT_ALGORITHM: str = Field(default="HS256", description="Algorithm used for JWT")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=1440, description="Token expiration time in minutes")
+    # Set this to your Railway public domain, e.g. https://svu-helper.up.railway.app
+    DASHBOARD_CORS_ORIGIN: Optional[str] = Field(default=None, description="Allowed CORS origin for dashboard (Railway public URL)")
 
     # Logging Configuration
     LOG_FILE: str = Field(default="bot.log", description="Log file path")

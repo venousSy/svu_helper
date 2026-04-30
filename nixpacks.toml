@@ -1,0 +1,26 @@
+# nixpacks.toml — Railway Build Configuration
+#
+# Railway uses Nixpacks to auto-detect and build the project.
+# We override the phases here to:
+#   1. Install Python deps (for FastAPI)
+#   2. Install Node deps and BUILD the React app (npm run build)
+#   3. Start FastAPI with Uvicorn (it serves both the API and the built React app)
+#
+# This means only ONE Railway service is needed for the entire dashboard.
+
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20"]
+
+[phases.install]
+cmds = [
+    "pip install -r requirements.txt",
+    "cd dashboard_ui && npm install"
+]
+
+[phases.build]
+cmds = [
+    "cd dashboard_ui && npm run build"
+]
+
+[start]
+cmd = "uvicorn dashboard_api.main:app --host 0.0.0.0 --port $PORT"
