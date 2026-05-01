@@ -22,7 +22,7 @@ export default function Projects() {
       if (statusFilter) params.status = statusFilter;
       if (studentId) params.student_id = studentId;
 
-      const res = await apiClient.get('/api/projects/', { params });
+      const res = await apiClient.get('/projects/', { params });
       setData(Array.isArray(res.data?.items) ? res.data.items : []);
       setTotal(res.data?.total ?? 0);
     } catch (err) {
