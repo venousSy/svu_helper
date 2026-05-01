@@ -15,109 +15,36 @@ All prices are stored as **integers (Syrian Pounds)** — no string parsing in t
 
 ---
 
-## Progress Status
+## Planned Improvements
 
-### ✅ Phase 1: Data Cleanup & Model Updates — COMPLETE
+### ⏳ Phase 6: Architectural Compliance & UI Refactor
+**Goal:** Fix technical debt by enforcing the Design Tokens rule.
+- Refactor React components (like `StatCard.jsx`) to remove hardcoded Tailwind utilities (`bg-blue-500/10`, `duration-200`).
+- Replace hardcoded values with semantic tokens from `tokens.css` (e.g., `bg-brand-primary/10`, `duration-normal`).
 
-**Goal:** Enforce integer-only prices across the entire codebase.
+### ⏳ Phase 7: Projects List View (Read-Only)
+**Goal:** Provide a granular data table of all projects.
+- Create a new `/projects` page in the React frontend.
+- Build a paginated Data Table component.
+- Implement backend API endpoints for paginated project fetching with search (by student ID) and filtering (by status).
 
-**What was done:**
+### ⏳ Phase 8: Project Management Capabilities (Read/Write)
+**Goal:** Allow admins to manage projects directly from the web UI.
+- Add action buttons to the Projects List table.
+- Implement backend endpoints to update project statuses (approve/deny, set price, mark finished).
+- Ensure updates sync properly with the Telegram bot's state.
 
-| File | Change |
-|------|--------|
-| `domain/entities.py` | `price: Optional[str]` → `price: Optional[int]` |
-| `infrastructure/repositories/project.py` | `update_offer(price: str)` → `update_offer(price: int)` |
-| `handlers/admin_routes/offers.py` | Admin price input is now parsed via `re.sub(r'[^\d]', '', text)` → stored as `int`. Invalid (non-numeric) input is rejected immediately. |
-| `handlers/client_routes/views.py` | `str(res["price"])` added before `escape_md()` to safely format int price for Markdown |
-| `scripts/migrate_prices.py` | One-time migration script ready. Converts string prices to int, hard-deletes unparseable records. Connection verified working against Atlas. |
+### ⏳ Phase 9: Support Ticket Management
+**Goal:** Manage student support tickets via the dashboard.
+- Create a "Tickets" view showing open/closed tickets.
+- Implement a chat interface to view ticket history and reply to users.
+- Connect dashboard replies to the Telegram bot to forward messages to users.
 
-**Migration result:** `migrated=0, deleted=0, skipped=0` — Atlas projects collection is currently empty (all test data was created after this fix was applied). The script is ready to run on future legacy data if needed.
-
----
-
-### ✅ Phase 2: FastAPI Backend Setup & JWT Auth — COMPLETE
-
-**Goal:** Create the separate API service with a secure login endpoint.
-
-**Tasks:**
-1. **`docker-compose.yml`** — Add `dashboard-api` service (Python/FastAPI container) alongside the bot.
-2. **`dashboard_api/__init__.py`** — Empty init file.
-3. **`dashboard_api/main.py`** — Initialize FastAPI app, configure CORS for the React frontend origin.
-4. **`dashboard_api/auth.py`** — Implement:
-   - `POST /api/login` endpoint accepting `username` + `password`.
-   - Validates against `settings.DASHBOARD_USER` and `settings.DASHBOARD_PASS` (to be added to `config.py` and `.env`).
-   - Returns a signed JWT token on success.
-   - `get_current_user` dependency to protect all stat endpoints.
-5. **`config.py`** — Add `DASHBOARD_USER: str` and `DASHBOARD_PASS: str` fields.
-6. **`.env`** — Add `DASHBOARD_USER=admin` and `DASHBOARD_PASS=<strong_password>` values.
-7. **`requirements.txt`** — Add `fastapi`, `uvicorn`, `python-jose[cryptography]`, `passlib[bcrypt]`.
-
-**Testing Checkpoint 2:**
-- Start the FastAPI service locally.
-- Send `POST /api/login` with correct credentials → expect a JWT token in response.
-- Send `POST /api/login` with wrong credentials → expect `401 Unauthorized`.
-
----
-
-### ✅ Phase 3: Backend Aggregation Services — COMPLETE
-
-**Goal:** Expose MongoDB stats through secure REST endpoints.
-
-**Tasks:**
-1. **`dashboard_api/services/stats.py`** — Write MongoDB aggregation pipelines:
-   - **Project volume by day** — count of projects grouped by `created_at` date.
-   - **Conversion rates** — count per `status` field (Pending, Offered, Accepted, Finished, Denied).
-   - **Revenue over time** — sum of `price` (integer, SP) for `FINISHED` + `ACCEPTED` projects, grouped by date.
-2. **`dashboard_api/routes.py`** — Create JWT-protected endpoints:
-   - `GET /api/stats/overview` — returns all 3 aggregations as JSON.
-
-**Testing Checkpoint 3:**
-- Authenticate via `/api/login` to get token.
-- Call `GET /api/stats/overview` with `Authorization: Bearer <token>` header.
-- Verify JSON response accurately reflects the database state.
-
----
-
-### ✅ Phase 4: Frontend Scaffolding & Login — COMPLETE
-
-**Goal:** Create the React application and implement the login flow.
-
-**Tasks:**
-1. **`dashboard_ui/`** — Initialize a Vite + React project: `npm create vite@latest dashboard_ui -- --template react`.
-2. **Install dependencies:** `tailwindcss`, `axios`, `react-router-dom`.
-3. **Configure Tailwind CSS** in the project.
-4. **`LoginPage` component** — A polished login screen that:
-   - POSTs credentials to `POST /api/login`.
-   - Stores the JWT in `localStorage`.
-   - Redirects to the dashboard on success.
-   - Shows an error message on failure.
-5. **Protected route** — Redirect unauthenticated users to `/login`.
-
-**Testing Checkpoint 4:**
-- Run `npm run dev`.
-- Open the browser, submit correct credentials → redirected to dashboard.
-- Submit wrong credentials → error message shown.
-
----
-
-### ✅ Phase 5: Frontend Dashboard UI — COMPLETE
-
-**Goal:** Visualize live data with modern charts.
-
-**Tasks:**
-1. **Install:** `recharts` for charts.
-2. **Layout component** — Persistent sidebar with navigation + top header showing logged-in admin name.
-3. **Dashboard page** — Fetches from `GET /api/stats/overview` (with JWT), renders:
-   - **Stat Cards:** Total Revenue (SP), Total Projects, Conversion Rate (%).
-   - **Revenue Chart:** `recharts` AreaChart — revenue over time.
-   - **Project Volume Chart:** LineChart — new projects per day/week.
-   - **Status Breakdown:** PieChart / RadialBarChart — project status distribution.
-4. **Logout button** — Clears JWT from `localStorage` and redirects to `/login`.
-
-**Testing Checkpoint 5:**
-- Log in through the UI.
-- Verify all charts render with live data from the FastAPI backend.
-- Verify logout clears the session.
+### ⏳ Phase 10: UI/UX Polish
+**Goal:** Enhance the user experience of the dashboard.
+- Add loading skeletons for charts and tables during data fetches.
+- Add toast notifications for successful/failed API mutations.
+- Ensure the sidebar is fully collapsible and the layout is perfectly responsive on mobile devices.
 
 ---
 

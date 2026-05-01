@@ -38,6 +38,11 @@ export default {
           DEFAULT: 'var(--color-border-default)',
           subtle:  'var(--color-border-subtle)',
         },
+        text: {
+          primary: 'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
+        },
       },
       borderRadius: {
         sm: 'var(--radius-sm)',
