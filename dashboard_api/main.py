@@ -12,6 +12,7 @@ from config import settings
 # Import routers
 from dashboard_api.api.routers.auth import router as auth_router
 from dashboard_api.api.routers.stats import router as stats_router
+from dashboard_api.api.routers.projects import router as projects_router
 
 logger = structlog.get_logger(__name__)
 
@@ -56,6 +57,7 @@ app.add_middleware(
 # ── API Routers ────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(stats_router)
+app.include_router(projects_router)
 
 # ── Serve React SPA ───────────────────────────────────────
 # Only mount static files if the dist folder exists (built React app).

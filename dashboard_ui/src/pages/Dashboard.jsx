@@ -22,7 +22,7 @@ const PIE_FALLBACK_COLORS = Object.values(colors.status);
 function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
+      <Loader2 className="w-10 h-10 text-brand-primary animate-spin" />
     </div>
   );
 }
@@ -30,9 +30,9 @@ function LoadingSpinner() {
 function ErrorMessage({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
-      <AlertCircle className="w-10 h-10 text-red-400" />
-      <p className="text-slate-400">{message}</p>
-      <button onClick={onRetry} className="px-4 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+      <AlertCircle className="w-10 h-10 text-brand-danger" />
+      <p className="text-text-secondary">{message}</p>
+      <button onClick={onRetry} className="px-4 py-2 text-sm rounded-lg bg-brand-primary hover:bg-brand-primary text-text-primary transition-colors">
         Retry
       </button>
     </div>
@@ -40,14 +40,14 @@ function ErrorMessage({ message, onRetry }) {
 }
 
 function SectionTitle({ children }) {
-  return <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-5">{children}</h2>;
+  return <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-widest mb-5">{children}</h2>;
 }
 
 function EmptyChart({ label }) {
   return (
-    <div className="flex flex-col items-center justify-center h-48 gap-3 rounded-lg border border-dashed border-slate-700">
-      <BarChart2 className="w-8 h-8 text-slate-700" />
-      <p className="text-slate-600 text-sm">{label}</p>
+    <div className="flex flex-col items-center justify-center h-48 gap-3 rounded-lg border border-dashed border-border">
+      <BarChart2 className="w-8 h-8 text-text-muted" />
+      <p className="text-text-muted text-sm">{label}</p>
     </div>
   );
 }
@@ -56,8 +56,8 @@ function EmptyChart({ label }) {
 function ChartTooltip({ active, payload, label, valuePrefix = '', valueSuffix = '' }) {
   if (active && payload && payload.length) {
     return (
-      <div className="glass rounded-lg px-4 py-3 border border-slate-700 text-sm">
-        <p className="text-slate-400 mb-1">{label}</p>
+      <div className="glass rounded-lg px-4 py-3 border border-border text-sm">
+        <p className="text-text-secondary mb-1">{label}</p>
         {payload.map((entry) => (
           <p key={entry.name} className="font-semibold" style={{ color: entry.color }}>
             {valuePrefix}{entry.value.toLocaleString()}{valueSuffix}
@@ -131,7 +131,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
             {/* Revenue Area Chart */}
-            <div className="glass rounded-xl p-6 border border-slate-800">
+            <div className="glass rounded-xl p-6 border border-border">
               <SectionTitle>Revenue Over Time (SP)</SectionTitle>
               {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
@@ -155,7 +155,7 @@ export default function Dashboard() {
             </div>
 
             {/* Volume Line Chart */}
-            <div className="glass rounded-xl p-6 border border-slate-800">
+            <div className="glass rounded-xl p-6 border border-border">
               <SectionTitle>Project Volume Over Time</SectionTitle>
               {volumeData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
@@ -174,7 +174,7 @@ export default function Dashboard() {
           </div>
 
           {/* --- Status Pie Chart --- */}
-          <div className="glass rounded-xl p-6 border border-slate-800">
+          <div className="glass rounded-xl p-6 border border-border">
             <SectionTitle>Project Status Breakdown</SectionTitle>
             {pieData.length > 0 ? (
               <div className="flex flex-col md:flex-row items-center gap-8">
@@ -187,9 +187,9 @@ export default function Dashboard() {
                     </Pie>
                     <Tooltip
                       content={({ active, payload }) => active && payload?.length ? (
-                        <div className="glass rounded-lg px-4 py-3 border border-slate-700 text-sm">
+                        <div className="glass rounded-lg px-4 py-3 border border-border text-sm">
                           <p className="font-semibold" style={{ color: payload[0].payload.fill }}>{payload[0].name}</p>
-                          <p className="text-slate-300">{payload[0].value} projects</p>
+                          <p className="text-text-primary">{payload[0].value} projects</p>
                         </div>
                       ) : null}
                     />
@@ -200,9 +200,9 @@ export default function Dashboard() {
                     <div key={entry.name} className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.fill }} />
-                        <span className="text-sm text-slate-300">{entry.name}</span>
+                        <span className="text-sm text-text-primary">{entry.name}</span>
                       </div>
-                      <span className="text-sm font-semibold text-white">{entry.value}</span>
+                      <span className="text-sm font-semibold text-text-primary">{entry.value}</span>
                     </div>
                   ))}
                 </div>
