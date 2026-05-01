@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import DataTable from '../components/ui/DataTable';
 import apiClient from '../api/client';
-import { Search } from 'lucide-react';
+import { Search, AlertCircle } from 'lucide-react';
 
 export default function Projects() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
@@ -15,16 +16,19 @@ export default function Projects() {
 
   const fetchProjects = async () => {
     setLoading(true);
+    setApiError(null);
     try {
       const params = { page, size: pageSize };
       if (statusFilter) params.status = statusFilter;
       if (studentId) params.student_id = studentId;
 
-      const res = await apiClient.get('/projects', { params });
-      setData(res.data.items);
-      setTotal(res.data.total);
+      const res = await apiClient.get('/api/projects/', { params });
+      setData(Array.isArray(res.data?.items) ? res.data.items : []);
+      setTotal(res.data?.total ?? 0);
     } catch (err) {
-      console.error("Failed to fetch projects", err);
+      console.error('Failed to fetch projects', err);
+      setApiError('Failed to load projects. Please try again.');
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -98,6 +102,13 @@ export default function Projects() {
 
   return (
     <AppLayout title="Projects">
+      {apiError && (
+        <div className="flex items-center gap-3 mb-6 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          <AlertCircle size={18} className="shrink-0" />
+          {apiError}
+          <button onClick={fetchProjects} className="ml-auto underline hover:no-underline">Retry</button>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1 max-w-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
