@@ -1,0 +1,36 @@
+# Dockerfile.dashboard
+# Dedicated Docker build for the SVU Helper Admin Dashboard.
+# Installs Python + Node.js, builds the React frontend, then starts FastAPI.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# ── System deps: Node.js 20 ───────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Python dependencies ───────────────────────────────────
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ── React frontend: install & build ──────────────────────
+COPY dashboard_ui/package*.json ./dashboard_ui/
+RUN cd dashboard_ui && npm install
+
+COPY dashboard_ui/ ./dashboard_ui/
+RUN cd dashboard_ui && npm run build
+
+# ── Application code ──────────────────────────────────────
+COPY . .
+
+# ── Start dashboard API ───────────────────────────────────
+CMD ["python", "run_dashboard.py"]
