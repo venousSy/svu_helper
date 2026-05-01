@@ -23,4 +23,4 @@ cmds = [
 ]
 
 [start]
-cmd = "sh start_dashboard.sh"
+cmd = "python run_dashboard.py"
