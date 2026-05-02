@@ -7,7 +7,11 @@ async def aggregate_project_volume() -> List[Dict[str, Any]]:
         {
             "$group": {
                 "_id": {
-                    "$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}
+                    "$dateToString": {
+                        "format": "%Y-%m-%d", 
+                        "date": {"$toDate": "$created_at"},
+                        "onNull": "unknown"
+                    }
                 },
                 "count": {"$sum": 1}
             }
@@ -45,7 +49,11 @@ async def aggregate_revenue_over_time() -> List[Dict[str, Any]]:
         {
             "$group": {
                 "_id": {
-                    "$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}
+                    "$dateToString": {
+                        "format": "%Y-%m-%d", 
+                        "date": {"$toDate": "$created_at"},
+                        "onNull": "unknown"
+                    }
                 },
                 "revenue": {"$sum": _price_as_num}
             }
