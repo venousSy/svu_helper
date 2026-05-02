@@ -40,7 +40,7 @@ async def send_offer(
     proj_id: int,
     request: OfferRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     """Sends an offer to the student and updates the project status."""
     db = await get_db()
@@ -60,7 +60,7 @@ async def send_offer(
         logger.error("Error sending offer", proj_id=proj_id, error=str(e))
         raise HTTPException(status_code=400, detail=str(e))
         
-    dashboard_username = current_user.get("username", "admin")
+    dashboard_username = current_user
     
     background_tasks.add_task(
         telegram_service.send_offer_notification,
@@ -96,7 +96,7 @@ async def send_offer(
 async def deny_project(
     proj_id: int,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     """Denies a project from the admin side."""
     db = await get_db()
@@ -111,7 +111,7 @@ async def deny_project(
         logger.error("Error denying project", proj_id=proj_id, error=str(e))
         raise HTTPException(status_code=400, detail=str(e))
         
-    dashboard_username = current_user.get("username", "admin")
+    dashboard_username = current_user
     
     if result.student_user_id:
         background_tasks.add_task(
@@ -135,7 +135,7 @@ async def deny_project(
 async def finish_project(
     proj_id: int,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: str = Depends(get_current_user)
 ):
     """Marks a project as finished."""
     db = await get_db()
@@ -150,7 +150,7 @@ async def finish_project(
         logger.error("Error finishing project", proj_id=proj_id, error=str(e))
         raise HTTPException(status_code=400, detail=str(e))
         
-    dashboard_username = current_user.get("username", "admin")
+    dashboard_username = current_user
     
     background_tasks.add_task(
         telegram_service.send_project_finished,
