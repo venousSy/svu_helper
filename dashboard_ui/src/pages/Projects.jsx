@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import DataTable from '../components/ui/DataTable';
-import { Search, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, XCircle, X } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
 import { useProjectMutations } from '../hooks/useProjectMutations';
 import OfferModal from '../components/projects/OfferModal';
