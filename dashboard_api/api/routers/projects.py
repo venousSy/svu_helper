@@ -1,6 +1,6 @@
 import structlog
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
 
 from dashboard_api.api.dependencies import get_current_user
 from dashboard_api.services.projects_service import get_projects_page
