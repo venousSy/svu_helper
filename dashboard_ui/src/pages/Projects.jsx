@@ -1,63 +1,101 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import DataTable from '../components/ui/DataTable';
-import apiClient from '../api/client';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { useProjects } from '../hooks/useProjects';
+import { useProjectMutations } from '../hooks/useProjectMutations';
+import OfferModal from '../components/projects/OfferModal';
+import ConfirmActionModal from '../components/projects/ConfirmActionModal';
 
 export default function Projects() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [apiError, setApiError] = useState(null);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [statusFilter, setStatusFilter] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [debouncedStudentId, setDebouncedStudentId] = useState('');
 
-  const fetchProjects = async () => {
-    setLoading(true);
-    setApiError(null);
-    try {
-      const params = { page, size: pageSize };
-      if (statusFilter) params.status = statusFilter;
-      if (studentId) params.student_id = studentId;
+  // Modals state
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, action: null, title: '', message: '', confirmText: '', isDestructive: false });
 
-      const res = await apiClient.get('/projects/', { params });
-      setData(Array.isArray(res.data?.items) ? res.data.items : []);
-      setTotal(res.data?.total ?? 0);
-    } catch (err) {
-      console.error('Failed to fetch projects', err);
-      setApiError('Failed to load projects. Please try again.');
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
+  // Toast state
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, [page, statusFilter]);
-
-  // Use a delay for search to avoid spamming the backend
-  useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (page !== 1) {
-        setPage(1); // will trigger the other effect
-      } else {
-        fetchProjects();
-      }
+      setDebouncedStudentId(studentId);
+      setPage(1);
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
   }, [studentId]);
 
-  const handleSearchChange = (e) => {
-    setStudentId(e.target.value);
-  };
+  const { data, isLoading, isError, error, refetch } = useProjects(page, pageSize, statusFilter, debouncedStudentId);
+  const { sendOffer, denyProject, finishProject } = useProjectMutations();
 
+  const handleSearchChange = (e) => setStudentId(e.target.value);
   const handleStatusChange = (e) => {
     setStatusFilter(e.target.value);
     setPage(1);
+  };
+
+  const handleSendOffer = (project) => {
+    setSelectedProject(project);
+    setIsOfferModalOpen(true);
+  };
+
+  const handleDeny = (project) => {
+    setSelectedProject(project);
+    setConfirmModalState({
+      isOpen: true,
+      action: 'deny',
+      title: `Deny Project #${project.id}`,
+      message: 'Are you sure you want to deny this project? The student will be notified and this action cannot be undone.',
+      confirmText: 'Deny Project',
+      isDestructive: true
+    });
+  };
+
+  const handleFinish = (project) => {
+    setSelectedProject(project);
+    setConfirmModalState({
+      isOpen: true,
+      action: 'finish',
+      title: `Finish Project #${project.id}`,
+      message: 'Are you sure you want to mark this project as finished? The student will be notified to check their dashboard.',
+      confirmText: 'Mark Finished',
+      isDestructive: false
+    });
+  };
+
+  const submitOffer = (offerData) => {
+    sendOffer.mutate(
+      { projId: selectedProject.id, data: offerData },
+      {
+        onSuccess: () => showToast(`Offer sent successfully for project #${selectedProject.id}`),
+        onError: (err) => showToast(err.response?.data?.detail || 'Failed to send offer', 'error'),
+      }
+    );
+  };
+
+  const confirmAction = () => {
+    if (confirmModalState.action === 'deny') {
+      denyProject.mutate(selectedProject.id, {
+        onSuccess: () => showToast(`Project #${selectedProject.id} denied successfully`),
+        onError: (err) => showToast(err.response?.data?.detail || 'Failed to deny project', 'error'),
+      });
+    } else if (confirmModalState.action === 'finish') {
+      finishProject.mutate(selectedProject.id, {
+        onSuccess: () => showToast(`Project #${selectedProject.id} marked as finished`),
+        onError: (err) => showToast(err.response?.data?.detail || 'Failed to finish project', 'error'),
+      });
+    }
   };
 
   const columns = [
@@ -98,15 +136,61 @@ export default function Projects() {
       header: 'Price', 
       render: (row) => <span className="text-text-primary font-medium">{row.price ? `${row.price.toLocaleString()} SP` : '-'}</span>
     },
+    {
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          {row.status === 'pending' && (
+            <>
+              <button 
+                onClick={() => handleSendOffer(row)}
+                className="px-3 py-1 text-xs font-medium rounded-md bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition-colors"
+              >
+                Offer
+              </button>
+              <button 
+                onClick={() => handleDeny(row)}
+                className="px-3 py-1 text-xs font-medium rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+              >
+                Deny
+              </button>
+            </>
+          )}
+          {row.status === 'accepted' && (
+            <button 
+              onClick={() => handleFinish(row)}
+              className="px-3 py-1 text-xs font-medium rounded-md bg-status-finished/10 text-status-finished hover:bg-status-finished/20 transition-colors"
+            >
+              Finish
+            </button>
+          )}
+        </div>
+      )
+    }
   ];
 
   return (
     <AppLayout title="Projects">
-      {apiError && (
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg animate-in slide-in-from-bottom-5 ${
+          toast.type === 'error' 
+            ? 'bg-red-50 border-red-200 text-red-700' 
+            : 'bg-green-50 border-green-200 text-green-700'
+        }`}>
+          {toast.type === 'error' ? <XCircle size={20} /> : <CheckCircle size={20} />}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 text-current opacity-70 hover:opacity-100">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {isError && (
         <div className="flex items-center gap-3 mb-6 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
           <AlertCircle size={18} className="shrink-0" />
-          {apiError}
-          <button onClick={fetchProjects} className="ml-auto underline hover:no-underline">Retry</button>
+          Failed to load projects. {error?.message}
+          <button onClick={refetch} className="ml-auto underline hover:no-underline">Retry</button>
         </div>
       )}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -141,12 +225,29 @@ export default function Projects() {
 
       <DataTable 
         columns={columns} 
-        data={data} 
-        loading={loading} 
-        total={total} 
+        data={data?.items || []} 
+        loading={isLoading} 
+        total={data?.total || 0} 
         page={page} 
         pageSize={pageSize} 
         onPageChange={setPage} 
+      />
+
+      <OfferModal 
+        isOpen={isOfferModalOpen}
+        onClose={() => setIsOfferModalOpen(false)}
+        onSubmit={submitOffer}
+        project={selectedProject}
+      />
+
+      <ConfirmActionModal 
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmAction}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText={confirmModalState.confirmText}
+        isDestructive={confirmModalState.isDestructive}
       />
     </AppLayout>
   );

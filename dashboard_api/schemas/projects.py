@@ -22,3 +22,11 @@ class PaginatedProjectsResponse(BaseModel):
     page: int
     size: int
     pages: int
+
+class OfferRequest(BaseModel):
+    price: int
+    delivery: str
+    notes: Optional[str] = ""
+
+class ActionResponse(BaseModel):
+    detail: str
