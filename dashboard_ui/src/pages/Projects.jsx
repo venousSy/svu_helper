@@ -6,6 +6,7 @@ import { useProjects } from '../hooks/useProjects';
 import { useProjectMutations } from '../hooks/useProjectMutations';
 import OfferModal from '../components/projects/OfferModal';
 import ConfirmActionModal from '../components/projects/ConfirmActionModal';
+import ProjectDetailsModal from '../components/projects/ProjectDetailsModal';
 
 export default function Projects() {
   const [page, setPage] = useState(1);
@@ -17,6 +18,7 @@ export default function Projects() {
   // Modals state
   const [selectedProject, setSelectedProject] = useState(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [confirmModalState, setConfirmModalState] = useState({ isOpen: false, action: null, title: '', message: '', confirmText: '', isDestructive: false });
 
   // Toast state
@@ -48,6 +50,11 @@ export default function Projects() {
   const handleSendOffer = (project) => {
     setSelectedProject(project);
     setIsOfferModalOpen(true);
+  };
+
+  const handleViewDetails = (project) => {
+    setSelectedProject(project);
+    setIsDetailsModalOpen(true);
   };
 
   const handleDeny = (project) => {
@@ -140,6 +147,12 @@ export default function Projects() {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => handleViewDetails(row)}
+            className="px-3 py-1 text-xs font-medium rounded-md bg-surface-elevated border border-border text-text-primary hover:bg-border transition-colors"
+          >
+            Details
+          </button>
           {row.status === 'pending' && (
             <>
               <button 
@@ -238,6 +251,12 @@ export default function Projects() {
         onClose={() => setIsOfferModalOpen(false)}
         onSubmit={submitOffer}
         project={selectedProject}
+      />
+
+      <ProjectDetailsModal 
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        projectId={selectedProject?.id}
       />
 
       <ConfirmActionModal 
