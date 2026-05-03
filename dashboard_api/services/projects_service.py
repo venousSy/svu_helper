@@ -3,7 +3,10 @@ import math
 import structlog
 
 from dashboard_api.repositories.projects_repo import count_projects, get_paginated_projects
-from dashboard_api.schemas.projects import PaginatedProjectsResponse, ProjectResponse
+from dashboard_api.schemas.projects import PaginatedProjectsResponse, ProjectResponse, ProjectDetailsResponse, PaymentResponse
+from infrastructure.repositories.project import ProjectRepository
+from infrastructure.repositories.payment import PaymentRepository
+from fastapi import HTTPException
 
 logger = structlog.get_logger(__name__)
 
@@ -50,3 +53,24 @@ async def get_projects_page(
         size=size,
         pages=pages,
     )
+
+async def get_project_details(
+    project_repo: ProjectRepository,
+    payment_repo: PaymentRepository,
+    proj_id: int
+) -> ProjectDetailsResponse:
+    doc = await project_repo.get_project_by_id(proj_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    clean = {k: v for k, v in doc.items() if k != "_id"}
+    clean["price"] = _safe_price(clean.get("price"))
+    
+    payment_doc = await payment_repo.get_payment_by_project_id(proj_id)
+    payment_response = None
+    if payment_doc:
+        payment_clean = {k: v for k, v in payment_doc.items() if k != "_id"}
+        payment_response = PaymentResponse(**payment_clean)
+        
+    clean["payment"] = payment_response
+    return ProjectDetailsResponse(**clean)

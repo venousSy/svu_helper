@@ -19,6 +19,8 @@ class TelegramService:
     def __init__(self):
         self.bot_token = settings.BOT_TOKEN
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        self.get_file_api_url = f"https://api.telegram.org/bot{self.bot_token}/getFile"
+        self.file_download_url = f"https://api.telegram.org/file/bot{self.bot_token}/"
 
     async def _send_request(self, payload: Dict[str, Any]) -> None:
         """Sends an HTTP POST request to the Telegram Bot API."""
@@ -32,6 +34,26 @@ class TelegramService:
                         logger.info("Telegram message sent successfully", chat_id=payload.get("chat_id"))
         except Exception as e:
             logger.error("Exception while sending Telegram message", error=str(e))
+
+    async def get_file_url(self, file_id: str) -> Optional[str]:
+        """Fetches the Telegram file path and constructs the actual download URL."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{self.get_file_api_url}?file_id={file_id}") as response:
+                    if response.status != 200:
+                        resp_text = await response.text()
+                        logger.error("Failed to get file path from Telegram", status=response.status, response=resp_text)
+                        return None
+                    data = await response.json()
+                    if not data.get("ok"):
+                        logger.error("Telegram getFile returned not ok", data=data)
+                        return None
+                    
+                    file_path = data["result"]["file_path"]
+                    return f"{self.file_download_url}{file_path}"
+        except Exception as e:
+            logger.error("Exception while getting Telegram file url", error=str(e))
+            return None
 
     async def send_offer_notification(self, user_id: int, proj_id: int, subject: str, price: str, delivery: str, notes: str) -> None:
         """Sends an offer notification with the Accept/Deny keyboard."""

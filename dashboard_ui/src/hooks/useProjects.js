@@ -23,3 +23,14 @@ export function useProjects(page, pageSize, statusFilter, studentId) {
     keepPreviousData: true,
   });
 }
+
+export function useProjectDetails(projId) {
+  return useQuery({
+    queryKey: [...projectKeys.all, 'detail', projId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/projects/${projId}`);
+      return res.data;
+    },
+    enabled: !!projId,
+  });
+}

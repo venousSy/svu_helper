@@ -16,6 +16,19 @@ class ProjectResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+class PaymentResponse(BaseModel):
+    id: int
+    file_id: str
+    file_type: Optional[str] = None
+    status: str
+    created_at: datetime
+
+class ProjectDetailsResponse(ProjectResponse):
+    details: str
+    delivery_date: Optional[str] = None
+    attachments: List[dict] = []
+    payment: Optional[PaymentResponse] = None
+
 class PaginatedProjectsResponse(BaseModel):
     items: List[ProjectResponse]
     total: int

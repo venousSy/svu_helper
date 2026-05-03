@@ -3,15 +3,15 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
 
 from dashboard_api.api.dependencies import get_current_user
-from dashboard_api.services.projects_service import get_projects_page
-from dashboard_api.schemas.projects import PaginatedProjectsResponse, OfferRequest, ActionResponse
+from dashboard_api.schemas.projects import PaginatedProjectsResponse, OfferRequest, ActionResponse, ProjectDetailsResponse
+from dashboard_api.services.projects_service import get_projects_page, get_project_details
 
 from application.offer_service import SendOfferService, FinishProjectService, DenyProjectService
 from dashboard_api.services.telegram_service import TelegramService
 from application.audit_service import AuditService
 from domain.enums import AuditEventType
 from infrastructure.mongo_db import get_db
-from infrastructure.repositories import ProjectRepository, AuditRepository
+from infrastructure.repositories import ProjectRepository, AuditRepository, PaymentRepository
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +34,21 @@ async def list_projects(
     """
     logger.info("Fetching paginated projects", page=page, size=size, status=status, student_id=student_id)
     return await get_projects_page(page, size, status, student_id)
+
+@router.get("/{proj_id}", response_model=ProjectDetailsResponse)
+async def get_project(
+    proj_id: int,
+):
+    """
+    Returns full details of a specific project, including payment info.
+    Requires authentication.
+    """
+    logger.info("Fetching project details", proj_id=proj_id)
+    db = await get_db()
+    project_repo = ProjectRepository(db)
+    payment_repo = PaymentRepository(db)
+    
+    return await get_project_details(project_repo, payment_repo, proj_id)
 
 @router.post("/{proj_id}/offer", response_model=ActionResponse)
 async def send_offer(

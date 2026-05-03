@@ -35,6 +35,9 @@ class PaymentRepository:
     async def get_payment(self, payment_id: int) -> Optional[Dict[str, Any]]:
         return await self._db.payments.find_one({"id": int(payment_id)})
 
+    async def get_payment_by_project_id(self, project_id: int) -> Optional[Dict[str, Any]]:
+        return await self._db.payments.find_one({"project_id": int(project_id)})
+
     async def update_status(self, payment_id: int, new_status: str) -> None:
         await self._db.payments.update_one(
             {"id": int(payment_id)}, {"$set": {"status": new_status}}
