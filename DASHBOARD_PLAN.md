@@ -17,18 +17,18 @@ All prices are stored as **integers (Syrian Pounds)** — no string parsing in t
 
 ## Planned Improvements
 
-### ⏳ Phase 6: Architectural Compliance & UI Refactor
+### ✅ Phase 6: Architectural Compliance & UI Refactor
 **Goal:** Fix technical debt by enforcing the Design Tokens rule.
 - Refactor React components (like `StatCard.jsx`) to remove hardcoded Tailwind utilities (`bg-blue-500/10`, `duration-200`).
 - Replace hardcoded values with semantic tokens from `tokens.css` (e.g., `bg-brand-primary/10`, `duration-normal`).
 
-### ⏳ Phase 7: Projects List View (Read-Only)
+### ✅ Phase 7: Projects List View (Read-Only)
 **Goal:** Provide a granular data table of all projects.
 - Create a new `/projects` page in the React frontend.
 - Build a paginated Data Table component.
 - Implement backend API endpoints for paginated project fetching with search (by student ID) and filtering (by status).
 
-### ⏳ Phase 8: Project Management Capabilities (Read/Write)
+### ✅ Phase 8: Project Management Capabilities (Read/Write)
 **Goal:** Allow admins to manage projects directly from the web UI.
 - Add action buttons to the Projects List table.
 - Implement backend endpoints to update project statuses (approve/deny, set price, mark finished).
