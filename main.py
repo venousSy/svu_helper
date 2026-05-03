@@ -138,9 +138,13 @@ async def main():
 
         # Apply admin commands only to admins
         for admin_id in settings.admin_ids:
-            await bot.set_my_commands(
-                admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id)
-            )
+            try:
+                await bot.set_my_commands(
+                    admin_commands, scope=types.BotCommandScopeChat(chat_id=admin_id)
+                )
+            except Exception as e:
+                logger.warning("Failed to set admin commands for user", admin_id=admin_id, error=str(e))
+
 
         logger.info("Bot online", admin_ids=settings.admin_ids)
 
