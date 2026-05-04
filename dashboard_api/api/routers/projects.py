@@ -1,10 +1,10 @@
 import structlog
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
 
 from dashboard_api.api.dependencies import get_current_user
-from dashboard_api.schemas.projects import PaginatedProjectsResponse, OfferRequest, ActionResponse, ProjectDetailsResponse
-from dashboard_api.services.projects_service import get_projects_page, get_project_details
+from dashboard_api.schemas.projects import PaginatedProjectsResponse, OfferRequest, ActionResponse, ProjectDetailsResponse, ProjectResponse
+from dashboard_api.services.projects_service import get_projects_page, get_project_details, get_urgent_projects_list
 
 from application.offer_service import SendOfferService, FinishProjectService, DenyProjectService
 from dashboard_api.services.telegram_service import TelegramService
@@ -34,6 +34,14 @@ async def list_projects(
     """
     logger.info("Fetching paginated projects", page=page, size=size, status=status, student_id=student_id)
     return await get_projects_page(page, size, status, student_id)
+
+@router.get("/urgent", response_model=List[ProjectResponse])
+async def get_urgent():
+    """
+    Returns a list of urgent projects requiring admin attention.
+    """
+    logger.info("Fetching urgent projects")
+    return await get_urgent_projects_list()
 
 @router.get("/{proj_id}", response_model=ProjectDetailsResponse)
 async def get_project(
