@@ -34,3 +34,14 @@ export function useProjectDetails(projId) {
     enabled: !!projId,
   });
 }
+
+export function useUrgentProjects() {
+  return useQuery({
+    queryKey: ['projects', 'urgent'],
+    queryFn: async () => {
+      const response = await apiClient.get('/projects/urgent');
+      return response.data;
+    },
+    staleTime: 1000 * 60, // 1 min
+  });
+}
