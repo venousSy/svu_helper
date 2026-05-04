@@ -24,3 +24,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
         raise credentials_exception
         
     return username
+
+async def get_project_repo():
+    from infrastructure.mongo_db import get_db
+    from infrastructure.repositories import ProjectRepository
+    db = await get_db()
+    return ProjectRepository(db)

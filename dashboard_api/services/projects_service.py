@@ -2,7 +2,7 @@ from typing import Optional, Any, Dict
 import math
 import structlog
 
-from dashboard_api.repositories.projects_repo import count_projects, get_paginated_projects, get_urgent_projects
+from dashboard_api.repositories.projects_repo import count_projects, get_paginated_projects
 from dashboard_api.schemas.projects import PaginatedProjectsResponse, ProjectResponse, ProjectDetailsResponse, PaymentResponse
 from typing import List
 from infrastructure.repositories.project import ProjectRepository
@@ -76,7 +76,7 @@ async def get_project_details(
     clean["payment"] = payment_response
     return ProjectDetailsResponse(**clean)
 
-async def get_urgent_projects_list() -> List[ProjectResponse]:
-    items_raw = await get_urgent_projects()
+async def get_urgent_projects_list(project_repo: ProjectRepository) -> List[ProjectResponse]:
+    items_raw = await project_repo.get_urgent_projects()
     items = [r for doc in items_raw if (r := _to_project_response(doc)) is not None]
     return items

@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
 import structlog
 
 from domain.entities import Project
@@ -117,3 +118,41 @@ class ProjectRepository:
 
     async def get_all_user_ids(self) -> List[int]:
         return await self._db.projects.distinct("user_id")
+
+    async def get_urgent_projects(self) -> List[Dict[str, Any]]:
+        now = datetime.now(timezone.utc)
+        six_hours_ago = now - timedelta(hours=6)
+        two_days_from_now = (now + timedelta(days=2)).strftime("%Y-%m-%d")
+        
+        pending_urgent_cursor = self._db.projects.find({
+            "status": "pending",
+            "created_at": {"$lte": six_hours_ago}
+        })
+        
+        awaiting_urgent_cursor = self._db.projects.aggregate([
+            {"$match": {"status": "awaiting_verification"}},
+            {"$lookup": {
+                "from": "payments",
+                "localField": "id",
+                "foreignField": "project_id",
+                "as": "payment_info"
+            }},
+            {"$unwind": {"path": "$payment_info", "preserveNullAndEmptyArrays": True}},
+            {"$match": {
+                "payment_info.created_at": {"$lte": six_hours_ago}
+            }},
+            {"$project": {"payment_info": 0}}
+        ])
+        
+        delivery_urgent_cursor = self._db.projects.find({
+            "status": {"$in": ["accepted", "offered"]},
+            "delivery_date": {"$ne": None, "$lte": two_days_from_now}
+        })
+        
+        pending_projects = await pending_urgent_cursor.to_list(length=100)
+        awaiting_projects = await awaiting_urgent_cursor.to_list(length=100)
+        delivery_projects = await delivery_urgent_cursor.to_list(length=100)
+        
+        all_urgent = {p["id"]: p for p in pending_projects + awaiting_projects + delivery_projects}
+        
+        return sorted(list(all_urgent.values()), key=lambda x: x["created_at"], reverse=True)
