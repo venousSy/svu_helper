@@ -244,8 +244,8 @@ class KeyboardFactory:
         return builder.as_markup()
 
     @staticmethod
-    def back(callback_data: str = None) -> InlineKeyboardBuilder:
-        """Returns an InlineKeyboardBuilder seeded with a 'Back' button."""
+    def back(callback_data: str = None) -> types.InlineKeyboardMarkup:
+        """Returns an InlineKeyboardMarkup with a single 'Back' button."""
         if callback_data is None:
             callback_data = MenuCallback(action=MenuAction.back_to_admin).pack()
         builder = InlineKeyboardBuilder()
@@ -254,7 +254,7 @@ class KeyboardFactory:
                 text=BTN_BACK_ICON, callback_data=callback_data
             )
         )
-        return builder
+        return builder.as_markup()
 
     @staticmethod
     def pending_projects(pending_projects: list) -> types.InlineKeyboardMarkup:
