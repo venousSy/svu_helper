@@ -7,7 +7,7 @@ import structlog
 
 from application.admin_service import GetStatsService, MaintenanceService
 from config import settings
-from infrastructure.repositories import SettingsRepository, StatsRepository, TicketRepository
+from infrastructure.repositories import SettingsRepository, StatsRepository, TicketRepository, ProjectRepository
 from keyboards.callbacks import MenuCallback, MenuAction, PageCallback, PageAction
 from keyboards.factory import KeyboardFactory
 from utils.constants import (
@@ -158,6 +158,34 @@ async def view_admin_tickets_page(
 ):
     service = build_ticket_service(ticket_repo, bot)
     await _render_admin_tickets(callback, service, callback_data.page)
+
+
+@router.callback_query(
+    MenuCallback.filter(F.action == MenuAction.admin_urgent_cases),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def view_admin_urgent_cases(
+    callback: types.CallbackQuery, project_repo: ProjectRepository
+):
+    from utils.constants import MSG_NO_URGENT_CASES, MSG_URGENT_REPORT_HEADER
+    
+    urgent_projects = await project_repo.get_urgent_projects()
+    
+    if not urgent_projects:
+        await callback.message.edit_text(
+            MSG_NO_URGENT_CASES,
+            reply_markup=KeyboardFactory.back()
+        )
+        return
+        
+    text = MSG_URGENT_REPORT_HEADER
+    for p in urgent_projects:
+        subject = p.get('subject_name', '').replace('*', '').replace('_', '').replace('`', '')
+        text += f"▪️ *#{p['id']}* - {subject} ({p.get('status', 'N/A')})\n"
+        
+    await callback.message.edit_text(
+        text, parse_mode="Markdown", reply_markup=KeyboardFactory.back()
+    )
 
 
 import asyncio
