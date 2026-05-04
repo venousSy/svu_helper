@@ -101,6 +101,31 @@ async def start_keepalive_server():
     await site.start()
     logger.info("Keep-alive server started", port=port)
     return runner
+    
+async def urgent_cases_job(bot: Bot):
+    """Background task to check for urgent cases every 6 hours and notify admins."""
+    from database.connection import get_db
+    from infrastructure.repositories.project import ProjectRepository
+    from utils.helpers import notify_admins
+    
+    while True:
+        try:
+            db = await get_db()
+            project_repo = ProjectRepository(db)
+            urgent_projects = await project_repo.get_urgent_projects()
+            
+            if urgent_projects:
+                text = "🚨 *Urgent Cases Report:*\n\n"
+                for p in urgent_projects:
+                    # Escape text for Markdown V1
+                    subject = p['subject_name'].replace('*', '').replace('_', '').replace('`', '')
+                    text += f"▪️ *#{p['id']}* - {subject} ({p.get('status', 'N/A')})\n"
+                
+                await notify_admins(bot, text)
+        except Exception as e:
+            logger.error("Error in urgent cases background job", error=str(e), exc_info=True)
+            
+        await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
 
 
 # --- MAIN ENTRY POINT ---
@@ -153,11 +178,16 @@ async def main():
         # Start keep-alive web server for Railway
         runner = await start_keepalive_server()
         
+        # Start urgent cases background job
+        urgent_task = asyncio.create_task(urgent_cases_job(bot))
+        
         await dp.start_polling(bot)
 
     except Exception as e:
         logger.error("Error occurred while running bot", e=str(e), exc_info=True)
     finally:
+        if 'urgent_task' in locals():
+            urgent_task.cancel()
         await bot.session.close()
         try:
             if 'runner' in locals() and runner:
