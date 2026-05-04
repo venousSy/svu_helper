@@ -115,13 +115,13 @@ async def urgent_cases_job(bot: Bot):
             urgent_projects = await project_repo.get_urgent_projects()
             
             if urgent_projects:
-                text = "🚨 *Urgent Cases Report:*\n\n"
+                text = "🚨 تقرير الحالات الطارئة:\n\n"
                 for p in urgent_projects:
-                    # Escape text for Markdown V1
-                    subject = p['subject_name'].replace('*', '').replace('_', '').replace('`', '')
-                    text += f"▪️ *#{p['id']}* - {subject} ({p.get('status', 'N/A')})\n"
+                    subject = p.get('subject_name', 'N/A')
+                    status = p.get('status', 'N/A')
+                    text += f"▪️ #{p['id']} - {subject} ({status})\n"
                 
-                await notify_admins(bot, text)
+                await notify_admins(bot, text, parse_mode=None)
         except Exception as e:
             logger.error("Error in urgent cases background job", error=str(e), exc_info=True)
             

@@ -180,11 +180,12 @@ async def view_admin_urgent_cases(
         
     text = MSG_URGENT_REPORT_HEADER
     for p in urgent_projects:
-        subject = p.get('subject_name', '').replace('*', '').replace('_', '').replace('`', '')
-        text += f"▪️ *#{p['id']}* - {subject} ({p.get('status', 'N/A')})\n"
+        subject = p.get('subject_name', 'N/A')
+        status = p.get('status', 'N/A')
+        text += f"▪️ #{p['id']} - {subject} ({status})\n"
         
     await callback.message.edit_text(
-        text, parse_mode="Markdown", reply_markup=KeyboardFactory.back()
+        text, reply_markup=KeyboardFactory.back()
     )
 
 
