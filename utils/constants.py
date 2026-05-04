@@ -94,6 +94,8 @@ MSG_TICKET_CLOSED_WARNING = _msgs["messages"]["ticket_closed_warning"]
 MSG_TICKET_ADMIN_REPLY_HEADER = _msgs["messages"]["ticket_admin_reply_header"]
 MSG_TICKET_TOPIC_NAME = _msgs["messages"]["ticket_topic_name"]
 MSG_SESSION_TIMEOUT = _msgs["messages"]["session_timeout"]
+MSG_NO_URGENT_CASES = _msgs["messages"]["no_urgent_cases"]
+MSG_URGENT_REPORT_HEADER = _msgs["messages"]["urgent_report_header"]
 
 # --- MENU BUTTONS ---
 BTN_NEW_PROJECT = _msgs["buttons"]["new_project"]
@@ -134,6 +136,7 @@ BTN_SEND_MORE = _msgs["buttons"]["send_more"]
 BTN_DONE = _msgs["buttons"]["done"]
 BTN_CONFIRM_DATE = _msgs["buttons"]["confirm_date"]
 BTN_REJECT_DATE = _msgs["buttons"]["reject_date"]
+BTN_URGENT_CASES = _msgs["buttons"]["urgent_cases"]
 
 # --- CLIENT PROMPTS ---
 MSG_ASK_SUBJECT = _msgs["client_prompts"]["ask_subject"]

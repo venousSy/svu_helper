@@ -66,6 +66,7 @@ from utils.constants import (
     BTN_YES,
     BTN_CONFIRM_DATE,
     BTN_REJECT_DATE,
+    BTN_URGENT_CASES,
 )
 from utils.formatters import format_datetime
 
@@ -232,6 +233,12 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=BTN_ADMIN_TICKETS,
                 callback_data=MenuCallback(action=MenuAction.admin_tickets).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_URGENT_CASES,
+                callback_data=MenuCallback(action=MenuAction.admin_urgent_cases).pack(),
             )
         )
         return builder.as_markup()
