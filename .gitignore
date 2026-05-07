@@ -62,3 +62,6 @@ dashboard_ui/dist/
 # OS artifacts
 Thumbs.db
 .DS_Store
+
+# Debug/Scratch
+scratch/
