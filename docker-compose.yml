@@ -17,12 +17,14 @@ services:
       - .:/app # Mounts current directory for hot-reloading (optional, good for dev)
 
   dashboard-api:
-    build: .
-    command: uvicorn dashboard_api.main:app --host 0.0.0.0 --port 8000
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
     container_name: svu_helper_dashboard_api
     restart: always
     environment:
       - MONGO_URI=mongodb://mongo:27017
+      - PORT=8000
       - DASHBOARD_USER=${DASHBOARD_USER:-admin}
       - DASHBOARD_PASS=${DASHBOARD_PASS:-admin}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default_secret_key_change_me_in_production}
@@ -30,8 +32,6 @@ services:
       - mongo
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
 
   mongo:
     image: mongo:latest

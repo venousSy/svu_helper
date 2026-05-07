@@ -37,3 +37,28 @@ mock_image.jpg
 # Antigravity Skills
 .gemini/skills/*
 !.gemini/skills/run_tests.md
+
+# -----------------------------------------------
+# Generated AI / NotebookLM dump files
+# These embed full source code & git diffs and can
+# re-expose secrets that were already rotated.
+# -----------------------------------------------
+notebooklm_commit_history.md
+notebooklm_full_codebase.md
+notebooklm_tour/
+*.md.bak
+
+# Fuzzer & test reports (may contain sensitive output)
+fuzzer_report.txt
+fuzzer_*.txt
+
+# E2E session strings (Telethon session files)
+TEST_USER_SESSION_STRING
+ADMIN_USER_SESSION_STRING
+
+# Build artifacts
+dashboard_ui/dist/
+
+# OS artifacts
+Thumbs.db
+.DS_Store
