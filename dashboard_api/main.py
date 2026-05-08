@@ -42,14 +42,22 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS: allow localhost for dev, Railway domain read from settings for prod
-_allowed_origins = ["http://localhost:5173", "http://localhost:3000"]
-if settings.DASHBOARD_CORS_ORIGIN:
+# CORS: allow localhost for dev + any configured origin
+# When deployed behind Nginx (same-origin), CORS is not needed for the UI.
+# We use allow_origin_regex to support any IP/host without wildcards+credentials conflict.
+_allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8000",
+]
+if settings.DASHBOARD_CORS_ORIGIN and settings.DASHBOARD_CORS_ORIGIN != "*":
     _allowed_origins.append(settings.DASHBOARD_CORS_ORIGIN)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
+    # Matches any http/https host — covers the VM IP accessed directly on :8000
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

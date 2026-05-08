@@ -1,6 +1,16 @@
-version: '3.8'
-
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: svu_helper_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - dashboard-api
+      - mongo-express
+
   bot:
     build: .
     container_name: svu_helper_bot
@@ -10,11 +20,12 @@ services:
       - ADMIN_IDS=${ADMIN_IDS}
       - MONGO_URI=mongodb://mongo:27017
       - REDIS_URI=redis://redis:6379/0
+      - DB_NAME=${DB_NAME:-svu_helper_bot}
     depends_on:
       - mongo
       - redis
     volumes:
-      - .:/app # Mounts current directory for hot-reloading (optional, good for dev)
+      - .:/app
 
   dashboard-api:
     build:
@@ -24,10 +35,16 @@ services:
     restart: always
     environment:
       - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=${DB_NAME:-svu_helper_bot}
       - PORT=8000
       - DASHBOARD_USER=${DASHBOARD_USER:-admin}
       - DASHBOARD_PASS=${DASHBOARD_PASS:-admin}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default_secret_key_change_me_in_production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      # Allows the React frontend served from ANY origin to call the API
+      - DASHBOARD_CORS_ORIGIN=*
+      - ADMIN_IDS=${ADMIN_IDS}
+      - BOT_TOKEN=${BOT_TOKEN}
     depends_on:
       - mongo
     ports:
@@ -40,7 +57,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27017:27017" # Expose to host if you want to connect from outside
+      - "27017:27017"
 
   redis:
     image: redis:alpine
@@ -60,11 +77,15 @@ services:
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_PORT=27017
+      # Correct env var names for mongo-express v1.x
       - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USER:-admin}
       - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS:-pass}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=
     depends_on:
       - mongo
 
 volumes:
   mongo_data:
   redis_data:
+
