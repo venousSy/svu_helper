@@ -18,7 +18,7 @@ services:
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_IDS=${ADMIN_IDS}
-      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_URI=${MONGO_URI}
       - REDIS_URI=redis://redis:6379/0
       - DB_NAME=${DB_NAME:-svu_helper_bot}
     depends_on:
@@ -34,7 +34,7 @@ services:
     container_name: svu_helper_dashboard_api
     restart: always
     environment:
-      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_URI=${MONGO_URI}
       - DB_NAME=${DB_NAME:-svu_helper_bot}
       - PORT=8000
       - DASHBOARD_USER=${DASHBOARD_USER:-admin}
