@@ -30,6 +30,7 @@ from utils.constants import (
     BTN_DONE,
     MSG_DETAILS_RECEIVED,
     MSG_SEND_NEXT,
+    MSG_DATE_IN_PAST,
 )
 from utils.formatters import format_admin_notification
 from utils.helpers import get_file_id, get_file_size, notify_admins
@@ -119,13 +120,24 @@ async def process_deadline(message: types.Message, state: FSMContext):
     # --- Step 1: Try standard regex-based parsing ---
     try:
         valid_date = _parse_deadline(message.text)
-    except ValueError:
+    except ValueError as e:
+        if str(e) == MSG_DATE_IN_PAST:
+            await message.answer(f"⚠️ {e}")
+            return await _ask_deadline(message)
+
         # --- Step 2: Gemini AI fallback ---
         if settings.GEMINI_API_KEY:
             gemini_date = await parse_date_with_gemini(
                 message.text, settings.GEMINI_API_KEY
             )
             if gemini_date:
+                try:
+                    _parse_deadline(gemini_date)
+                except ValueError as gemini_err:
+                    if str(gemini_err) == MSG_DATE_IN_PAST:
+                        await message.answer(f"⚠️ {gemini_err}")
+                        return await _ask_deadline(message)
+
                 # Show confirmation keyboard — do NOT save yet
                 await message.answer(
                     MSG_GEMINI_DATE_CONFIRM.format(gemini_date),
