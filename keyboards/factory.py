@@ -28,6 +28,8 @@ from keyboards.callbacks import (
     ProjectAction,
     TicketAction,
     DateConfirmAction,
+    PeerAction,
+    PeerCallback,
 )
 from utils.constants import (
     BTN_ACCEPT_OFFER,
@@ -67,6 +69,13 @@ from utils.constants import (
     BTN_CONFIRM_DATE,
     BTN_REJECT_DATE,
     BTN_URGENT_CASES,
+    BTN_PEER_LINK,
+    BTN_PEER_PROFILE,
+    BTN_PEER_POST_AD,
+    BTN_PEER_SEARCH_ADS,
+    BTN_REQUEST_MATCH,
+    BTN_ACCEPT_MATCH,
+    BTN_REJECT_MATCH,
 )
 from utils.formatters import format_datetime
 
@@ -93,6 +102,10 @@ class KeyboardFactory:
         builder.button(
             text=BTN_MY_OFFERS,
             callback_data=MenuCallback(action=MenuAction.my_offers).pack(),
+        )
+        builder.button(
+            text=BTN_PEER_LINK,
+            callback_data=MenuCallback(action=MenuAction.peer_link).pack(),
         )
         builder.button(
             text=BTN_SUPPORT,
@@ -671,3 +684,56 @@ class KeyboardFactory:
             )
         )
         return builder.as_markup()
+
+    # -----------------------------------------------------------------------
+    # Peer-Link keyboards
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def peer_menu() -> types.InlineKeyboardMarkup:
+        """Main menu for Peer-Link."""
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_PEER_PROFILE,
+            callback_data=PeerCallback(action=PeerAction.profile).pack(),
+        )
+        builder.button(
+            text=BTN_PEER_POST_AD,
+            callback_data=PeerCallback(action=PeerAction.post_ad).pack(),
+        )
+        builder.button(
+            text=BTN_PEER_SEARCH_ADS,
+            callback_data=PeerCallback(action=PeerAction.search_ads).pack(),
+        )
+        builder.button(
+            text=BTN_BACK_ICON,
+            callback_data=MenuCallback(action=MenuAction.cancel_flow).pack(),
+        )
+        builder.adjust(1)
+        return builder.as_markup()
+
+    @staticmethod
+    def ad_actions(ad_id: str) -> types.InlineKeyboardMarkup:
+        """Actions for a specific ad when searching."""
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_REQUEST_MATCH,
+            callback_data=PeerCallback(action=PeerAction.request_match, id=ad_id).pack(),
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def match_request_actions(request_id: str) -> types.InlineKeyboardMarkup:
+        """Accept or Reject match request."""
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_ACCEPT_MATCH,
+            callback_data=PeerCallback(action=PeerAction.accept_match, id=request_id).pack(),
+        )
+        builder.button(
+            text=BTN_REJECT_MATCH,
+            callback_data=PeerCallback(action=PeerAction.reject_match, id=request_id).pack(),
+        )
+        builder.adjust(2)
+        return builder.as_markup()
+

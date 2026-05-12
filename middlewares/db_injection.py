@@ -37,6 +37,13 @@ from infrastructure.repositories import (
     TicketRepository,
     AuditRepository,
 )
+from infrastructure.repositories.peer_repo import (
+    StudentProfileRepository,
+    ProjectAdRepository,
+    MatchRequestRepository,
+    CourseCatalogRepository,
+)
+from application.peer_service import PeerService
 
 
 class DbInjectionMiddleware(BaseMiddleware):
@@ -56,5 +63,22 @@ class DbInjectionMiddleware(BaseMiddleware):
         data["settings_repo"] = SettingsRepository(db)
         data["ticket_repo"] = TicketRepository(db)
         data["audit_repo"] = AuditRepository(db)
+
+        # Peer-Link Repositories
+        student_repo = StudentProfileRepository(db)
+        ad_repo = ProjectAdRepository(db)
+        match_repo = MatchRequestRepository(db)
+        catalog_repo = CourseCatalogRepository(db)
+
+        data["student_repo"] = student_repo
+        data["ad_repo"] = ad_repo
+        data["match_repo"] = match_repo
+        data["catalog_repo"] = catalog_repo
+        data["peer_service"] = PeerService(
+            student_repo=student_repo,
+            ad_repo=ad_repo,
+            match_repo=match_repo,
+            catalog_repo=catalog_repo,
+        )
 
         return await handler(event, data)

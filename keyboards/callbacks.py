@@ -19,6 +19,7 @@ class MenuAction(str, Enum):
     back_to_admin = "back_to_admin"
     close_list = "close_list"
     cancel_flow = "cancel_flow"
+    peer_link = "peer_link"
 
 class ProjectAction(str, Enum):
     accept = "accept"
@@ -55,6 +56,14 @@ class TicketAction(str, Enum):
     back = "back"
     cancel_action = "cancel_action"
 
+class PeerAction(str, Enum):
+    profile = "profile"
+    post_ad = "post_ad"
+    search_ads = "search_ads"
+    request_match = "request_match"
+    accept_match = "accept_match"
+    reject_match = "reject_match"
+
 class ProjectCallback(CallbackData, prefix="proj"):
     action: ProjectAction
     id: int
@@ -85,3 +94,6 @@ class DateConfirmCallback(CallbackData, prefix="dateconf"):
     action: DateConfirmAction
     date: str  # YYYY-MM-DD
 
+class PeerCallback(CallbackData, prefix="peer"):
+    action: PeerAction
+    id: str = ""

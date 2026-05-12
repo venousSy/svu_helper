@@ -43,3 +43,15 @@ class AuditEventType(str, Enum):
     PAYMENT_REJECTED = "payment_rejected"
     TICKET_OPENED = "ticket_opened"
     TICKET_RESOLVED = "ticket_resolved"
+
+
+class AdStatus(str, Enum):
+    ACTIVE = "active"
+    FULFILLED = "fulfilled"
+    EXPIRED = "expired"
+
+
+class MatchStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"

@@ -22,3 +22,18 @@ class TicketStates(StatesGroup):
     waiting_for_message = State()    # User composing initial ticket message
     waiting_for_reply = State()      # User replying to existing ticket
 
+
+class PeerProfileStates(StatesGroup):
+    waiting_for_program = State()
+    waiting_for_semester = State()
+    waiting_for_courses = State()
+
+
+class PeerAdStates(StatesGroup):
+    waiting_for_course_code = State()
+    waiting_for_requirements = State()
+    waiting_for_duration = State()
+
+class PeerSearchStates(StatesGroup):
+    waiting_for_search_course = State()
+
