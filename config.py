@@ -60,6 +60,13 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    from pydantic import model_validator
+    @model_validator(mode="after")
+    def check_jwt_secret(self):
+        if self.DASHBOARD_USER and not self.JWT_SECRET_KEY:
+            raise ValueError("JWT_SECRET_KEY must be provided if DASHBOARD_USER is enabled")
+        return self
+
     @functools.cached_property
     def admin_ids(self) -> List[int]:
         """Parses the comma-separated ADMIN_IDS string into a list of integers."""

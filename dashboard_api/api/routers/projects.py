@@ -12,6 +12,7 @@ from application.audit_service import AuditService
 from domain.enums import AuditEventType
 from infrastructure.mongo_db import get_db
 from infrastructure.repositories import ProjectRepository, AuditRepository, PaymentRepository
+import traceback
 
 logger = structlog.get_logger(__name__)
 
@@ -20,6 +21,13 @@ router = APIRouter(
     tags=["projects"],
     dependencies=[Depends(get_current_user)]
 )
+
+async def safe_background_task(func, *args, **kwargs):
+    """Wrapper to catch and log exceptions in background tasks."""
+    try:
+        await func(*args, **kwargs)
+    except Exception as e:
+        logger.error(f"Background task {func.__name__} failed", error=str(e), traceback=traceback.format_exc())
 
 @router.get("/", response_model=PaginatedProjectsResponse)
 async def list_projects(
@@ -86,6 +94,7 @@ async def send_offer(
     dashboard_username = current_user
     
     background_tasks.add_task(
+        safe_background_task,
         telegram_service.send_offer_notification,
         user_id=result.user_id,
         proj_id=result.proj_id,
@@ -96,6 +105,7 @@ async def send_offer(
     )
     
     background_tasks.add_task(
+        safe_background_task,
         AuditService(audit_repo).log_event,
         user_id=0,
         role="dashboard_admin",
@@ -105,6 +115,7 @@ async def send_offer(
     )
     
     background_tasks.add_task(
+        safe_background_task,
         AuditService(audit_repo).log_event,
         user_id=0,
         role="dashboard_admin",
@@ -138,12 +149,14 @@ async def deny_project(
     
     if result.student_user_id:
         background_tasks.add_task(
+            safe_background_task,
             telegram_service.send_project_denied,
             user_id=result.student_user_id,
             proj_id=proj_id
         )
         
     background_tasks.add_task(
+        safe_background_task,
         AuditService(audit_repo).log_event,
         user_id=0,
         role="dashboard_admin",
@@ -176,6 +189,7 @@ async def finish_project(
     dashboard_username = current_user
     
     background_tasks.add_task(
+        safe_background_task,
         telegram_service.send_project_finished,
         user_id=result.user_id,
         proj_id=result.proj_id,
@@ -183,6 +197,7 @@ async def finish_project(
     )
     
     background_tasks.add_task(
+        safe_background_task,
         AuditService(audit_repo).log_event,
         user_id=0,
         role="dashboard_admin",

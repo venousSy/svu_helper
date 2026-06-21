@@ -56,8 +56,6 @@ if settings.DASHBOARD_CORS_ORIGIN and settings.DASHBOARD_CORS_ORIGIN != "*":
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    # Matches any http/https host — covers the VM IP accessed directly on :8000
-    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -14,6 +14,8 @@ router = APIRouter(
     tags=["auth"]
 )
 
+import asyncio
+
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
@@ -21,6 +23,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     if form_data.username != settings.DASHBOARD_USER or not verify_password(form_data.password, settings.DASHBOARD_PASS):
         logger.warning("Failed login attempt", username=form_data.username)
+        await asyncio.sleep(2) # Basic throttling for failed logins
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -38,6 +41,7 @@ async def login_json(credentials: LoginRequest):
     """
     if credentials.username != settings.DASHBOARD_USER or not verify_password(credentials.password, settings.DASHBOARD_PASS):
         logger.warning("Failed JSON login attempt", username=credentials.username)
+        await asyncio.sleep(2) # Basic throttling for failed logins
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

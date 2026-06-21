@@ -9,23 +9,22 @@ Key design decisions
 * A **single** ``ThrottlingMiddleware`` instance should be reused for every
   event observer (message, callback_query, …).  ``main.py`` must pass the
   same object to each ``dp.<observer>.middleware(...)`` call so that the
-  shared ``TTLCache`` is actually shared.
+  shared Redis instance is actually used.
 
 * Cache key is ``user_id`` alone (not per-event-type) so a spammer cannot
   bypass the message rate-limit by sending rapid callback presses instead.
 
-* ``cachetools.TTLCache`` with ``ttl=rate_limit`` naturally expires entries
-  after the window elapses — no manual timestamp comparison needed.
-
 * The import of ``CallbackQuery`` is hoisted to module level (avoids a
   repeated import on every hot-path call).
 """
+import time
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message
-import cachetools
+import redis.asyncio as redis
 import structlog
+from config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -35,7 +34,7 @@ class ThrottlingMiddleware(BaseMiddleware):
     Anti-spam middleware.
 
     Rate-limits each Telegram user to one accepted request every
-    ``rate_limit`` seconds.  Throttled events are silently dropped
+    ``rate_limit`` seconds using Redis. Throttled events are silently dropped
     (returns ``None`` without calling the next handler).
 
     Usage in main.py
@@ -50,11 +49,8 @@ class ThrottlingMiddleware(BaseMiddleware):
 
     def __init__(self, rate_limit: float = 2.0) -> None:
         self.rate_limit = rate_limit
-        # Shared across all event types registered on this instance.
-        # TTL == rate_limit means the entry lives for exactly one window.
-        self._cache: cachetools.TTLCache = cachetools.TTLCache(
-            maxsize=10_000, ttl=rate_limit
-        )
+        # Initialize Redis connection pool
+        self._redis = redis.from_url(settings.REDIS_URI, decode_responses=True)
 
     async def __call__(
         self,
@@ -73,7 +69,12 @@ class ThrottlingMiddleware(BaseMiddleware):
             # Unknown event type (e.g. inline_query) — pass through.
             return await handler(event, data)
 
-        if user_id in self._cache:
+        redis_key = f"throttle:{user_id}"
+        
+        # Check if key exists using Redis
+        is_throttled = await self._redis.exists(redis_key)
+        
+        if is_throttled:
             logger.warning(
                 "Request throttled",
                 user_id=user_id,
@@ -81,6 +82,8 @@ class ThrottlingMiddleware(BaseMiddleware):
             )
             return None  # Drop the update silently.
 
-        # Mark user as "seen" for this window.
-        self._cache[user_id] = True
+        # Mark user as "seen" for this window by setting key with expiry.
+        # Use SET with EX (expiration in seconds)
+        # Using math.ceil as Redis EX requires integer seconds. For sub-second, use PX.
+        await self._redis.set(redis_key, "1", px=int(self.rate_limit * 1000))
         return await handler(event, data)

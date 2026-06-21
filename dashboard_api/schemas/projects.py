@@ -36,10 +36,18 @@ class PaginatedProjectsResponse(BaseModel):
     size: int
     pages: int
 
+from pydantic import BaseModel, ConfigDict, field_validator
+from domain.entities import parse_deadline
+
 class OfferRequest(BaseModel):
     price: int
     delivery: str
     notes: Optional[str] = ""
+
+    @field_validator("delivery")
+    @classmethod
+    def validate_delivery(cls, v: str) -> str:
+        return parse_deadline(v)
 
 class ActionResponse(BaseModel):
     detail: str
