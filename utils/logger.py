@@ -35,5 +35,3 @@ def setup_logger():
     # Return a structlog bound logger
     return structlog.get_logger()
 
-# Create a default logger instance
-logger = setup_logger()

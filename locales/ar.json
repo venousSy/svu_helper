@@ -9,6 +9,18 @@
         "denied_admin": "مرفوض من المشرف",
         "denied_student": "ملغى من الطالب"
     },
+    "commands": {
+        "start": "🏠 القائمة الرئيسية",
+        "new_project": "📚 تقديم مشروع جديد",
+        "my_projects": "📂 عرض مشاريعي",
+        "my_offers": "🎁 الأسعار والعروض",
+        "help": "❓ مساعدة",
+        "cancel": "🚫 إلغاء العملية",
+        "admin": "🛠 لوحة التحكم",
+        "stats": "📊 الإحصائيات",
+        "maintenance_on": "🛑 تفعيل الصيانة",
+        "maintenance_off": "✅ إيقاف الصيانة"
+    },
     "messages": {
         "welcome": "👋 أهلاً! أنا **مساعد SVU** 🎓\nاختر ما تريد من القائمة 👇",
         "help": "ℹ️ **الأوامر المتاحة:**\n\n📚 **المشاريع:**\n/new_project - تقديم طلب مشروع جديد\n\n📊 **إدارة المشاريع:**\n/my_projects - استعراض حالة مشاريعي\n/my_offers - استعراض العروض المقدمة لي\n\n🛠 **أخرى:**\n/cancel - إلغاء العملية\n/start - القائمة الرئيسية",
@@ -34,7 +46,7 @@
         "no_notes": "لا توجد ملاحظات",
         "offer_sent": "✅ تم إرسال العرض!",
         "upload_finished_work": "📤 **المشروع #{}**\nارفع العمل النهائي (ملف/صورة/نص):",
-        "work_finished_alert": "🎉 **تم إنجاز العمل!**\nالمشروع: {} (#{})\\n",
+        "work_finished_alert": "🎉 **تم إنجاز العمل!**\nالمشروع: {} (#{})\n",
         "finished_confirm": "✅ تم إنهاء المشروع #{}!",
         "finished_no_text": "✅ تم رفع ملف بدون رسالة نصية.",
         "finish_error": "⚠️ حدث خطأ أثناء إنهاء المشروع.",
@@ -79,7 +91,15 @@
         "ticket_topic_name": "🎫 تذكرة #{} — {}",
         "session_timeout": "⏳ عذراً، انتهت صلاحية الجلسة لعدم النشاط (20 دقيقة). تم إغلاق الجلسة السابقة وإعادة تعيين المحادثة.",
         "no_urgent_cases": "✅ لا توجد حالات طارئة حالياً.",
-        "urgent_report_header": "🚨 تقرير الحالات الطارئة:\n\n"
+        "urgent_report_header": "🚨 تقرير الحالات الطارئة:\n\n",
+        "urgent_report_item": "▪️ #{} - {} ({})\n",
+        "admin_file_not_found": "⚠️ الملف غير موجود.",
+        "admin_payment_detail": "📄 **تفاصيل الدفع: دفعة #{}**\nالحالة: {}",
+        "payment_accepted_append": "\n(تم قبول الدفعة #{})",
+        "payment_rejected_append": "\n(تم رفض الدفعة #{})",
+        "admin_invalid_price": "⚠️ الرجاء إدخال سعر رقمي صالح.",
+        "admin_error_format": "⚠️ {}",
+        "admin_send_media_error": "خطأ: {}"
     },
     "buttons": {
         "new_project": "📚 مشروع جديد",

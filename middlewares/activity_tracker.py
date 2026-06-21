@@ -1,10 +1,9 @@
 from typing import Any, Awaitable, Callable, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from aiogram import BaseMiddleware
+from aiogram.fsm.context import FSMContext
 from aiogram.types import TelegramObject, Message, CallbackQuery
-
-from infrastructure.mongo_db import Database
 
 
 class ActivityTrackerMiddleware(BaseMiddleware):
@@ -12,6 +11,10 @@ class ActivityTrackerMiddleware(BaseMiddleware):
     Updates the last_activity timestamp for the user in the FSM storage
     whenever they interact with the bot. This allows the session timeout
     worker to accurately determine inactivity.
+
+    NOTE: last_activity is stored inside the Redis-backed FSM data blob
+    (via FSMContext.update_data), NOT in MongoDB. The FSM storage is Redis,
+    so this is the only correct place to persist per-user activity timestamps.
     """
 
     async def __call__(
@@ -20,24 +23,15 @@ class ActivityTrackerMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        # We only track activity for messages and callbacks
-        chat_id = None
-        user_id = None
-        
-        if isinstance(event, Message):
-            chat_id = event.chat.id
-            user_id = event.from_user.id if event.from_user else None
-        elif isinstance(event, CallbackQuery):
-            chat_id = event.message.chat.id if event.message else None
-            user_id = event.from_user.id if event.from_user else None
-            
-        if chat_id and user_id:
-            db = Database.db
-            # We assume fsm_states is the default collection used by MongoStorage
-            await db["fsm_states"].update_one(
-                {"chat_id": chat_id, "user_id": user_id},
-                {"$set": {"last_activity": datetime.utcnow()}},
-                upsert=True
-            )
+        # Only track activity for messages and callbacks
+        is_trackable = isinstance(event, (Message, CallbackQuery))
+
+        if is_trackable:
+            # aiogram injects the FSMContext (Redis-backed) into data["state"]
+            state: FSMContext = data.get("state")
+            if state is not None:
+                await state.update_data(
+                    last_activity=datetime.now(timezone.utc).isoformat()
+                )
 
         return await handler(event, data)

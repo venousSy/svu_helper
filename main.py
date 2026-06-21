@@ -195,27 +195,29 @@ async def main():
         # Start keep-alive web server for Railway
         runner = await start_keepalive_server()
         
-        # Start urgent cases background job
-        urgent_task = asyncio.create_task(urgent_cases_job(bot))
-        
-        # Start expire ads background job
-        expire_ads_task = asyncio.create_task(expire_ads_job())
+        # Track all background tasks so we can cancel them cleanly on shutdown
+        background_tasks = [
+            asyncio.create_task(urgent_cases_job(bot), name="urgent_cases_job"),
+            asyncio.create_task(expire_ads_job(), name="expire_ads_job"),
+        ]
         
         await dp.start_polling(bot)
 
     except Exception as e:
         logger.error("Error occurred while running bot", e=str(e), exc_info=True)
     finally:
-        if 'urgent_task' in locals():
-            urgent_task.cancel()
-        if 'expire_ads_task' in locals():
-            expire_ads_task.cancel()
+        # Cancel all background tasks and wait for them to finish cleanly
+        if "background_tasks" in dir():
+            for task in background_tasks:
+                task.cancel()
+            await asyncio.gather(*background_tasks, return_exceptions=True)
         await bot.session.close()
         try:
-            if 'runner' in locals() and runner:
+            if "runner" in dir() and runner:
                 await runner.cleanup()
         except Exception:
             pass
+
 
 
 if __name__ == "__main__":

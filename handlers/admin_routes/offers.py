@@ -1,6 +1,6 @@
 import re
 import structlog
-from aiogram import Router, F, types
+from aiogram import Bot, Router, F, types
 from aiogram.fsm.context import FSMContext
 
 from application.offer_service import (
@@ -229,7 +229,7 @@ async def process_delivery(message: types.Message, state: FSMContext):
 
 @router.message(AdminStates.waiting_for_notes_decision, F.from_user.id.in_(settings.admin_ids))
 async def process_notes_decision(
-    message: types.Message, state: FSMContext, bot, project_repo: ProjectRepository, audit_repo: AuditRepository
+    message: types.Message, state: FSMContext, bot: Bot, project_repo: ProjectRepository, audit_repo: AuditRepository
 ):
     text = message.text.strip()
     if text == BTN_YES:
