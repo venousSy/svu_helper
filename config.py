@@ -18,7 +18,11 @@ class Settings(BaseSettings):
     ADMIN_IDS_RAW: str = Field(..., alias="ADMIN_IDS", description="List of Admin IDs (comma-separated)")
     
     # Database Configuration
-    MONGO_URI: str = Field(..., description="MongoDB Connection URI")
+    MONGO_URI: str = Field(
+        ...,
+        validation_alias=AliasChoices("MONGO_URI", "MONGODB_URL", "MONGO_URL"),
+        description="MongoDB Connection URI"
+    )
     DB_NAME: str = Field(default="svu_helper_bot", description="Database Name")
     REDIS_URI: str = Field(
         default="redis://localhost:6379/0",

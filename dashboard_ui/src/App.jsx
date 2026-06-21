@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +27,9 @@ function App() {
             path="/" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <ErrorBoundary>
+                  <Dashboard />
+                </ErrorBoundary>
               </ProtectedRoute>
             } 
           />
@@ -34,7 +37,9 @@ function App() {
             path="/projects" 
             element={
               <ProtectedRoute>
-                <Projects />
+                <ErrorBoundary>
+                  <Projects />
+                </ErrorBoundary>
               </ProtectedRoute>
             } 
           />
