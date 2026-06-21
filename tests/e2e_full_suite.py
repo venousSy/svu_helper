@@ -496,9 +496,6 @@ async def run_full_suite():
     await run_test("TEST 5: Help Command",
                    test_help(student))
 
-    await run_test("TEST 6: AI Date Parsing Flow",
-                   test_ai_date_parsing(student, admin))
-
     await run_test("TEST 8: Multi-Attachment Submission",
                    test_multi_attachment(student, admin))
 

@@ -13,6 +13,7 @@ from keyboards.callbacks import MenuCallback, MenuAction
 from keyboards.calendar_kb import build_calendar, CalendarCallback
 from keyboards.factory import KeyboardFactory
 from states import ProjectOrder
+from domain.entities import parse_deadline
 from utils.constants import (
     MSG_ASK_DEADLINE,
     MSG_ASK_DETAILS,
@@ -100,59 +101,17 @@ async def process_tutor(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.deadline)
 
 
-from domain.entities import parse_deadline
-from config import settings
-from utils.date_parser import parse_date_with_gemini
-from keyboards.callbacks import DateConfirmCallback, DateConfirmAction
-from utils.constants import (
-    MSG_GEMINI_DATE_CONFIRM,
-    MSG_GEMINI_DATE_INVALID,
-    MSG_GEMINI_DATE_ACCEPTED,
-    MSG_GEMINI_DATE_REJECTED,
-)
-
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
 async def process_deadline(message: types.Message, state: FSMContext):
     if len(message.text) > AddProjectService.MAX_DEADLINE_LENGTH:
         await message.answer(MSG_DEADLINE_TOO_LONG)
         return await _ask_deadline(message)
 
-    # --- Step 1: Try standard regex-based parsing ---
     try:
         valid_date = parse_deadline(message.text)
     except ValueError as e:
-        if str(e) == MSG_DATE_IN_PAST:
-            await message.answer(f"⚠️ {e}")
-            return await _ask_deadline(message)
-
-        # --- Step 2: Gemini AI fallback ---
-        if settings.GEMINI_API_KEY:
-            gemini_date = await parse_date_with_gemini(
-                message.text, settings.GEMINI_API_KEY
-            )
-            if gemini_date:
-                try:
-                    parse_deadline(gemini_date)
-                except ValueError as gemini_err:
-                    if str(gemini_err) == MSG_DATE_IN_PAST:
-                        await message.answer(f"⚠️ {gemini_err}")
-                        return await _ask_deadline(message)
-
-                # Show confirmation keyboard — do NOT save yet
-                await message.answer(
-                    MSG_GEMINI_DATE_CONFIRM.format(gemini_date),
-                    parse_mode="Markdown",
-                    reply_markup=KeyboardFactory.confirm_date(gemini_date),
-                )
-                return
-            else:
-                # Gemini couldn't parse either
-                await message.answer(MSG_GEMINI_DATE_INVALID)
-                return await _ask_deadline(message)
-        else:
-            # No API key — fall back to standard error
-            await message.answer(f"⚠️ {MSG_GEMINI_DATE_INVALID}")
-            return await _ask_deadline(message)
+        await message.answer(f"⚠️ {e}")
+        return await _ask_deadline(message)
 
     # Standard parsing succeeded
     await state.update_data(deadline=valid_date)
@@ -160,65 +119,7 @@ async def process_deadline(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.details)
 
 
-@router.callback_query(
-    DateConfirmCallback.filter(F.action == DateConfirmAction.accept),
-    ProjectOrder.deadline,
-)
-async def accept_gemini_date(
-    callback: types.CallbackQuery,
-    callback_data: DateConfirmCallback,
-    state: FSMContext,
-):
-    """User accepted the Gemini-parsed date."""
-    confirmed_date = callback_data.date
 
-    # Validate the confirmed date isn't in the past (safety check)
-    try:
-        parse_deadline(confirmed_date)
-    except ValueError as e:
-        await callback.message.answer(f"⚠️ {e}")
-        await callback.answer()
-        return await _ask_deadline(callback.message)
-
-    await state.update_data(deadline=confirmed_date)
-
-    try:
-        await callback.message.edit_text(
-            MSG_GEMINI_DATE_ACCEPTED, parse_mode="Markdown"
-        )
-    except Exception:
-        pass
-
-    from utils.constants import MSG_DATE_SELECTED_DEADLINE
-    await callback.message.answer(
-        MSG_DATE_SELECTED_DEADLINE.format(confirmed_date),
-        parse_mode="Markdown",
-    )
-
-    await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
-    await state.set_state(ProjectOrder.details)
-    await callback.answer()
-
-
-@router.callback_query(
-    DateConfirmCallback.filter(F.action == DateConfirmAction.reject),
-    ProjectOrder.deadline,
-)
-async def reject_gemini_date(
-    callback: types.CallbackQuery,
-    callback_data: DateConfirmCallback,
-    state: FSMContext,
-):
-    """User rejected the Gemini-parsed date — re-prompt."""
-    try:
-        await callback.message.edit_text(
-            MSG_GEMINI_DATE_REJECTED, parse_mode="Markdown"
-        )
-    except Exception:
-        pass
-
-    await _ask_deadline(callback.message)
-    await callback.answer()
 
 
 @router.message(ProjectOrder.subject)
@@ -298,7 +199,8 @@ async def finalize_project(
         )
         await state.clear()
 
-@router.message(ProjectOrder.details)
+@router.message(ProjectOrder.details, F.text, ~F.text.startswith('/'))
+@router.message(ProjectOrder.details, F.photo | F.document | F.video | F.audio | F.voice)
 async def process_details_accumulation(
     message: types.Message,
     state: FSMContext,
