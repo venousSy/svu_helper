@@ -215,3 +215,20 @@ settings.MONGODB_URL    # str
 - [ ] Using `build_ticket_service()` for ticket service construction
 - [ ] No duplicate helper functions defined locally in handlers
 - [ ] Services receive repos via DI — handlers don't construct repos
+- [ ] Using `paginate()` and `build_nav_keyboard()` from `utils/pagination.py` whenever a feature requires a paginated inline keyboard
+
+---
+
+## 10. Specializations
+
+When adding features that require a student to choose a specialization (الاختصاص), you MUST use the predefined list of specializations available in `utils/specializations.py`. Do NOT hardcode specializations directly in the handlers.
+
+```python
+from utils.specializations import get_all_specializations, add_specialization
+
+# To get all specializations (async)
+specs = await get_all_specializations()
+
+# To add a new one (persists to MongoDB, safe for Railway)
+await add_specialization("New Specialization", category="additional_programs")
+```

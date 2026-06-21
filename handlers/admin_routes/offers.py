@@ -46,6 +46,7 @@ from utils.constants import (
     MSG_PROJECT_DETAIL_DEADLINE,
     MSG_PROJECT_DETAIL_DETAILS,
     MSG_PROJECT_DETAIL_SUBJECT,
+    MSG_PROJECT_DETAIL_SPECIALIZATION,
     MSG_PROJECT_DETAIL_TUTOR,
     MSG_PROJECT_DETAIL_FILE_HEADER,
     MSG_PROJECT_DETAILS_HEADER,
@@ -77,9 +78,14 @@ async def view_project_details(
     if detail.username:
         user_line += f" (@{escape_md(detail.username)})"
 
+    spec_line = ""
+    if getattr(detail, "specialization", None):
+        spec_line = f"{MSG_PROJECT_DETAIL_SPECIALIZATION.format(escape_md(detail.specialization))}\n"
+
     text = (
         MSG_PROJECT_DETAILS_HEADER.format(detail.proj_id) + "\n"
         f"{user_line}\n"
+        f"{spec_line}"
         f"{MSG_PROJECT_DETAIL_SUBJECT.format(escape_md(detail.subject))}\n"
         f"{MSG_PROJECT_DETAIL_TUTOR.format(escape_md(detail.tutor))}\n"
         f"{MSG_PROJECT_DETAIL_DEADLINE.format(escape_md(detail.deadline))}\n"

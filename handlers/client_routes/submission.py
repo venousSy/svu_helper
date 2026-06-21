@@ -9,7 +9,7 @@ from application.audit_service import AuditService
 from domain.enums import AuditEventType
 from config import settings
 from infrastructure.repositories import ProjectRepository, AuditRepository
-from keyboards.callbacks import MenuCallback, MenuAction
+from keyboards.callbacks import MenuCallback, MenuAction, PageCallback, PageAction, SpecializationCallback
 from keyboards.calendar_kb import build_calendar, CalendarCallback
 from keyboards.factory import KeyboardFactory
 from states import ProjectOrder
@@ -17,6 +17,7 @@ from domain.entities import parse_deadline
 from utils.constants import (
     MSG_ASK_DEADLINE,
     MSG_ASK_DETAILS,
+    MSG_ASK_SPECIALIZATION,
     MSG_ASK_SUBJECT,
     MSG_ASK_TUTOR,
     MSG_FILE_TOO_LARGE,
@@ -35,6 +36,8 @@ from utils.constants import (
 )
 from utils.formatters import format_admin_notification
 from utils.helpers import get_file_id, get_file_size, notify_admins
+from utils.specializations import get_all_specializations
+from utils.pagination import paginate
 
 router = Router()
 logger = structlog.get_logger(__name__)
@@ -46,24 +49,63 @@ MAX_FILE_SIZE_BYTES = AddProjectService.MAX_FILE_SIZE_BYTES
 
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.new_project))
 async def cb_start_project(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(ProjectOrder.specialization)
+    specs = await get_all_specializations()
+    slice_, total_pages, page = paginate(specs, 0)
+    kb = KeyboardFactory.specializations_list(slice_, 0, total_pages, 0)
     await callback.message.answer(
-        MSG_ASK_SUBJECT, 
+        MSG_ASK_SPECIALIZATION, 
         parse_mode="Markdown",
-        reply_markup=KeyboardFactory.inline_cancel()
+        reply_markup=kb
     )
-    await state.set_state(ProjectOrder.subject)
     await callback.answer()
 
 
 @router.message(F.text == BTN_NEW_PROJECT)
 @router.message(Command("new_project"))
 async def start_project(message: types.Message, state: FSMContext):
+    await state.set_state(ProjectOrder.specialization)
+    specs = await get_all_specializations()
+    slice_, total_pages, page = paginate(specs, 0)
+    kb = KeyboardFactory.specializations_list(slice_, 0, total_pages, 0)
     await message.answer(
+        MSG_ASK_SPECIALIZATION, 
+        parse_mode="Markdown",
+        reply_markup=kb
+    )
+
+@router.callback_query(PageCallback.filter(F.action == PageAction.specializations))
+async def cb_paginate_specializations(callback: types.CallbackQuery, callback_data: PageCallback, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state != ProjectOrder.specialization.state:
+        return await callback.answer("⏳ الجلسة منتهية", show_alert=True)
+    
+    specs = await get_all_specializations()
+    slice_, total_pages, page = paginate(specs, callback_data.page)
+    start_index = page * 5
+    kb = KeyboardFactory.specializations_list(slice_, page, total_pages, start_index)
+    
+    await callback.message.edit_reply_markup(reply_markup=kb)
+    await callback.answer()
+
+@router.callback_query(SpecializationCallback.filter(), ProjectOrder.specialization)
+async def cb_select_specialization(callback: types.CallbackQuery, callback_data: SpecializationCallback, state: FSMContext):
+    specs = await get_all_specializations()
+    try:
+        spec_name = specs[callback_data.id]
+    except IndexError:
+        return await callback.answer("⚠️ حدث خطأ", show_alert=True)
+        
+    await state.update_data(specialization=spec_name)
+    await state.set_state(ProjectOrder.subject)
+    
+    await callback.message.edit_text(f"✅ تم اختيار: {spec_name}")
+    await callback.message.answer(
         MSG_ASK_SUBJECT, 
         parse_mode="Markdown",
         reply_markup=KeyboardFactory.inline_cancel()
     )
-    await state.set_state(ProjectOrder.subject)
+    await callback.answer()
 
 
 @router.message(ProjectOrder.subject, F.text, ~F.text.startswith('/'))
@@ -73,12 +115,12 @@ async def process_subject(message: types.Message, state: FSMContext):
             MSG_SUBJECT_TOO_LONG.format(AddProjectService.MAX_SUBJECT_LENGTH)
         )
     await state.update_data(subject=message.text)
+    await state.set_state(ProjectOrder.tutor)
     await message.answer(
         MSG_ASK_TUTOR, 
         parse_mode="Markdown",
         reply_markup=KeyboardFactory.inline_cancel()
     )
-    await state.set_state(ProjectOrder.tutor)
 
 
 async def _ask_deadline(message: types.Message):
@@ -97,8 +139,8 @@ async def process_tutor(message: types.Message, state: FSMContext):
             MSG_TUTOR_TOO_LONG.format(AddProjectService.MAX_TUTOR_LENGTH)
         )
     await state.update_data(tutor=message.text)
-    await _ask_deadline(message)
     await state.set_state(ProjectOrder.deadline)
+    await _ask_deadline(message)
 
 
 @router.message(ProjectOrder.deadline, F.text, ~F.text.startswith('/'))
@@ -115,13 +157,18 @@ async def process_deadline(message: types.Message, state: FSMContext):
 
     # Standard parsing succeeded
     await state.update_data(deadline=valid_date)
-    await message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
     await state.set_state(ProjectOrder.details)
+    await message.answer(
+        MSG_ASK_DETAILS, 
+        parse_mode="Markdown",
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
 
 
 
 
 
+@router.message(ProjectOrder.specialization)
 @router.message(ProjectOrder.subject)
 @router.message(ProjectOrder.tutor)
 @router.message(ProjectOrder.deadline)
@@ -159,6 +206,7 @@ async def finalize_project(
             user_id=user.id,
             username=user.username,
             user_full_name=user.full_name,
+            specialization=data.get("specialization"),
             subject=data.get("subject", ""),
             tutor=data.get("tutor", ""),
             deadline=data.get("deadline", ""),
@@ -172,7 +220,7 @@ async def finalize_project(
         )
         admin_text = format_admin_notification(
             project_id, data.get("subject", ""), data.get("deadline", ""), details_text,
-            user_name=user.full_name, username=user.username,
+            user_name=user.full_name, username=user.username, specialization=data.get("specialization")
         )
         await notify_admins(
             bot, admin_text,
@@ -200,7 +248,7 @@ async def finalize_project(
         await state.clear()
 
 @router.message(ProjectOrder.details, F.text, ~F.text.startswith('/'))
-@router.message(ProjectOrder.details, F.photo | F.document | F.video | F.audio | F.voice)
+@router.message(ProjectOrder.details, F.content_type.in_({'photo', 'document', 'video', 'audio', 'voice'}))
 async def process_details_accumulation(
     message: types.Message,
     state: FSMContext,

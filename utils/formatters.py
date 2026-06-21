@@ -301,17 +301,22 @@ def format_offer_list(
 # ---------------------------------------------------------------------------
 
 def format_admin_notification(
-    p_id, subject, deadline, details, user_name="Unknown", username=None
+    p_id, subject, deadline, details, user_name="Unknown", username=None, specialization=None
 ) -> str:
     """Formats the alert sent to the admin when a new project arrives."""
     user_display = escape_md(user_name)
     if username:
         user_display += f" (@{escape_md(username)})"
+        
+    spec_line = ""
+    if specialization:
+        spec_line = f"🎓 **الاختصاص:** {escape_md(specialization)}\n"
 
     return (
         f"🔔 **مشروع جديد #{p_id}**\n"
         f"{_SEP}\n"
         f"👤 **المستخدم:** {user_display}\n"
+        f"{spec_line}"
         f"📚 **المادة:** {escape_md(subject)}\n"
         f"📅 **الموعد:** {escape_md(deadline)}\n"
         f"📝 **التفاصيل:** {escape_md(details)}"

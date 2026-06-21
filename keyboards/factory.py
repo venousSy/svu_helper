@@ -481,7 +481,32 @@ class KeyboardFactory:
             back_action=MenuAction.back_to_admin,
         )
 
+    @staticmethod
+    def specializations_list(
+        specializations_slice: list,
+        page: int,
+        total_pages: int,
+        start_index: int
+    ) -> types.InlineKeyboardMarkup:
+        """Paginated list of specializations."""
+        from keyboards.callbacks import SpecializationCallback
+        from utils.pagination import build_nav_keyboard
+        b = InlineKeyboardBuilder()
+        for i, spec in enumerate(specializations_slice):
+            b.row(
+                types.InlineKeyboardButton(
+                    text=spec,
+                    callback_data=SpecializationCallback(id=start_index + i).pack()
+                )
+            )
 
+        return build_nav_keyboard(
+            action=PageAction.specializations,
+            page=page,
+            total_pages=total_pages,
+            back_callback_data=MenuCallback(action=MenuAction.cancel_flow).pack(),
+            builder=b
+        )
 
     # -----------------------------------------------------------------------
     # Ticket keyboards

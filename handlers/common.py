@@ -99,9 +99,12 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
                 )
             except Exception:
                 pass
-            await callback.message.answer(MSG_ASK_DETAILS, parse_mode="Markdown")
             await state.set_state(ProjectOrder.details)
-            
+            await callback.message.answer(
+                MSG_ASK_DETAILS, 
+                parse_mode="Markdown",
+                reply_markup=KeyboardFactory.inline_cancel()
+            )
         elif current_state == AdminStates.waiting_for_delivery.state:
             await state.update_data(delivery=date_str)
             try:
@@ -111,8 +114,8 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: Calenda
                 )
             except Exception:
                 pass
-            await callback.message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())
             await state.set_state(AdminStates.waiting_for_notes_decision)
+            await callback.message.answer(MSG_ASK_NOTES, reply_markup=KeyboardFactory.notes_decision())
         else:
             try:
                 await callback.message.edit_reply_markup(reply_markup=None)

@@ -1,0 +1,177 @@
+{
+  "university": "Syrian Virtual University (SVU)",
+  "programs": {
+    "bachelors": [
+      {
+        "name": "Bachelor in Information Technology",
+        "abbreviation": "BIT"
+      },
+      {
+        "name": "Bachelor in Information Technology - Arabic",
+        "abbreviation": "BAIT"
+      },
+      {
+        "name": "Bachelor in Communications Technology",
+        "abbreviation": "BACT"
+      },
+      {
+        "name": "Information Technology Engineering / Information Systems Engineering",
+        "abbreviation": "ITE / ISE"
+      },
+      {
+        "name": "Bachelor of Science in Economics",
+        "abbreviation": "BSCE"
+      },
+      {
+        "name": "Bachelor in Management Sciences",
+        "abbreviation": "BSCM"
+      },
+      {
+        "name": "Bachelor of Mass Communication",
+        "abbreviation": "BMC"
+      },
+      {
+        "name": "Bachelor in Law Science",
+        "abbreviation": "BL"
+      },
+      {
+        "name": "Bachelor of Tourism Hospitality Management",
+        "abbreviation": "BTHM"
+      },
+      {
+        "name": "Bachelor of Smart Cities Engineering and Sustainability",
+        "abbreviation": "SCES"
+      },
+      {
+        "name": "Faculty of Theology",
+        "abbreviation": "THF"
+      }
+    ],
+    "masters": [
+      {
+        "name": "Master in Computer Science",
+        "abbreviation": "MCS"
+      },
+      {
+        "name": "Master in Web Sciences / Master of Web Technologies",
+        "abbreviation": "MWS"
+      },
+      {
+        "name": "Master in Web Science and Artificial Intelligence",
+        "abbreviation": "MSAI"
+      },
+      {
+        "name": "Master in Networking Technologies",
+        "abbreviation": "MNT"
+      },
+      {
+        "name": "Master in Bioinformatics",
+        "abbreviation": "BIS"
+      },
+      {
+        "name": "Master in Technology Management",
+        "abbreviation": "MTM"
+      },
+      {
+        "name": "Master of Quality Management",
+        "abbreviation": "MQM"
+      },
+      {
+        "name": "MBA Professional",
+        "abbreviation": "PMBA"
+      },
+      {
+        "name": "Master in Digital Transformation Management",
+        "abbreviation": "MDT"
+      },
+      {
+        "name": "Master in Building Information Modeling and Management",
+        "abbreviation": "BIMM"
+      },
+      {
+        "name": "Master of Historical Building Information Modeling",
+        "abbreviation": "HBIM"
+      },
+      {
+        "name": "Master in Integration of Technology in Education",
+        "abbreviation": "MITE"
+      },
+      {
+        "name": "Master in Medical Education",
+        "abbreviation": "MME"
+      },
+      {
+        "name": "Master of Health Administration",
+        "abbreviation": "MHA"
+      },
+      {
+        "name": "Master Degree in International Humanitarian Law",
+        "abbreviation": "MIHL"
+      },
+      {
+        "name": "Master in Applied Linguistics",
+        "abbreviation": "MAL"
+      },
+      {
+        "name": "Integrated Management of Natural Resources",
+        "abbreviation": "IMNR"
+      },
+      {
+        "name": "Master in Management of Non-Governmental Organizations",
+        "abbreviation": "MNGO"
+      },
+      {
+        "name": "Master of Qualification and Specialty of the Administrative Development",
+        "abbreviation": "MQAD"
+      }
+    ],
+    "institutes_and_diplomas": [
+      {
+        "name": "Higher National Diploma in Computing and Business Applications",
+        "abbreviation": "HND"
+      },
+      {
+        "name": "Graduate Diploma in Education",
+        "abbreviation": "EDUC / EDU"
+      },
+      {
+        "name": "Technology Institute for Compute",
+        "abbreviation": "TIC"
+      },
+      {
+        "name": "Technical Institute of Business Administration",
+        "abbreviation": "TIBA"
+      },
+      {
+        "name": "Technical Institute for Tourism and Hotel Sciences",
+        "abbreviation": "TITH"
+      },
+      {
+        "name": "Technical Institute for Engineering Management and Digitizing",
+        "abbreviation": "TIEMD"
+      }
+    ],
+    "additional_programs": [
+      {
+        "name": "Doctoral Program",
+        "description": "PhD tracks in IT and Administration"
+      },
+      {
+        "name": "BIT Bridging",
+        "description": "Upgrade path"
+      },
+      {
+        "name": "Human Resources Management",
+        "abbreviation": "HRM"
+      },
+      {
+        "name": "English Program",
+        "description": "Language program"
+      },
+      {
+        "name": "Kids Programming Club / Training",
+        "abbreviation": "KPC"
+      }
+    ]
+  }
+}

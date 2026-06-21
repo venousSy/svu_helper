@@ -44,6 +44,7 @@ class PageAction(str, Enum):
     payments = "payments"
     ticket_messages = "ticket_messages"
     admin_tickets_page = "admin_tickets_page"
+    specializations = "specializations"
 
 class TicketAction(str, Enum):
     open_new = "open_new"
@@ -97,3 +98,6 @@ class DateConfirmCallback(CallbackData, prefix="dateconf"):
 class PeerCallback(CallbackData, prefix="peer"):
     action: PeerAction
     id: str = ""
+
+class SpecializationCallback(CallbackData, prefix="spec"):
+    id: int
