@@ -82,6 +82,13 @@ def format_project_list(
     header = f"**{title}**\n{_SEP}\nإجمالي: {total} | صفحة {page + 1}/{total_pages}\n"
     lines = [header]
 
+    for project in slice_:
+        p_id = project["id"]
+        subject = escape_md(project.get("subject_name", "—"))
+        status_slug = project.get("status", "")
+        status_label = STATUS_LABELS.get(status_slug, status_slug)
+        lines.append(f"• #{p_id} | {subject} — {status_label}\n")
+
     lines.append("\n💡 اضغط على الزر أدناه لإدارة المشروع.")
 
     return "".join(lines).strip(), total_pages

@@ -176,19 +176,19 @@ def test_format_payment_list_empty():
 def test_format_payment_list_content():
     payments = [_make_payment(1, status="accepted")]
     text, pages = format_payment_list(payments)
-    assert "D#1" in text
-    assert "✅" in text
+    assert "إجمالي: 1" in text
+    assert pages == 1
 
 
 def test_format_payment_list_pagination():
     payments = [_make_payment(i) for i in range(1, 9)]  # 8 items → 2 pages
     text_p0, pages = format_payment_list(payments, page=0, page_size=5)
     assert pages == 2
-    assert "D#5" in text_p0
-    assert "D#6" not in text_p0
+    assert "إجمالي: 8" in text_p0
+    assert "صفحة 1/2" in text_p0
 
     text_p1, _ = format_payment_list(payments, page=1, page_size=5)
-    assert "D#6" in text_p1
+    assert "صفحة 2/2" in text_p1
 
 
 # ---------------------------------------------------------------------------

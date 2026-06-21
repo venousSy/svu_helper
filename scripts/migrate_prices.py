@@ -27,7 +27,7 @@ def migrate_prices():
     client = pymongo.MongoClient(
         MONGO_URI,
         serverSelectionTimeoutMS=30_000,
-        tlsAllowInvalidCertificates=True,   # bypass Python 3.14 SSL quirks for this local script
+        tlsAllowInvalidCertificates=False,
     )
     
     # Ping to verify connection before doing any work

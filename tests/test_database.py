@@ -74,10 +74,9 @@ async def test_add_project(project_repo, mock_db):
             user_full_name="Test User",
             subject="Math",
             tutor="Dr. X",
-            deadline="2024-01-01",
+            deadline="2030-01-01",
             details="Details",
-            file_id="file_123",
-            file_type="document",
+            attachments=[{"file_id": "file_123", "file_type": "document"}],
         )
 
     assert project_id == 101
@@ -234,18 +233,16 @@ async def test_payment_get_all_uses_pagination(payment_repo, mock_db):
     """get_all() must use skip/limit and not load an unbounded cursor."""
     mock_payments = [{"id": 5}, {"id": 4}]
     mock_cursor = MagicMock()
-    mock_cursor.sort.return_value = mock_cursor
-    mock_cursor.skip.return_value = mock_cursor
-    mock_cursor.limit.return_value = mock_cursor
     mock_cursor.to_list = AsyncMock(return_value=mock_payments)
-    mock_db.payments.find = MagicMock(return_value=mock_cursor)
+    mock_db.payments.aggregate = MagicMock(return_value=mock_cursor)
 
     result = await payment_repo.get_all()
 
     assert result == mock_payments
-    mock_cursor.sort.assert_called_once_with("id", -1)
-    mock_cursor.skip.assert_called_once_with(0)
-    mock_cursor.limit.assert_called_once_with(DEFAULT_PAGE_SIZE)
+    mock_db.payments.aggregate.assert_called_once()
+    pipeline = mock_db.payments.aggregate.call_args[0][0]
+    assert pipeline[-2] == {"$skip": 0}
+    assert pipeline[-1] == {"$limit": DEFAULT_PAGE_SIZE}
 
 
 # ---------------------------------------------------------------------------

@@ -19,13 +19,11 @@ services:
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_IDS=${ADMIN_IDS}
       - MONGO_URI=${MONGO_URI}
-      - REDIS_URI=redis://redis:6379/0
+      - REDIS_URI=redis://:${REDIS_PASS:-secret}@redis:6379/0
       - DB_NAME=${DB_NAME:-svu_helper_bot}
     depends_on:
       - mongo
       - redis
-    volumes:
-      - .:/app
 
   dashboard-api:
     build:
@@ -42,7 +40,7 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default_secret_key_change_me_in_production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       # Allows the React frontend served from ANY origin to call the API
-      - DASHBOARD_CORS_ORIGIN=*
+      - DASHBOARD_CORS_ORIGIN=${DASHBOARD_CORS_ORIGIN}
       - ADMIN_IDS=${ADMIN_IDS}
       - BOT_TOKEN=${BOT_TOKEN}
     depends_on:
@@ -54,6 +52,9 @@ services:
     image: mongo:latest
     container_name: svu_helper_mongo
     restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-secret}
     volumes:
       - mongo_data:/data/db
     ports:
@@ -63,6 +64,7 @@ services:
     image: redis:alpine
     container_name: svu_helper_redis
     restart: always
+    command: redis-server --requirepass ${REDIS_PASS:-secret}
     ports:
       - "6379:6379"
     volumes:
@@ -78,10 +80,10 @@ services:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_PORT=27017
       # Correct env var names for mongo-express v1.x
-      - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USER:-admin}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS:-pass}
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=
+      - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USER}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USER:-admin}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASS:-secret}
     depends_on:
       - mongo
 

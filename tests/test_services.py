@@ -58,8 +58,8 @@ async def test_add_project_service_validates_subject_length(mock_project_repo):
         await service.execute(
             user_id=1, username="u", user_full_name="U",
             subject="x" * 200, tutor="T",
-            deadline="2025-12-31", details="ok",
-            file_id=None, file_type=None,
+            deadline="2030-12-31", details="ok",
+            attachments=[],
         )
     mock_project_repo.add_project.assert_not_called()
 
@@ -72,7 +72,7 @@ async def test_add_project_service_validates_deadline_format(mock_project_repo):
             user_id=1, username="u", user_full_name="U",
             subject="Math", tutor="T",
             deadline="not-a-date", details="ok",
-            file_id=None, file_type=None,
+            attachments=[],
         )
     mock_project_repo.add_project.assert_not_called()
 
@@ -88,8 +88,8 @@ async def test_add_project_service_persists_on_valid_input(mock_project_repo):
         result = await service.execute(
             user_id=1, username="u", user_full_name="U",
             subject="Math", tutor="Dr. X",
-            deadline="2025-12-31", details="Some details",
-            file_id=None, file_type=None,
+            deadline="2030-12-31", details="Some details",
+            attachments=[],
         )
     assert result == 42
     mock_project_repo.add_project.assert_called_once()
@@ -156,7 +156,7 @@ async def test_get_student_offers_filters_by_offered_status(mock_project_repo):
 async def test_get_project_detail_maps_fields(mock_project_repo):
     mock_project_repo.get_project_by_id.return_value = {
         "id": 5, "subject_name": "Math", "tutor_name": "Dr. X",
-        "deadline": "2025-12-31", "details": "details", "file_id": None,
+        "deadline": "2030-12-31", "details": "details", "file_id": None,
         "file_type": None, "user_id": 1, "user_full_name": "Ali", "username": "ali",
     }
     detail = await GetProjectDetailService(mock_project_repo).execute(5)
@@ -182,9 +182,9 @@ async def test_send_offer_service_updates_and_returns_result(mock_project_repo):
         "id": 1, "user_id": 7, "subject_name": "Physics"
     }
     result = await SendOfferService(mock_project_repo).execute(
-        proj_id=1, price="50,000", delivery="2025-06-01", notes="—"
+        proj_id=1, price="50,000", delivery="2030-06-01", notes="—"
     )
-    mock_project_repo.update_offer.assert_called_once_with(1, "50,000", "2025-06-01")
+    mock_project_repo.update_offer.assert_called_once_with(1, "50,000", "2030-06-01")
     mock_project_repo.update_status.assert_called_once_with(1, ProjectStatus.OFFERED)
     assert result.user_id == 7
     assert result.price == "50,000"
@@ -194,7 +194,7 @@ async def test_send_offer_service_updates_and_returns_result(mock_project_repo):
 async def test_send_offer_service_raises_when_project_missing(mock_project_repo):
     mock_project_repo.get_project_by_id.return_value = None
     with pytest.raises(ValueError, match="not found"):
-        await SendOfferService(mock_project_repo).execute(1, "50", "2025-01-01", "")
+        await SendOfferService(mock_project_repo).execute(1, "50", "2030-01-01", "")
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +250,7 @@ async def test_submit_payment_service(mock_project_repo, mock_payment_repo):
     result = await SubmitPaymentService(mock_project_repo, mock_payment_repo).execute(
         proj_id=3, user_id=1, file_id="f_abc", file_type="photo"
     )
-    mock_payment_repo.add_payment.assert_called_once_with(3, 1, "f_abc")
+    mock_payment_repo.add_payment.assert_called_once_with(3, 1, "f_abc", file_type="photo")
     mock_project_repo.update_status.assert_called_once_with(3, ProjectStatus.AWAITING_VERIFICATION)
     assert result.payment_id == 10
     assert result.file_type == "photo"
