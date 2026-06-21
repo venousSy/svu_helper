@@ -27,7 +27,7 @@ _DEADLINE_RE = re.compile(
 )
 
 
-def _parse_deadline(value: str) -> str:
+def parse_deadline(value: str) -> str:
     """Validate deadline and normalise to YYYY-MM-DD for DB storage."""
     value = value.strip()
     m = _DEADLINE_RE.match(value)
@@ -80,7 +80,7 @@ class Project(BaseModel):
     @field_validator("deadline", mode="before")
     @classmethod
     def validate_deadline(cls, v: str) -> str:  # noqa: N805
-        return _parse_deadline(v)
+        return parse_deadline(v)
 
 
 class Payment(BaseModel):

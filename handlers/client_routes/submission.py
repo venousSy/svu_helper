@@ -100,7 +100,7 @@ async def process_tutor(message: types.Message, state: FSMContext):
     await state.set_state(ProjectOrder.deadline)
 
 
-from domain.entities import _parse_deadline
+from domain.entities import parse_deadline
 from config import settings
 from utils.date_parser import parse_date_with_gemini
 from keyboards.callbacks import DateConfirmCallback, DateConfirmAction
@@ -119,7 +119,7 @@ async def process_deadline(message: types.Message, state: FSMContext):
 
     # --- Step 1: Try standard regex-based parsing ---
     try:
-        valid_date = _parse_deadline(message.text)
+        valid_date = parse_deadline(message.text)
     except ValueError as e:
         if str(e) == MSG_DATE_IN_PAST:
             await message.answer(f"⚠️ {e}")
@@ -132,7 +132,7 @@ async def process_deadline(message: types.Message, state: FSMContext):
             )
             if gemini_date:
                 try:
-                    _parse_deadline(gemini_date)
+                    parse_deadline(gemini_date)
                 except ValueError as gemini_err:
                     if str(gemini_err) == MSG_DATE_IN_PAST:
                         await message.answer(f"⚠️ {gemini_err}")
@@ -174,7 +174,7 @@ async def accept_gemini_date(
 
     # Validate the confirmed date isn't in the past (safety check)
     try:
-        _parse_deadline(confirmed_date)
+        parse_deadline(confirmed_date)
     except ValueError as e:
         await callback.message.answer(f"⚠️ {e}")
         await callback.answer()

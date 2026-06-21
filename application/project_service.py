@@ -12,7 +12,7 @@ Services here:
 """
 from typing import Any, Dict, List, Optional
 
-from domain.entities import _parse_deadline
+from domain.entities import parse_deadline
 from domain.enums import ProjectStatus
 from infrastructure.repositories import ProjectRepository
 from utils.constants import MSG_PERMISSION_DENIED
@@ -65,7 +65,7 @@ class AddProjectService:
             raise ValueError(f"Subject too long: max {self.MAX_SUBJECT_LENGTH} chars.")
         if len(tutor) > self.MAX_TUTOR_LENGTH:
             raise ValueError(f"Tutor name too long: max {self.MAX_TUTOR_LENGTH} chars.")
-        _parse_deadline(deadline)  # raises ValueError with Arabic message on bad format
+        parse_deadline(deadline)  # raises ValueError with Arabic message on bad format
         if len(details) > self.MAX_DETAILS_LENGTH:
             raise ValueError(f"Details too long: max {self.MAX_DETAILS_LENGTH} chars.")
 

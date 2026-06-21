@@ -29,6 +29,10 @@ if sys.stdout.encoding.lower() != "utf-8":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 # ... imports
+from utils.constants import (
+    CMD_START, CMD_NEW_PROJECT, CMD_MY_PROJECTS, CMD_MY_OFFERS, CMD_HELP, CMD_CANCEL,
+    CMD_ADMIN, CMD_STATS, CMD_MAINTENANCE_ON, CMD_MAINTENANCE_OFF,
+)
 from utils.logger import setup_logger
 
 # ... (imports)
@@ -107,6 +111,7 @@ async def urgent_cases_job(bot: Bot):
     from database.connection import get_db
     from infrastructure.repositories.project import ProjectRepository
     from utils.helpers import notify_admins
+    from utils.constants import MSG_URGENT_REPORT_HEADER, MSG_URGENT_REPORT_ITEM
     
     while True:
         try:
@@ -115,11 +120,11 @@ async def urgent_cases_job(bot: Bot):
             urgent_projects = await project_repo.get_urgent_projects()
             
             if urgent_projects:
-                text = "🚨 تقرير الحالات الطارئة:\n\n"
+                text = MSG_URGENT_REPORT_HEADER
                 for p in urgent_projects:
                     subject = p.get('subject_name', 'N/A')
                     status = p.get('status', 'N/A')
-                    text += f"▪️ #{p['id']} - {subject} ({status})\n"
+                    text += MSG_URGENT_REPORT_ITEM.format(p['id'], subject, status)
                 
                 await notify_admins(bot, text, parse_mode=None)
         except Exception as e:
@@ -158,19 +163,19 @@ async def main():
 
         # Set bot commands
         student_commands = [
-            types.BotCommand(command="start", description="🏠 القائمة الرئيسية"),
-            types.BotCommand(command="new_project", description="📚 تقديم مشروع جديد"),
-            types.BotCommand(command="my_projects", description="📂 عرض مشاريعي"),
-            types.BotCommand(command="my_offers", description="🎁 الأسعار والعروض"),
-            types.BotCommand(command="help", description="❓ مساعدة"),
-            types.BotCommand(command="cancel", description="🚫 إلغاء العملية"),
+            types.BotCommand(command="start", description=CMD_START),
+            types.BotCommand(command="new_project", description=CMD_NEW_PROJECT),
+            types.BotCommand(command="my_projects", description=CMD_MY_PROJECTS),
+            types.BotCommand(command="my_offers", description=CMD_MY_OFFERS),
+            types.BotCommand(command="help", description=CMD_HELP),
+            types.BotCommand(command="cancel", description=CMD_CANCEL),
         ]
 
         admin_commands = [
-            types.BotCommand(command="admin", description="🛠 لوحة التحكم"),
-            types.BotCommand(command="stats", description="📊 الإحصائيات"),
-            types.BotCommand(command="maintenance_on", description="🛑 تفعيل الصيانة"),
-            types.BotCommand(command="maintenance_off", description="✅ إيقاف الصيانة"),
+            types.BotCommand(command="admin", description=CMD_ADMIN),
+            types.BotCommand(command="stats", description=CMD_STATS),
+            types.BotCommand(command="maintenance_on", description=CMD_MAINTENANCE_ON),
+            types.BotCommand(command="maintenance_off", description=CMD_MAINTENANCE_OFF),
         ]
 
         # Apply student commands to everyone

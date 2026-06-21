@@ -167,7 +167,7 @@ async def view_admin_tickets_page(
 async def view_admin_urgent_cases(
     callback: types.CallbackQuery, project_repo: ProjectRepository
 ):
-    from utils.constants import MSG_NO_URGENT_CASES, MSG_URGENT_REPORT_HEADER
+    from utils.constants import MSG_NO_URGENT_CASES, MSG_URGENT_REPORT_HEADER, MSG_URGENT_REPORT_ITEM
     
     urgent_projects = await project_repo.get_urgent_projects()
     
@@ -182,7 +182,7 @@ async def view_admin_urgent_cases(
     for p in urgent_projects:
         subject = p.get('subject_name', 'N/A')
         status = p.get('status', 'N/A')
-        text += f"▪️ #{p['id']} - {subject} ({status})\n"
+        text += MSG_URGENT_REPORT_ITEM.format(p['id'], subject, status)
         
     await callback.message.edit_text(
         text, reply_markup=KeyboardFactory.back()

@@ -13,6 +13,11 @@ from utils.constants import (
     MSG_PAYMENT_CONFIRMED_CLIENT,
     MSG_PAYMENT_REJECTED_ADMIN,
     MSG_PAYMENT_REJECTED_TO_STUDENT,
+    MSG_ADMIN_FILE_NOT_FOUND,
+    MSG_ADMIN_PAYMENT_DETAIL,
+    MSG_ADMIN_ERROR_FORMAT,
+    MSG_PAYMENT_ACCEPTED_APPEND,
+    MSG_PAYMENT_REJECTED_APPEND,
 )
 from utils.formatters import escape_md
 
@@ -34,12 +39,12 @@ async def admin_view_receipt(
     payment_id = callback_data.id
     payment = await payment_repo.get_payment(payment_id)
     if not payment:
-        return await callback.answer("⚠️ File not found.", show_alert=True)
+        return await callback.answer(MSG_ADMIN_FILE_NOT_FOUND, show_alert=True)
 
     file_id   = payment["file_id"]
     file_type = payment.get("file_type", "document")
     status    = payment["status"]
-    caption   = f"📄 **Detail View: Payment #{payment_id}**\nStatus: {status}"
+    caption   = MSG_ADMIN_PAYMENT_DETAIL.format(payment_id, status)
     
     from keyboards.factory import KeyboardFactory
     kb = KeyboardFactory.payment_verify(payment_id) if status not in ("accepted", "rejected") else None
@@ -72,7 +77,7 @@ async def confirm_payment(
     try:
         result = await ConfirmPaymentService(project_repo, payment_repo).execute(payment_id)
     except ValueError as e:
-        return await callback.answer(f"⚠️ {e}", show_alert=True)
+        return await callback.answer(MSG_ADMIN_ERROR_FORMAT.format(e), show_alert=True)
 
     await bot.send_message(
         result.user_id,
@@ -81,7 +86,7 @@ async def confirm_payment(
     )
     await callback.message.edit_caption(
         caption=MSG_PAYMENT_CONFIRMED_ADMIN.format(result.proj_id)
-        + f"\n(Payment #{result.payment_id} Accepted)",
+        + MSG_PAYMENT_ACCEPTED_APPEND.format(result.payment_id),
         parse_mode="Markdown",
     )
     
@@ -118,7 +123,7 @@ async def reject_payment(
     try:
         result = await RejectPaymentService(project_repo, payment_repo).execute(payment_id)
     except ValueError as e:
-        return await callback.answer(f"⚠️ {e}", show_alert=True)
+        return await callback.answer(MSG_ADMIN_ERROR_FORMAT.format(e), show_alert=True)
 
     if result.user_id:
         await bot.send_message(
@@ -128,7 +133,7 @@ async def reject_payment(
         )
     await callback.message.edit_caption(
         caption=MSG_PAYMENT_REJECTED_ADMIN.format(result.proj_id)
-        + f"\n(Payment #{result.payment_id} Rejected)",
+        + MSG_PAYMENT_REJECTED_APPEND.format(result.payment_id),
         parse_mode="Markdown",
     )
     

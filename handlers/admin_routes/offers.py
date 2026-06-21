@@ -20,6 +20,9 @@ from states import AdminStates
 from utils.constants import (
     BTN_YES,
     BTN_NO,
+    MSG_ADMIN_SEND_MEDIA_ERROR,
+    MSG_ADMIN_INVALID_PRICE,
+    MSG_ADMIN_ERROR_FORMAT,
     MSG_ASK_DELIVERY,
     MSG_ASK_NOTES,
     MSG_ASK_NOTES_TEXT,
@@ -157,7 +160,7 @@ async def _send_media_safely(callback, file_id, file_type, caption, markup) -> b
         )
         return True
     except Exception as e:
-        await callback.answer(f"Error: {str(e)}", show_alert=True)
+        await callback.answer(MSG_ADMIN_SEND_MEDIA_ERROR.format(str(e)), show_alert=True)
         return False
 
 
@@ -197,14 +200,14 @@ async def process_price(message: types.Message, state: FSMContext):
     
     digits = re.sub(r'[^\d]', '', price_text)
     if not digits:
-        return await message.answer("⚠️ Please enter a valid numerical price.")
+        return await message.answer(MSG_ADMIN_INVALID_PRICE)
         
     await state.update_data(price=int(digits))
     await _ask_delivery(message)
     await state.set_state(AdminStates.waiting_for_delivery)
 
 
-from domain.entities import _parse_deadline
+from domain.entities import parse_deadline
 
 @router.message(AdminStates.waiting_for_delivery, F.from_user.id.in_(settings.admin_ids))
 async def process_delivery(message: types.Message, state: FSMContext):
@@ -217,9 +220,9 @@ async def process_delivery(message: types.Message, state: FSMContext):
         return await _ask_delivery(message)
         
     try:
-        valid_date = _parse_deadline(delivery_text)
+        valid_date = parse_deadline(delivery_text)
     except ValueError as e:
-        await message.answer(f"⚠️ {e}")
+        await message.answer(MSG_ADMIN_ERROR_FORMAT.format(e))
         return await _ask_delivery(message)
         
     await state.update_data(delivery=valid_date)
@@ -391,7 +394,7 @@ async def handle_deny(
             metadata={"new_status": "denied"}
         )
     except PermissionError as e:
-        return await callback.answer(f"⚠️ {e}", show_alert=True)
+        return await callback.answer(MSG_ADMIN_ERROR_FORMAT.format(e), show_alert=True)
 
     await callback.answer()
     try:
