@@ -135,23 +135,6 @@ async def urgent_cases_job(bot: Bot):
         await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
 
 
-async def expire_ads_job():
-    """Background task to expire old Peer-Link ads every hour."""
-    from database.connection import get_db
-    from infrastructure.repositories.peer_repo import ProjectAdRepository
-    
-    while True:
-        try:
-            db = await get_db()
-            ad_repo = ProjectAdRepository(db)
-            expired_count = await ad_repo.expire_old_ads()
-            if expired_count > 0:
-                logger.info("Expired old project ads", count=expired_count)
-        except Exception as e:
-            logger.error("Error in expire ads background job", error=str(e), exc_info=True)
-            
-        await asyncio.sleep(60 * 60)  # Wait 1 hour
-
 # --- MAIN ENTRY POINT ---
 async def main():
     """
@@ -205,7 +188,6 @@ async def main():
         # Track all background tasks so we can cancel them cleanly on shutdown
         background_tasks = [
             asyncio.create_task(urgent_cases_job(bot), name="urgent_cases_job"),
-            asyncio.create_task(expire_ads_job(), name="expire_ads_job"),
         ]
         
         await dp.start_polling(bot)
