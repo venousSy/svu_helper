@@ -162,6 +162,7 @@ async def view_my_teams(
             t["required_members"],
         )
         await callback.message.answer(text)
+    await callback.answer()
 
 
 # --- Seeker Flow: Find Team ---
@@ -204,6 +205,7 @@ async def find_teams(
             text=text,
             reply_markup=KeyboardFactory.team_join_action(t["id"])
         )
+    await callback.answer()
 
 
 # --- Seeker Flow: Join Team ---
