@@ -28,7 +28,7 @@ if not all([S_API_ID, S_API_HASH, A_API_ID, A_API_HASH, BOT_USERNAME]):
 if not BOT_USERNAME.startswith("@"):
     BOT_USERNAME = f"@{BOT_USERNAME}"
 
-BTN_DONE = "✅ انتهى"
+BTN_DONE = "انتهى"
 
 
 # ============================================================
