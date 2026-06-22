@@ -2,7 +2,6 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class ProjectOrder(StatesGroup):
-    specialization = State()
     subject = State()
     tutor = State()
     deadline = State()

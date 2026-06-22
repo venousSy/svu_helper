@@ -63,7 +63,6 @@ class Project(BaseModel):
     user_id: int
     username: Optional[str] = None
     user_full_name: Optional[str] = None
-    specialization: Optional[str] = None
     subject_name: str
     tutor_name: str
     deadline: str
