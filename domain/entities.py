@@ -10,7 +10,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from domain.enums import PaymentStatus, ProjectStatus, TicketStatus, AuditEventType
+from domain.enums import (
+    PaymentStatus, ProjectStatus, TicketStatus, AuditEventType,
+    MatchStatus, TeamRequestStatus,
+)
 from utils.constants import (
     MSG_INVALID_DATE_FORMAT,
     MSG_INVALID_DATE_VALUES,
@@ -131,6 +134,36 @@ class AuditLog(BaseModel):
     event_type: AuditEventType
     entity_id: int
     metadata: Optional[dict] = Field(default_factory=dict)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class JoinRequest(BaseModel):
+    """A pending/resolved request from a seeker to join a team."""
+    seeker_id: int
+    seeker_name: Optional[str] = None
+    status: MatchStatus = Field(default=MatchStatus.PENDING)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class TeamRequest(BaseModel):
+    """A team formation request posted by a host student."""
+    id: int
+    host_id: int
+    host_name: Optional[str] = None
+    host_username: Optional[str] = None
+    course_name: str
+    required_members: int
+    current_members: List[int] = Field(default_factory=list)
+    join_requests: List[JoinRequest] = Field(default_factory=list)
+    status: TeamRequestStatus = Field(default=TeamRequestStatus.OPEN)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )

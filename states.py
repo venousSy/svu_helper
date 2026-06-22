@@ -21,3 +21,8 @@ class AdminStates(StatesGroup):
 class TicketStates(StatesGroup):
     waiting_for_message = State()    # User composing initial ticket message
     waiting_for_reply = State()      # User replying to existing ticket
+
+
+class TeamStates(StatesGroup):
+    choosing_course = State()        # Host selects course
+    choosing_member_count = State()  # Host selects 1/2/3+

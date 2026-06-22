@@ -33,6 +33,12 @@ from application.admin_service import (
     GetStatsService,
     MaintenanceService,
 )
+from application.matchmaking_service import (
+    CreateTeamRequestService,
+    FindOpenTeamsService,
+    JoinTeamService,
+    HandleJoinDecisionService,
+)
 
 __all__ = [
     # project
@@ -65,4 +71,9 @@ __all__ = [
     "GetStatsService",
     "MaintenanceService",
     "GetAllUserIdsService",
+    # matchmaking
+    "CreateTeamRequestService",
+    "FindOpenTeamsService",
+    "JoinTeamService",
+    "HandleJoinDecisionService",
 ]

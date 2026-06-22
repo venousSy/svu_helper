@@ -8,6 +8,7 @@ class MenuAction(str, Enum):
     my_projects = "my_projects"
     my_offers = "my_offers"
     support = "support"
+    teams = "teams"
     view_all_master = "view_all_master"
     view_pending = "view_pending"
     view_accepted = "view_accepted"
@@ -43,6 +44,7 @@ class PageAction(str, Enum):
     payments = "payments"
     ticket_messages = "ticket_messages"
     admin_tickets_page = "admin_tickets_page"
+    find_teams = "find_teams"
 
 class TicketAction(str, Enum):
     open_new = "open_new"
@@ -85,3 +87,21 @@ class DateConfirmCallback(CallbackData, prefix="dateconf"):
     action: DateConfirmAction
     date: str  # YYYY-MM-DD
 
+
+class TeamAction(str, Enum):
+    create = "create"
+    find = "find"
+    select_course = "sel_course"
+    select_count = "sel_count"
+    join = "join"
+    accept_join = "acc_join"
+    reject_join = "rej_join"
+    my_teams = "my_teams"
+    back = "back"
+
+
+class TeamCallback(CallbackData, prefix="team"):
+    """Callback for team matchmaking actions."""
+    action: TeamAction
+    id: int = 0
+    data: str = ""

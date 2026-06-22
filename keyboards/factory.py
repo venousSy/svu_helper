@@ -22,12 +22,14 @@ from keyboards.callbacks import (
     ProjectCallback,
     TicketCallback,
     DateConfirmCallback,
+    TeamCallback,
     MenuAction,
     PageAction,
     PaymentAction,
     ProjectAction,
     TicketAction,
     DateConfirmAction,
+    TeamAction,
 )
 from utils.constants import (
     BTN_ACCEPT_OFFER,
@@ -67,6 +69,16 @@ from utils.constants import (
     BTN_CONFIRM_DATE,
     BTN_REJECT_DATE,
     BTN_URGENT_CASES,
+    BTN_TEAM_MENU,
+    BTN_TEAM_CREATE,
+    BTN_TEAM_FIND,
+    BTN_TEAM_MY_OPEN,
+    BTN_TEAM_MEMBER_1,
+    BTN_TEAM_MEMBER_2,
+    BTN_TEAM_MEMBER_3_PLUS,
+    BTN_TEAM_JOIN,
+    BTN_TEAM_ACCEPT_JOIN,
+    BTN_TEAM_REJECT_JOIN,
 )
 from utils.formatters import format_datetime
 
@@ -82,6 +94,10 @@ class KeyboardFactory:
     def student_main() -> types.InlineKeyboardMarkup:
         """Inline main menu for students."""
         builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_TEAM_MENU,
+            callback_data=MenuCallback(action=MenuAction.teams).pack(),
+        )
         builder.button(
             text=BTN_NEW_PROJECT,
             callback_data=MenuCallback(action=MenuAction.new_project).pack(),
@@ -103,6 +119,88 @@ class KeyboardFactory:
             callback_data=MenuCallback(action=MenuAction.help).pack(),
         )
         builder.adjust(1)
+        return builder.as_markup()
+
+    @staticmethod
+    def team_main_menu() -> types.InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_TEAM_CREATE,
+            callback_data=TeamCallback(action=TeamAction.create).pack()
+        )
+        builder.button(
+            text=BTN_TEAM_FIND,
+            callback_data=TeamCallback(action=TeamAction.find).pack()
+        )
+        builder.button(
+            text=BTN_TEAM_MY_OPEN,
+            callback_data=TeamCallback(action=TeamAction.my_teams).pack()
+        )
+        builder.button(
+            text=BTN_BACK_ICON,
+            callback_data=MenuCallback(action=MenuAction.cancel_flow).pack()
+        )
+        builder.adjust(1)
+        return builder.as_markup()
+
+    @staticmethod
+    def team_course_selection(courses: list[str]) -> types.InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        for course in courses:
+            builder.button(
+                text=course,
+                callback_data=TeamCallback(action=TeamAction.select_course, data=course).pack()
+            )
+        builder.button(
+            text=BTN_BACK_ICON,
+            callback_data=MenuCallback(action=MenuAction.teams).pack()
+        )
+        builder.adjust(3)
+        return builder.as_markup()
+
+    @staticmethod
+    def team_count_selection() -> types.InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_TEAM_MEMBER_1,
+            callback_data=TeamCallback(action=TeamAction.select_count, data="1").pack()
+        )
+        builder.button(
+            text=BTN_TEAM_MEMBER_2,
+            callback_data=TeamCallback(action=TeamAction.select_count, data="2").pack()
+        )
+        builder.button(
+            text=BTN_TEAM_MEMBER_3_PLUS,
+            callback_data=TeamCallback(action=TeamAction.select_count, data="3").pack()
+        )
+        builder.button(
+            text=BTN_BACK_ICON,
+            callback_data=MenuCallback(action=MenuAction.teams).pack()
+        )
+        builder.adjust(1)
+        return builder.as_markup()
+
+    @staticmethod
+    def team_join_action(request_id: int) -> types.InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_TEAM_JOIN,
+            callback_data=TeamCallback(action=TeamAction.join, id=request_id).pack()
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def team_host_join_decision(request_id: int, seeker_id: int) -> types.InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=BTN_TEAM_ACCEPT_JOIN,
+            callback_data=TeamCallback(action=TeamAction.accept_join, id=request_id, data=str(seeker_id)).pack()
+        )
+        builder.button(
+            text=BTN_TEAM_REJECT_JOIN,
+            callback_data=TeamCallback(action=TeamAction.reject_join, id=request_id, data=str(seeker_id)).pack()
+        )
+        builder.adjust(2)
         return builder.as_markup()
 
     @staticmethod

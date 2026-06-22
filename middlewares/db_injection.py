@@ -36,6 +36,7 @@ from infrastructure.repositories import (
     StatsRepository,
     TicketRepository,
     AuditRepository,
+    TeamRequestRepository,
 )
 
 class DbInjectionMiddleware(BaseMiddleware):
@@ -55,5 +56,6 @@ class DbInjectionMiddleware(BaseMiddleware):
         data["settings_repo"] = SettingsRepository(db)
         data["ticket_repo"] = TicketRepository(db)
         data["audit_repo"] = AuditRepository(db)
+        data["team_request_repo"] = TeamRequestRepository(db)
 
         return await handler(event, data)

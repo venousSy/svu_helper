@@ -90,6 +90,14 @@ class Database:
             [("user_id", 1), ("status", 1)]
         )
 
+        # --- Team request indexes ---
+        await cls.db.team_requests.create_index("id", unique=True)
+        await cls.db.team_requests.create_index("host_id")
+        await cls.db.team_requests.create_index("status")
+        await cls.db.team_requests.create_index(
+            [("course_name", 1), ("status", 1)]
+        )
+
     @classmethod
     async def get_next_sequence(cls, sequence_name: str) -> int:
         """Atomically increments and returns the next integer ID."""

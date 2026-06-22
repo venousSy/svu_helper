@@ -55,3 +55,8 @@ class MatchStatus(str, Enum):
     PENDING = "pending"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+class TeamRequestStatus(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"

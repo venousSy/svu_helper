@@ -255,7 +255,7 @@ async def test_multi_attachment(student, admin):
         f.write("%PDF-1.4\nMulti-attach test.")
     await student.send_file(BOT_USERNAME, "dummy_multi.pdf")
     os.remove("dummy_multi.pdf")
-    await wait_for_message(student, ["تم استلام", "انتهى"])
+    await wait_for_message(student, ["العدد الإجمالي: 2"])
     print("  ✅ Second item (PDF) acknowledged.")
 
     # Finalize
