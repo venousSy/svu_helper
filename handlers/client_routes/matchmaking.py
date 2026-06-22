@@ -173,8 +173,6 @@ async def find_teams(
     team_request_repo: TeamRequestRepository,
 ) -> None:
     """Find open teams matching the seeker's courses."""
-    # Assuming the student is interested in all default courses for now.
-    # In a real system, you'd fetch the student's enrolled courses.
     courses = get_all_courses()
     
     service = FindOpenTeamsService(team_request_repo)
@@ -185,16 +183,16 @@ async def find_teams(
             text=MSG_TEAM_NO_OPEN,
             reply_markup=KeyboardFactory.inline_cancel()
         )
+        await callback.answer()
         return
 
-    # Pagination could be added here. Sending all for MVP.
     await callback.message.edit_text(
         text="🔍 فرق متاحة:",
         reply_markup=KeyboardFactory.inline_cancel()
     )
 
     for t in open_teams:
-        text = MSG_TEAM_CARD.format(
+        card_text = MSG_TEAM_CARD.format(
             t["id"],
             t.get("host_name", "Unknown"),
             t["course_name"],
@@ -202,11 +200,10 @@ async def find_teams(
             t["required_members"],
         )
         await callback.message.answer(
-            text=text,
+            text=card_text,
             reply_markup=KeyboardFactory.team_join_action(t["id"])
         )
     await callback.answer()
-
 
 # --- Seeker Flow: Join Team ---
 
@@ -293,6 +290,7 @@ async def host_join_decision(
             await callback.message.answer(
                 MSG_TEAM_FULL.format(request_id, team["course_name"])
             )
+        await callback.answer()
 
     else:
         team = await service.reject(request_id, seeker_id)
@@ -303,3 +301,4 @@ async def host_join_decision(
             chat_id=seeker_id,
             text=MSG_TEAM_JOIN_REJECTED_SEEKER.format(request_id, team["course_name"])
         )
+        await callback.answer()
