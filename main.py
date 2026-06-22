@@ -2,7 +2,7 @@ import asyncio
 import sys
 
 from aiohttp import web
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, BaseMiddleware, types
 from datetime import timedelta
 
 # Internal Project Imports
@@ -79,7 +79,15 @@ _throttle = ThrottlingMiddleware(rate_limit=0.5)
 dp.message.middleware(_throttle)
 dp.callback_query.middleware(_throttle)
 dp.message.middleware(MaintenanceMiddleware())
-dp.message.middleware(GlobalErrorHandler())
+
+class DebugCallbackMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        if isinstance(event, types.CallbackQuery):
+            logger.info("RAW CALLBACK", data=event.data)
+        return await handler(event, data)
+
+dp.update.outer_middleware(GlobalErrorHandler())
+dp.update.outer_middleware(DebugCallbackMiddleware())
 dp.callback_query.middleware(GlobalErrorHandler())
 dp.edited_message.middleware(GlobalErrorHandler())
 

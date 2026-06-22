@@ -65,7 +65,7 @@ async def on_team_menu(
 
 # --- Host Flow: Create Team ---
 
-@router.callback_query(TeamCallback.filter(F.action == TeamAction.create))
+@router.callback_query(F.data.startswith("team:create"))
 async def start_team_creation(
     callback: types.CallbackQuery,
     state: FSMContext,
