@@ -46,7 +46,7 @@ class TeamRequestRepository:
     ) -> List[Dict[str, Any]]:
         """Fetch open requests matching given courses, excluding the user's own."""
         cursor = self._db.team_requests.find({
-            "status": TeamRequestStatus.OPEN,
+            "status": TeamRequestStatus.OPEN.value,
             "course_name": {"$in": course_names},
             "host_id": {"$ne": exclude_user_id},
         }).sort("created_at", -1)
@@ -94,7 +94,7 @@ class TeamRequestRepository:
         """Set status to CLOSED."""
         await self._db.team_requests.update_one(
             {"id": int(request_id)},
-            {"$set": {"status": TeamRequestStatus.CLOSED}},
+            {"$set": {"status": TeamRequestStatus.CLOSED.value}},
         )
         logger.info("Team request closed", request_id=request_id)
 
@@ -102,7 +102,7 @@ class TeamRequestRepository:
         """Get a host's own open team requests."""
         cursor = self._db.team_requests.find({
             "host_id": user_id,
-            "status": TeamRequestStatus.OPEN,
+            "status": TeamRequestStatus.OPEN.value,
         }).sort("created_at", -1)
         return await cursor.to_list(length=50)
 
