@@ -54,11 +54,13 @@ async def on_team_menu(
     state: FSMContext,
 ) -> None:
     """Show the main matchmaking menu."""
+    logger.info("Opened team menu", user_id=callback.from_user.id)
     await state.clear()
     await callback.message.edit_text(
         text=MSG_TEAM_MENU_HEADER,
         reply_markup=KeyboardFactory.team_main_menu(),
     )
+    await callback.answer()
 
 
 # --- Host Flow: Create Team ---
@@ -69,12 +71,14 @@ async def start_team_creation(
     state: FSMContext,
 ) -> None:
     """Step 1: Ask host to choose a course."""
+    logger.info("Starting team creation", user_id=callback.from_user.id)
     courses = get_all_courses()
     await state.set_state(TeamStates.choosing_course)
     await callback.message.edit_text(
         text=MSG_TEAM_CHOOSE_COURSE,
         reply_markup=KeyboardFactory.team_course_selection(courses),
     )
+    await callback.answer()
 
 
 @router.callback_query(TeamCallback.filter(F.action == TeamAction.select_course), TeamStates.choosing_course)
@@ -90,6 +94,7 @@ async def process_course_selection(
         text=MSG_TEAM_CHOOSE_COUNT,
         reply_markup=KeyboardFactory.team_count_selection(),
     )
+    await callback.answer()
 
 
 @router.callback_query(TeamCallback.filter(F.action == TeamAction.select_count), TeamStates.choosing_member_count)
@@ -125,6 +130,7 @@ async def process_count_selection(
         )
     except ValueError as e:
         await callback.answer(str(e), show_alert=True)
+    await callback.answer()
 
 
 # --- Host Flow: View My Open Teams ---
