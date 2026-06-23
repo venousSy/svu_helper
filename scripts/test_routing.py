@@ -36,11 +36,22 @@ async def main():
         )
         update = Update(update_id=1, callback_query=cb)
         
+        # Inject state manually for test
+        from aiogram.fsm.context import FSMContext
+        from aiogram.fsm.storage.memory import MemoryStorage
+        from aiogram.fsm.storage.base import StorageKey
+        storage = MemoryStorage()
+        dp.fsm = storage
+        key = StorageKey(bot_id=bot.id, chat_id=chat.id, user_id=user.id)
+        await storage.set_state(key=key, state="some_state")
+
+        
         try:
             handled = await dp.feed_update(bot, update)
             print(f"Update {cb_data} handled: {handled}")
         except Exception as e:
-            print(f"Update {cb_data} failed with exception: {e}")
+            print(f"Update {cb_data} failed with exception: {type(e).__name__}: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

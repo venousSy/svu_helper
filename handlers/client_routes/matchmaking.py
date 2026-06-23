@@ -81,7 +81,7 @@ async def start_team_creation(
     await callback.answer()
 
 
-@router.callback_query(TeamCallback.filter(F.action == TeamAction.select_course), TeamStates.choosing_course)
+@router.callback_query(TeamCallback.filter(F.action == "sel_course"), TeamStates.choosing_course)
 async def process_course_selection(
     callback: types.CallbackQuery,
     callback_data: TeamCallback,
@@ -97,7 +97,7 @@ async def process_course_selection(
     await callback.answer()
 
 
-@router.callback_query(TeamCallback.filter(F.action == TeamAction.select_count), TeamStates.choosing_member_count)
+@router.callback_query(TeamCallback.filter(F.action == "sel_count"), TeamStates.choosing_member_count)
 async def process_count_selection(
     callback: types.CallbackQuery,
     callback_data: TeamCallback,
@@ -139,7 +139,7 @@ async def process_count_selection(
 
 # --- Host Flow: View My Open Teams ---
 
-@router.callback_query(TeamCallback.filter(F.action == TeamAction.my_teams))
+@router.callback_query(TeamCallback.filter(F.action == "my_teams"))
 async def view_my_teams(
     callback: types.CallbackQuery,
     callback_data: TeamCallback,
@@ -172,7 +172,7 @@ async def view_my_teams(
 
 # --- Seeker Flow: Find Team ---
 
-@router.callback_query(TeamCallback.filter(F.action == TeamAction.find))
+@router.callback_query(TeamCallback.filter(F.action == "find"))
 async def find_teams(
     callback: types.CallbackQuery,
     callback_data: TeamCallback,
@@ -213,7 +213,7 @@ async def find_teams(
 
 # --- Seeker Flow: Join Team ---
 
-@router.callback_query(TeamCallback.filter(F.action == TeamAction.join))
+@router.callback_query(TeamCallback.filter(F.action == "join"))
 async def join_team(
     callback: types.CallbackQuery,
     callback_data: TeamCallback,
@@ -261,7 +261,7 @@ async def join_team(
 
 # --- Host Flow: Decide Join Request ---
 
-@router.callback_query(TeamCallback.filter(F.action.in_([TeamAction.accept_join, TeamAction.reject_join])))
+@router.callback_query(TeamCallback.filter(F.action.in_(["acc_join", "rej_join"])))
 async def host_join_decision(
     callback: types.CallbackQuery,
     callback_data: TeamCallback,
