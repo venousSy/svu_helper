@@ -82,9 +82,12 @@ dp.message.middleware(MaintenanceMiddleware())
 
 class DebugCallbackMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
-        if isinstance(event, types.CallbackQuery):
-            logger.info("RAW CALLBACK", data=event.data)
+        if isinstance(event, types.Update) and event.callback_query:
+            print(f"RAW CALLBACK PRINT: {event.callback_query.data}", flush=True)
+            logger.info("RAW CALLBACK", data=event.callback_query.data)
         return await handler(event, data)
+
+
 
 dp.update.outer_middleware(GlobalErrorHandler())
 dp.update.outer_middleware(DebugCallbackMiddleware())
