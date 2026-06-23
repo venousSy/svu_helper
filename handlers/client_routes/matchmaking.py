@@ -45,6 +45,16 @@ from utils.courses import get_all_courses
 logger = structlog.get_logger(__name__)
 router = Router()
 
+def parse_team_callback(data_str: str) -> tuple[str, int, str]:
+    """Parse team callback data cleanly without relying on CallbackData unpack.
+    Returns: (action, request_id, extra_data)
+    """
+    parts = data_str.split(":")
+    action = parts[1] if len(parts) > 1 else ""
+    req_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    extra = parts[3] if len(parts) > 3 else ""
+    return action, req_id, extra
+
 
 # --- Main Menu & Navigation ---
 
@@ -87,8 +97,7 @@ async def process_course_selection(
     state: FSMContext,
 ) -> None:
     """Save chosen course and ask for team member count."""
-    parts = callback.data.split(":")
-    course_name = parts[3] if len(parts) > 3 else ""
+    _, _, course_name = parse_team_callback(callback.data)
     await state.update_data(course_name=course_name)
     await state.set_state(TeamStates.choosing_member_count)
     await callback.message.edit_text(
@@ -105,8 +114,7 @@ async def process_count_selection(
     team_request_repo: TeamRequestRepository,
 ) -> None:
     """Save count, finalize team creation, and save to DB."""
-    parts = callback.data.split(":")
-    count_str = parts[3] if len(parts) > 3 else ""
+    _, _, count_str = parse_team_callback(callback.data)
     required_members = int(count_str) if count_str.isdigit() else 3
 
     data = await state.get_data()
@@ -217,8 +225,7 @@ async def join_team(
     bot: Bot,
 ) -> None:
     """Process seeker's request to join a specific team."""
-    parts = callback.data.split(":")
-    request_id = int(parts[2]) if len(parts) > 2 else 0
+    _, request_id, _ = parse_team_callback(callback.data)
     seeker = callback.from_user
 
     service = JoinTeamService(team_request_repo)
@@ -266,10 +273,8 @@ async def host_join_decision(
     bot: Bot,
 ) -> None:
     """Process host's decision to accept or reject a join request."""
-    parts = callback.data.split(":")
-    action = parts[1]
-    request_id = int(parts[2]) if len(parts) > 2 else 0
-    seeker_id = int(parts[3]) if len(parts) > 3 else 0
+    action, request_id, extra = parse_team_callback(callback.data)
+    seeker_id = int(extra) if extra.isdigit() else 0
     
     service = HandleJoinDecisionService(team_request_repo)
 
