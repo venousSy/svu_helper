@@ -8,7 +8,7 @@ Handlers for student team matchmaking flow:
 """
 from typing import Any, Dict
 import structlog
-from aiogram import F, Router, types
+from aiogram import F, Router, types, Bot
 from aiogram.fsm.context import FSMContext
 
 from application.matchmaking_service import (
@@ -214,7 +214,7 @@ async def find_teams(
 async def join_team(
     callback: types.CallbackQuery,
     team_request_repo: TeamRequestRepository,
-    bot: types.Bot,
+    bot: Bot,
 ) -> None:
     """Process seeker's request to join a specific team."""
     parts = callback.data.split(":")
@@ -263,7 +263,7 @@ async def join_team(
 async def host_join_decision(
     callback: types.CallbackQuery,
     team_request_repo: TeamRequestRepository,
-    bot: types.Bot,
+    bot: Bot,
 ) -> None:
     """Process host's decision to accept or reject a join request."""
     parts = callback.data.split(":")
