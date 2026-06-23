@@ -232,3 +232,15 @@ specs = await get_all_specializations()
 # To add a new one (persists to MongoDB, safe for Railway)
 await add_specialization("New Specialization", category="additional_programs")
 ```
+
+---
+
+## 11. Deployment Environment
+
+Whenever you debug, edit, or monitor a feature, consider that the deployment lives on Railway, not locally. Tailor your debugging, logging, and environment assumptions accordingly.
+
+---
+
+## 12. Version Control
+
+Always commit and push to GitHub with a proper, professional commit message whenever a new feature, edit, or any code change needs to be pushed.
