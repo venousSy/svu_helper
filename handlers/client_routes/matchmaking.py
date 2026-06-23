@@ -170,12 +170,9 @@ async def view_my_teams(
     await callback.answer()
 
 
-# --- Seeker Flow: Find Team ---
-
-@router.callback_query(TeamCallback.filter(F.action == "find"))
+@router.callback_query(F.data.startswith("team:find"))
 async def find_teams(
     callback: types.CallbackQuery,
-    callback_data: TeamCallback,
     team_request_repo: TeamRequestRepository,
 ) -> None:
     """Find open teams matching the seeker's courses."""
