@@ -33,6 +33,10 @@ class CreateTeamRequestService:
             raise ValueError("Invalid course name.")
         if required_members not in self.ALLOWED_MEMBER_COUNTS:
             raise ValueError("Required members must be 1, 2, or 3.")
+            
+        if await self._repo.has_open_team_for_course(host_id, course_name):
+            raise ValueError("already_host_for_course")
+            
         return await self._repo.create_team_request(
             host_id=host_id,
             host_name=host_name,
@@ -77,11 +81,13 @@ class JoinTeamService:
         team = await self._repo.get_by_id(request_id)
         if not team:
             raise ValueError("not_found")
-        if team["status"] != TeamRequestStatus.OPEN:
+        if team["status"] != TeamRequestStatus.OPEN.value:
             raise ValueError("closed")
         if team["host_id"] == seeker_id:
             raise ValueError("own_team")
-        if await self._repo.has_pending_join(request_id, seeker_id):
+        if seeker_id in team["current_members"]:
+            raise ValueError("already_member")
+        if await self._repo.has_join_request(request_id, seeker_id):
             raise ValueError("duplicate")
 
         await self._repo.add_join_request(request_id, seeker_id, seeker_name)
@@ -102,6 +108,10 @@ class HandleJoinDecisionService:
 
         Returns dict with 'team', 'is_full' keys.
         """
+        team_check = await self._repo.get_by_id(request_id)
+        if len(team_check["current_members"]) >= team_check["required_members"]:
+            raise ValueError("team_full")
+            
         await self._repo.update_join_request_status(
             request_id, seeker_id, MatchStatus.ACCEPTED
         )
@@ -113,6 +123,7 @@ class HandleJoinDecisionService:
 
         if is_full:
             await self._repo.close_request(request_id)
+            await self._repo.reject_all_pending_joins(request_id)
 
         return {"team": team, "is_full": is_full}
 

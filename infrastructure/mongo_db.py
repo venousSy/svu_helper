@@ -97,6 +97,12 @@ class Database:
         await cls.db.team_requests.create_index(
             [("course_name", 1), ("status", 1)]
         )
+        await cls.db.team_requests.create_index(
+            [("status", 1), ("course_name", 1), ("created_at", -1)]
+        )
+        await cls.db.team_requests.create_index(
+            [("host_id", 1), ("status", 1), ("created_at", -1)]
+        )
 
     @classmethod
     async def get_next_sequence(cls, sequence_name: str) -> int:

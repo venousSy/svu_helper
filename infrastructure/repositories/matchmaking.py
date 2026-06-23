@@ -106,17 +106,36 @@ class TeamRequestRepository:
         }).sort("created_at", -1)
         return await cursor.to_list(length=50)
 
-    async def has_pending_join(
+    async def has_join_request(
         self, request_id: int, seeker_id: int
     ) -> bool:
-        """Check if a seeker already has a pending join request."""
+        """Check if a seeker already has a join request regardless of status."""
         doc = await self._db.team_requests.find_one({
             "id": int(request_id),
             "join_requests": {
                 "$elemMatch": {
                     "seeker_id": seeker_id,
-                    "status": MatchStatus.PENDING,
                 }
             },
         })
         return doc is not None
+
+    async def has_open_team_for_course(
+        self, host_id: int, course_name: str
+    ) -> bool:
+        """Check if a host already has an open request for a specific course."""
+        doc = await self._db.team_requests.find_one({
+            "host_id": host_id,
+            "course_name": course_name,
+            "status": TeamRequestStatus.OPEN.value,
+        })
+        return doc is not None
+
+    async def reject_all_pending_joins(self, request_id: int) -> None:
+        """Auto-reject all pending joins for a team request."""
+        await self._db.team_requests.update_one(
+            {"id": int(request_id)},
+            {"$set": {"join_requests.$[elem].status": MatchStatus.REJECTED.value}},
+            array_filters=[{"elem.status": MatchStatus.PENDING.value}]
+        )
+        logger.info("Auto-rejected pending joins", request_id=request_id)

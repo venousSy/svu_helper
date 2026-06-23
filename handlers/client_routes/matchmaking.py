@@ -129,7 +129,11 @@ async def process_count_selection(
             reply_markup=KeyboardFactory.inline_cancel()
         )
     except ValueError as e:
-        await callback.answer(str(e), show_alert=True)
+        err_msg = str(e)
+        if err_msg == "already_host_for_course":
+            await callback.answer("لديك بالفعل طلب فريق مفتوح لهذه المادة.", show_alert=True)
+        else:
+            await callback.answer(err_msg, show_alert=True)
     await callback.answer()
 
 
@@ -138,6 +142,7 @@ async def process_count_selection(
 @router.callback_query(TeamCallback.filter(F.action == TeamAction.my_teams))
 async def view_my_teams(
     callback: types.CallbackQuery,
+    callback_data: TeamCallback,
     team_request_repo: TeamRequestRepository,
 ) -> None:
     """Show the host's open teams."""
@@ -170,6 +175,7 @@ async def view_my_teams(
 @router.callback_query(TeamCallback.filter(F.action == TeamAction.find))
 async def find_teams(
     callback: types.CallbackQuery,
+    callback_data: TeamCallback,
     team_request_repo: TeamRequestRepository,
 ) -> None:
     """Find open teams matching the seeker's courses."""
@@ -247,6 +253,8 @@ async def join_team(
             await callback.answer(MSG_TEAM_JOIN_OWN, show_alert=True)
         elif err_key == "closed":
             await callback.answer(MSG_TEAM_JOIN_CLOSED, show_alert=True)
+        elif err_key == "already_member":
+            await callback.answer("أنت عضو في هذا الفريق بالفعل.", show_alert=True)
         else:
             await callback.answer("Error processing join request.", show_alert=True)
 
@@ -266,16 +274,30 @@ async def host_join_decision(
     service = HandleJoinDecisionService(team_request_repo)
 
     if callback_data.action == TeamAction.accept_join:
-        res = await service.accept(request_id, seeker_id)
+        try:
+            res = await service.accept(request_id, seeker_id)
+        except ValueError as e:
+            if str(e) == "team_full":
+                await callback.answer("الفريق ممتلئ بالفعل!", show_alert=True)
+            else:
+                await callback.answer(str(e), show_alert=True)
+            return
+
         team = res["team"]
         is_full = res["is_full"]
+        
+        seeker_name = str(seeker_id)
+        for req in team["join_requests"]:
+            if req["seeker_id"] == seeker_id:
+                seeker_name = req.get("seeker_name") or str(seeker_id)
+                break
 
         # Notify host
         await callback.message.edit_text(
             MSG_TEAM_JOIN_ACCEPTED_HOST.format(
-                seeker_id,  # Would be better with name, but ID works for now
+                seeker_name,
                 request_id,
-                len(team["current_members"]) + 1,  # +1 because 'team' is before the append in memory, or re-fetch
+                len(team["current_members"]),
                 team["required_members"]
             )
         )
