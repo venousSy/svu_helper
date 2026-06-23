@@ -79,6 +79,7 @@ from utils.constants import (
     BTN_TEAM_JOIN,
     BTN_TEAM_ACCEPT_JOIN,
     BTN_TEAM_REJECT_JOIN,
+    BTN_TEAM_MY_COMPLETED,
 )
 from utils.formatters import format_datetime
 
@@ -135,6 +136,10 @@ class KeyboardFactory:
         builder.button(
             text=BTN_TEAM_MY_OPEN,
             callback_data=TeamCallback(action=TeamAction.my_teams).pack()
+        )
+        builder.button(
+            text=BTN_TEAM_MY_COMPLETED,
+            callback_data=TeamCallback(action=TeamAction.my_completed_teams).pack()
         )
         builder.button(
             text=BTN_BACK_ICON,

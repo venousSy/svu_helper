@@ -87,7 +87,6 @@ class DateConfirmCallback(CallbackData, prefix="dateconf"):
     action: DateConfirmAction
     date: str  # YYYY-MM-DD
 
-
 class TeamAction(str, Enum):
     create = "create"
     find = "find"
@@ -97,8 +96,8 @@ class TeamAction(str, Enum):
     accept_join = "acc_join"
     reject_join = "rej_join"
     my_teams = "my_teams"
+    my_completed_teams = "my_cmp_teams"
     back = "back"
-
 
 class TeamCallback(CallbackData, prefix="team"):
     """Callback for team matchmaking actions."""

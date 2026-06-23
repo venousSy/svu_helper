@@ -106,6 +106,14 @@ class TeamRequestRepository:
         }).sort("created_at", -1)
         return await cursor.to_list(length=50)
 
+    async def get_user_completed_requests(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get a user's completed/closed team requests (as host or member)."""
+        cursor = self._db.team_requests.find({
+            "$or": [{"host_id": user_id}, {"current_members": user_id}],
+            "status": TeamRequestStatus.CLOSED.value,
+        }).sort("created_at", -1)
+        return await cursor.to_list(length=50)
+
     async def has_join_request(
         self, request_id: int, seeker_id: int
     ) -> bool:

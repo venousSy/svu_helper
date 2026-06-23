@@ -39,6 +39,8 @@ from utils.constants import (
     MSG_TEAM_FULL,
     MSG_TEAM_NO_MY_TEAMS,
     MSG_TEAM_MY_HEADER,
+    MSG_TEAM_NO_COMPLETED_TEAMS,
+    MSG_TEAM_MY_COMPLETED_HEADER,
 )
 from utils.courses import get_all_courses
 
@@ -163,6 +165,33 @@ async def view_my_teams(
     # In a real app, this might be paginated.
     await callback.message.edit_text(
         text=MSG_TEAM_MY_HEADER,
+        reply_markup=KeyboardFactory.inline_cancel()
+    )
+    
+    for t in teams:
+        text = MSG_TEAM_CARD.format(
+            t["id"],
+            t.get("host_name", "Unknown"),
+            t["course_name"],
+            len(t["current_members"]),
+            t["required_members"],
+        )
+        await callback.message.answer(text)
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("team:my_cmp_teams"))
+async def view_my_completed_teams(
+    callback: types.CallbackQuery,
+    team_request_repo: TeamRequestRepository,
+) -> None:
+    """Show the user's completed teams (either as host or member)."""
+    teams = await team_request_repo.get_user_completed_requests(callback.from_user.id)
+    if not teams:
+        await callback.answer(MSG_TEAM_NO_COMPLETED_TEAMS, show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        text=MSG_TEAM_MY_COMPLETED_HEADER,
         reply_markup=KeyboardFactory.inline_cancel()
     )
     
