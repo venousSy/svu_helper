@@ -326,20 +326,30 @@ async def host_join_decision(
                 seeker_name = req.get("seeker_name") or str(seeker_id)
                 break
 
+        seeker_contact = f"<a href='tg://user?id={seeker_id}'>حساب الطالب</a>"
+        host_contact = f"<a href='tg://user?id={team['host_id']}'>حساب المنشئ</a>"
+
         # Notify host
         await callback.message.edit_text(
             MSG_TEAM_JOIN_ACCEPTED_HOST.format(
                 seeker_name,
                 request_id,
                 len(team["current_members"]),
-                team["required_members"]
-            )
+                team["required_members"],
+                seeker_contact
+            ),
+            parse_mode="HTML"
         )
         
         # Notify seeker
         await callback.bot.send_message(
             chat_id=seeker_id,
-            text=MSG_TEAM_JOIN_ACCEPTED_SEEKER.format(request_id, team["course_name"])
+            text=MSG_TEAM_JOIN_ACCEPTED_SEEKER.format(
+                request_id,
+                team["course_name"],
+                host_contact
+            ),
+            parse_mode="HTML"
         )
 
         if is_full:
