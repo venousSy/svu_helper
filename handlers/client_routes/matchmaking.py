@@ -81,14 +81,15 @@ async def start_team_creation(
     await callback.answer()
 
 
-@router.callback_query(TeamCallback.filter(F.action == "sel_course"), TeamStates.choosing_course)
+@router.callback_query(F.data.startswith("team:sel_course"), TeamStates.choosing_course)
 async def process_course_selection(
     callback: types.CallbackQuery,
-    callback_data: TeamCallback,
     state: FSMContext,
 ) -> None:
-    """Step 2: Save course, ask for member count."""
-    await state.update_data(course_name=callback_data.data)
+    """Save chosen course and ask for team member count."""
+    parts = callback.data.split(":")
+    course_name = parts[3] if len(parts) > 3 else ""
+    await state.update_data(course_name=course_name)
     await state.set_state(TeamStates.choosing_member_count)
     await callback.message.edit_text(
         text=MSG_TEAM_CHOOSE_COUNT,
@@ -97,15 +98,15 @@ async def process_course_selection(
     await callback.answer()
 
 
-@router.callback_query(TeamCallback.filter(F.action == "sel_count"), TeamStates.choosing_member_count)
+@router.callback_query(F.data.startswith("team:sel_count"), TeamStates.choosing_member_count)
 async def process_count_selection(
     callback: types.CallbackQuery,
-    callback_data: TeamCallback,
     state: FSMContext,
     team_request_repo: TeamRequestRepository,
 ) -> None:
-    """Step 3: Save member count and create the team request."""
-    count_str = callback_data.data
+    """Save count, finalize team creation, and save to DB."""
+    parts = callback.data.split(":")
+    count_str = parts[3] if len(parts) > 3 else ""
     required_members = int(count_str) if count_str.isdigit() else 3
 
     data = await state.get_data()
@@ -139,10 +140,9 @@ async def process_count_selection(
 
 # --- Host Flow: View My Open Teams ---
 
-@router.callback_query(TeamCallback.filter(F.action == "my_teams"))
+@router.callback_query(F.data.startswith("team:my_teams"))
 async def view_my_teams(
     callback: types.CallbackQuery,
-    callback_data: TeamCallback,
     team_request_repo: TeamRequestRepository,
 ) -> None:
     """Show the host's open teams."""
@@ -210,14 +210,15 @@ async def find_teams(
 
 # --- Seeker Flow: Join Team ---
 
-@router.callback_query(TeamCallback.filter(F.action == "join"))
+@router.callback_query(F.data.startswith("team:join"))
 async def join_team(
     callback: types.CallbackQuery,
-    callback_data: TeamCallback,
     team_request_repo: TeamRequestRepository,
+    bot: types.Bot,
 ) -> None:
-    """Seeker clicks to join a team."""
-    request_id = callback_data.id
+    """Process seeker's request to join a specific team."""
+    parts = callback.data.split(":")
+    request_id = int(parts[2]) if len(parts) > 2 else 0
     seeker = callback.from_user
 
     service = JoinTeamService(team_request_repo)
@@ -236,7 +237,7 @@ async def join_team(
             request_id,
             team["course_name"]
         )
-        await callback.bot.send_message(
+        await bot.send_message(
             chat_id=team["host_id"],
             text=host_msg,
             reply_markup=KeyboardFactory.team_host_join_decision(request_id, seeker.id)
@@ -258,19 +259,21 @@ async def join_team(
 
 # --- Host Flow: Decide Join Request ---
 
-@router.callback_query(TeamCallback.filter(F.action.in_(["acc_join", "rej_join"])))
+@router.callback_query(F.data.startswith("team:acc_join") | F.data.startswith("team:rej_join"))
 async def host_join_decision(
     callback: types.CallbackQuery,
-    callback_data: TeamCallback,
     team_request_repo: TeamRequestRepository,
+    bot: types.Bot,
 ) -> None:
-    """Host accepts or rejects a join request."""
-    request_id = callback_data.id
-    seeker_id = int(callback_data.data)
-
+    """Process host's decision to accept or reject a join request."""
+    parts = callback.data.split(":")
+    action = parts[1]
+    request_id = int(parts[2]) if len(parts) > 2 else 0
+    seeker_id = int(parts[3]) if len(parts) > 3 else 0
+    
     service = HandleJoinDecisionService(team_request_repo)
 
-    if callback_data.action == TeamAction.accept_join:
+    if action == "acc_join":
         try:
             res = await service.accept(request_id, seeker_id)
         except ValueError as e:
