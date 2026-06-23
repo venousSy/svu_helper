@@ -64,4 +64,5 @@ Thumbs.db
 .DS_Store
 
 # Debug/Scratch
-scratch/
+scratch/
+sessions/
