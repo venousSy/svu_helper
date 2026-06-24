@@ -252,3 +252,27 @@ Always commit and push to GitHub with a proper, professional commit message when
 When designing or developing a new feature, User Experience (UX) and User Interface (UI) must ALWAYS be a top priority.
 - You are required to focus deeply on UX and UI.
 - Never hesitate to ask the user clarifying questions regarding the UX or UI. You are encouraged to ask as many questions as needed, regardless of their length or complexity, to ensure the resulting interface and flow are optimal.
+
+---
+
+## 14. Asynchronous Non-Blocking Code
+
+Because this project uses `aiogram` and `motor`, all I/O-bound operations (network requests, file reading, database queries) MUST use asynchronous libraries (e.g., `aiohttp` instead of `requests`, `asyncio.sleep()` instead of `time.sleep()`). **Never block the event loop.**
+
+---
+
+## 15. Strict Type Hinting
+
+All new functions, services, handlers, and repository methods must include strict Python type hints for parameters and return types (e.g., `async def get_user(user_id: int) -> Optional[User]:`). This catches bugs early and serves as inline documentation.
+
+---
+
+## 16. Graceful Error Handling & UX Recovery
+
+Never let an unhandled exception leak stack traces to the user or fail silently. Always catch domain-level errors, log the technical details with `structlog`, and send a friendly, localized (Arabic) fallback message to the user so they know what happened.
+
+---
+
+## 17. Security & PII in Logs
+
+When logging with `structlog`, never log sensitive Personal Identifiable Information (PII) such as user phone numbers, passwords, or exact uploaded document contents. Log identifiers like `user_id` and `project_id` instead to trace actions safely.
