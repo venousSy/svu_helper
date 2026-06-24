@@ -203,7 +203,21 @@ async def view_my_completed_teams(
             len(t["current_members"]),
             t["required_members"],
         )
-        await callback.message.answer(text)
+        
+        # Add members contact links
+        contacts = []
+        host_link = f"<a href='tg://user?id={t['host_id']}'>{t.get('host_name', 'المنشئ')}</a> (المنشئ)"
+        contacts.append(host_link)
+        
+        for req in t.get("join_requests", []):
+            if req.get("seeker_id") in t.get("current_members", []):
+                s_name = req.get("seeker_name") or "عضو"
+                s_id = req.get("seeker_id")
+                contacts.append(f"<a href='tg://user?id={s_id}'>{s_name}</a>")
+                
+        text += "\n\n💬 <b>روابط التواصل مع الأعضاء:</b>\n" + "\n".join([f"▪️ {c}" for c in contacts])
+        
+        await callback.message.answer(text, parse_mode="HTML")
     await callback.answer()
 
 
