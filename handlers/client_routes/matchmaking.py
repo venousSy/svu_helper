@@ -23,7 +23,6 @@ from keyboards.factory import KeyboardFactory
 from states import TeamStates, ProfileStates
 from utils.constants import (
     MSG_TEAM_MENU_HEADER,
-    MSG_TEAM_CHOOSE_COURSE,
     MSG_TEAM_CHOOSE_COUNT,
     MSG_TEAM_CREATED,
     MSG_TEAM_NO_OPEN,
