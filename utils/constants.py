@@ -157,6 +157,11 @@ BTN_DONE = _msgs["buttons"]["done"]
 BTN_CONFIRM_DATE = _msgs["buttons"]["confirm_date"]
 BTN_REJECT_DATE = _msgs["buttons"]["reject_date"]
 BTN_URGENT_CASES = _msgs["buttons"]["urgent_cases"]
+BTN_TEAM_MANAGE = _msgs["buttons"]["manage_team_btn"]
+BTN_TEAM_CLOSE = _msgs["buttons"]["close_team_btn"]
+BTN_TEAM_DELETE = _msgs["buttons"]["delete_team_btn"]
+BTN_TEAM_WITHDRAW = _msgs["buttons"]["withdraw_btn"]
+BTN_TEAM_MY_PENDING_JOINS = _msgs["buttons"]["my_pending_joins_btn"]
 
 
 # --- CLIENT PROMPTS ---
@@ -352,6 +357,11 @@ BTN_DONE = _msgs["buttons"]["done"]
 BTN_CONFIRM_DATE = _msgs["buttons"]["confirm_date"]
 BTN_REJECT_DATE = _msgs["buttons"]["reject_date"]
 BTN_URGENT_CASES = _msgs["buttons"]["urgent_cases"]
+BTN_TEAM_MANAGE = _msgs["buttons"]["manage_team_btn"]
+BTN_TEAM_CLOSE = _msgs["buttons"]["close_team_btn"]
+BTN_TEAM_DELETE = _msgs["buttons"]["delete_team_btn"]
+BTN_TEAM_WITHDRAW = _msgs["buttons"]["withdraw_btn"]
+BTN_TEAM_MY_PENDING_JOINS = _msgs["buttons"]["my_pending_joins_btn"]
 
 
 # --- CLIENT PROMPTS ---
@@ -439,6 +449,14 @@ MSG_TEAM_NO_MY_TEAMS = _msgs["teams"]["no_my_teams"]
 MSG_TEAM_MY_HEADER = _msgs["teams"]["my_teams_header"]
 MSG_TEAM_NO_COMPLETED_TEAMS = _msgs["teams"]["no_completed_teams"]
 MSG_TEAM_MY_COMPLETED_HEADER = _msgs["teams"]["my_completed_teams_header"]
+
+MSG_TEAM_MANAGE_TEAM = _msgs["teams"]["manage_team"]
+MSG_TEAM_CLOSED_EARLY = _msgs["teams"]["team_closed_early"]
+MSG_TEAM_DELETED = _msgs["teams"]["team_deleted"]
+MSG_TEAM_JOIN_WITHDRAWN = _msgs["teams"]["join_withdrawn"]
+MSG_TEAM_NO_PENDING_JOINS = _msgs["teams"]["no_pending_joins"]
+MSG_TEAM_PENDING_JOINS_HEADER = _msgs["teams"]["pending_joins_header"]
+MSG_TEAM_ACTIVE_INVOLVEMENT_EXISTS = _msgs["teams"]["active_involvement_exists"]
 
 BTN_TEAM_CREATE = _msgs["teams"]["create_team"]
 BTN_TEAM_FIND = _msgs["teams"]["find_team"]

@@ -16,9 +16,10 @@ from application.matchmaking_service import (
     FindOpenTeamsService,
     JoinTeamService,
     HandleJoinDecisionService,
+    ManageTeamService,
 )
 from infrastructure.repositories import TeamRequestRepository, StudentRepository
-from keyboards.callbacks import MenuAction, MenuCallback, TeamAction, TeamCallback, ProfileCallback
+from keyboards.callbacks import MenuAction, MenuCallback, TeamAction, TeamCallback, ProfileCallback, PageAction, PageCallback
 from keyboards.factory import KeyboardFactory
 from states import TeamStates, ProfileStates
 from utils.constants import (
@@ -45,8 +46,15 @@ from utils.constants import (
     MSG_TEAM_ENTER_COURSE_NAME,
     MSG_TEAM_ENTER_DOCTOR_NAME,
     MSG_TEAM_CREATION_EXISTS,
+    MSG_TEAM_NO_PENDING_JOINS,
+    MSG_TEAM_PENDING_JOINS_HEADER,
+    MSG_TEAM_ACTIVE_INVOLVEMENT_EXISTS,
+    MSG_TEAM_CLOSED_EARLY,
+    MSG_TEAM_DELETED,
+    MSG_TEAM_JOIN_WITHDRAWN,
 )
 from utils.specializations import get_all_specializations
+from utils.pagination import paginate
 
 logger = structlog.get_logger(__name__)
 router = Router()
@@ -198,6 +206,8 @@ async def process_count_selection(
         err_msg = str(e)
         if err_msg == "global_team_exists":
             await callback.answer(MSG_TEAM_CREATION_EXISTS, show_alert=True)
+        elif err_msg == "active_involvement_exists":
+            await callback.answer(MSG_TEAM_ACTIVE_INVOLVEMENT_EXISTS, show_alert=True)
         else:
             await callback.answer(err_msg, show_alert=True)
     await callback.answer()
@@ -206,90 +216,109 @@ async def process_count_selection(
 # --- Host Flow: View My Open Teams ---
 
 @router.callback_query(F.data.startswith("team:my_teams"))
+@router.callback_query(PageCallback.filter(F.action == PageAction.my_teams))
 async def view_my_teams(
     callback: types.CallbackQuery,
     team_request_repo: TeamRequestRepository,
+    callback_data: Any = None,
 ) -> None:
-    """Show the host's open teams."""
+    """Show the host's open teams using pagination."""
     teams = await team_request_repo.get_user_open_requests(callback.from_user.id)
     if not teams:
-        await callback.answer(MSG_TEAM_NO_MY_TEAMS, show_alert=True)
+        if isinstance(callback_data, PageCallback):
+            await callback.message.edit_text(MSG_TEAM_NO_MY_TEAMS, reply_markup=KeyboardFactory.team_main_menu())
+        else:
+            await callback.answer(MSG_TEAM_NO_MY_TEAMS, show_alert=True)
         return
 
-    # For simplicity, we just send a message for each open team.
-    # In a real app, this might be paginated.
-    await callback.message.edit_text(
-        text=MSG_TEAM_MY_HEADER,
-        reply_markup=KeyboardFactory.inline_cancel()
-    )
+    page = callback_data.page if isinstance(callback_data, PageCallback) else 0
+    page_slice, total_pages, page = paginate(teams, page, 1)
+    t = page_slice[0]
     
-    for t in teams:
-        text = MSG_TEAM_CARD.format(
-            t["id"],
-            t.get("host_name", "Unknown"),
-            t["course_name"],
-            t.get("doctor_name", "غير محدد"),
-            len(t["current_members"]),
-            t["required_members"],
+    card_text = MSG_TEAM_CARD.format(
+        t["id"],
+        t.get("host_name", "Unknown"),
+        t["course_name"],
+        t.get("doctor_name", "غير محدد"),
+        len(t["current_members"]),
+        t["required_members"],
+    )
+
+    await callback.message.edit_text(
+        text=f"{MSG_TEAM_MY_HEADER}\n\n{card_text}",
+        reply_markup=KeyboardFactory.paginated_teams(
+            PageAction.my_teams, page, total_pages, request_id=t["id"], is_host=True
         )
-        await callback.message.answer(text)
-    await callback.answer()
+    )
+    if not isinstance(callback_data, PageCallback):
+        await callback.answer()
 
 @router.callback_query(F.data.startswith("team:my_cmp_teams"))
+@router.callback_query(PageCallback.filter(F.action == PageAction.my_cmp_teams))
 async def view_my_completed_teams(
     callback: types.CallbackQuery,
     team_request_repo: TeamRequestRepository,
+    callback_data: Any = None,
 ) -> None:
-    """Show the user's completed teams (either as host or member)."""
+    """Show the user's completed teams using pagination."""
     teams = await team_request_repo.get_user_completed_requests(callback.from_user.id)
     if not teams:
-        await callback.answer(MSG_TEAM_NO_COMPLETED_TEAMS, show_alert=True)
+        if isinstance(callback_data, PageCallback):
+            await callback.message.edit_text(MSG_TEAM_NO_COMPLETED_TEAMS, reply_markup=KeyboardFactory.team_main_menu())
+        else:
+            await callback.answer(MSG_TEAM_NO_COMPLETED_TEAMS, show_alert=True)
         return
 
-    await callback.message.edit_text(
-        text=MSG_TEAM_MY_COMPLETED_HEADER,
-        reply_markup=KeyboardFactory.inline_cancel()
+    page = callback_data.page if isinstance(callback_data, PageCallback) else 0
+    page_slice, total_pages, page = paginate(teams, page, 1)
+    t = page_slice[0]
+    
+    text = MSG_TEAM_CARD.format(
+        t["id"],
+        t.get("host_name", "Unknown"),
+        t["course_name"],
+        t.get("doctor_name", "غير محدد"),
+        len(t["current_members"]),
+        t["required_members"],
     )
     
-    for t in teams:
-        text = MSG_TEAM_CARD.format(
-            t["id"],
-            t.get("host_name", "Unknown"),
-            t["course_name"],
-            t.get("doctor_name", "غير محدد"),
-            len(t["current_members"]),
-            t["required_members"],
+    contacts = []
+    host_username = t.get('host_username')
+    host_link = f"<a href='tg://user?id={t['host_id']}'>{t.get('host_name', 'المنشئ')}</a> (المنشئ)"
+    if host_username:
+        host_link += f" - @{host_username}"
+    contacts.append(host_link)
+    
+    for req in t.get("join_requests", []):
+        if req.get("seeker_id") in t.get("current_members", []):
+            s_name = req.get("seeker_name") or "عضو"
+            s_id = req.get("seeker_id")
+            s_username = req.get("seeker_username")
+            member_link = f"<a href='tg://user?id={s_id}'>{s_name}</a>"
+            if s_username:
+                member_link += f" - @{s_username}"
+            contacts.append(member_link)
+            
+    text += "\n\n💬 <b>روابط التواصل مع الأعضاء:</b>\n" + "\n".join([f"▪️ {c}" for c in contacts])
+    
+    await callback.message.edit_text(
+        text=f"{MSG_TEAM_MY_COMPLETED_HEADER}\n\n{text}",
+        parse_mode="HTML",
+        reply_markup=KeyboardFactory.paginated_teams(
+            PageAction.my_cmp_teams, page, total_pages, request_id=t["id"], is_completed=True
         )
-        
-        # Add members contact links
-        contacts = []
-        host_username = t.get('host_username')
-        host_link = f"<a href='tg://user?id={t['host_id']}'>{t.get('host_name', 'المنشئ')}</a> (المنشئ)"
-        if host_username:
-            host_link += f" - @{host_username}"
-        contacts.append(host_link)
-        
-        for req in t.get("join_requests", []):
-            if req.get("seeker_id") in t.get("current_members", []):
-                s_name = req.get("seeker_name") or "عضو"
-                s_id = req.get("seeker_id")
-                s_username = req.get("seeker_username")
-                member_link = f"<a href='tg://user?id={s_id}'>{s_name}</a>"
-                if s_username:
-                    member_link += f" - @{s_username}"
-                contacts.append(member_link)
-                
-        text += "\n\n💬 <b>روابط التواصل مع الأعضاء:</b>\n" + "\n".join([f"▪️ {c}" for c in contacts])
-        
-        await callback.message.answer(text, parse_mode="HTML")
-    await callback.answer()
+    )
+    if not isinstance(callback_data, PageCallback):
+        await callback.answer()
 
 
 @router.callback_query(F.data.startswith("team:find"))
+@router.callback_query(PageCallback.filter(F.action == PageAction.find_teams))
 async def find_teams(
     callback: types.CallbackQuery,
     team_request_repo: TeamRequestRepository,
     student_repo: StudentRepository,
+    callback_data: Any = None,
 ) -> None:
     """Find open teams matching the seeker's specialization."""
     profile = await student_repo.get_profile(callback.from_user.id)
@@ -301,32 +330,73 @@ async def find_teams(
     open_teams = await service.execute(profile.specialization, callback.from_user.id)
 
     if not open_teams:
-        await callback.message.edit_text(
-            text=MSG_TEAM_NO_OPEN,
-            reply_markup=KeyboardFactory.inline_cancel()
-        )
-        await callback.answer()
+        if isinstance(callback_data, PageCallback):
+            await callback.message.edit_text(MSG_TEAM_NO_OPEN, reply_markup=KeyboardFactory.team_main_menu())
+        else:
+            await callback.answer(MSG_TEAM_NO_OPEN, show_alert=True)
         return
 
+    page = callback_data.page if isinstance(callback_data, PageCallback) else 0
+    page_slice, total_pages, page = paginate(open_teams, page, 1)
+    t = page_slice[0]
+    
+    card_text = MSG_TEAM_CARD.format(
+        t["id"],
+        t.get("host_name", "Unknown"),
+        t["course_name"],
+        t.get("doctor_name", "غير محدد"),
+        len(t["current_members"]),
+        t["required_members"],
+    )
+    
     await callback.message.edit_text(
-        text="🔍 فرق متاحة:",
-        reply_markup=KeyboardFactory.inline_cancel()
+        text=f"🔍 فرق متاحة:\n\n{card_text}",
+        reply_markup=KeyboardFactory.paginated_teams(
+            PageAction.find_teams, page, total_pages, request_id=t["id"]
+        )
+    )
+    if not isinstance(callback_data, PageCallback):
+        await callback.answer()
+
+@router.callback_query(F.data.startswith("team:my_pend_joins"))
+@router.callback_query(PageCallback.filter(F.action == PageAction.my_pending_joins))
+async def view_my_pending_joins(
+    callback: types.CallbackQuery,
+    team_request_repo: TeamRequestRepository,
+    callback_data: Any = None,
+) -> None:
+    """Show the seeker's pending join requests."""
+    service = FindOpenTeamsService(team_request_repo)
+    joins = await service.get_user_pending_joins(callback.from_user.id)
+    
+    if not joins:
+        if isinstance(callback_data, PageCallback):
+            await callback.message.edit_text(MSG_TEAM_NO_PENDING_JOINS, reply_markup=KeyboardFactory.team_main_menu())
+        else:
+            await callback.answer(MSG_TEAM_NO_PENDING_JOINS, show_alert=True)
+        return
+
+    page = callback_data.page if isinstance(callback_data, PageCallback) else 0
+    page_slice, total_pages, page = paginate(joins, page, 1)
+    t = page_slice[0]
+    
+    card_text = MSG_TEAM_CARD.format(
+        t["id"],
+        t.get("host_name", "Unknown"),
+        t["course_name"],
+        t.get("doctor_name", "غير محدد"),
+        len(t["current_members"]),
+        t["required_members"],
     )
 
-    for t in open_teams:
-        card_text = MSG_TEAM_CARD.format(
-            t["id"],
-            t.get("host_name", "Unknown"),
-            t["course_name"],
-            t.get("doctor_name", "غير محدد"),
-            len(t["current_members"]),
-            t["required_members"],
+    await callback.message.edit_text(
+        text=f"{MSG_TEAM_PENDING_JOINS_HEADER}\n\n{card_text}",
+        reply_markup=KeyboardFactory.paginated_teams(
+            PageAction.my_pending_joins, page, total_pages, request_id=t["id"], is_pending=True
         )
-        await callback.message.answer(
-            text=card_text,
-            reply_markup=KeyboardFactory.team_join_action(t["id"])
-        )
-    await callback.answer()
+    )
+    if not isinstance(callback_data, PageCallback):
+        await callback.answer()
 
 # --- Seeker Flow: Join Team ---
 
@@ -451,3 +521,48 @@ async def host_join_decision(
             text=MSG_TEAM_JOIN_REJECTED_SEEKER.format(request_id, team["course_name"])
         )
         await callback.answer()
+
+# --- Management Flow ---
+
+@router.callback_query(F.data.startswith("team:close"))
+async def host_close_team(
+    callback: types.CallbackQuery,
+    team_request_repo: TeamRequestRepository,
+) -> None:
+    """Host closes their team early."""
+    _, request_id, _ = parse_team_callback(callback.data)
+    service = ManageTeamService(team_request_repo)
+    try:
+        await service.close_team(request_id, callback.from_user.id)
+        await callback.message.edit_text(MSG_TEAM_CLOSED_EARLY)
+    except ValueError as e:
+        await callback.answer(str(e), show_alert=True)
+
+@router.callback_query(F.data.startswith("team:delete"))
+async def host_delete_team(
+    callback: types.CallbackQuery,
+    team_request_repo: TeamRequestRepository,
+) -> None:
+    """Host deletes their team request."""
+    _, request_id, _ = parse_team_callback(callback.data)
+    service = ManageTeamService(team_request_repo)
+    try:
+        await service.delete_team(request_id, callback.from_user.id)
+        await callback.message.edit_text(MSG_TEAM_DELETED)
+    except ValueError as e:
+        await callback.answer(str(e), show_alert=True)
+
+@router.callback_query(F.data.startswith("team:withdraw"))
+async def seeker_withdraw_join(
+    callback: types.CallbackQuery,
+    team_request_repo: TeamRequestRepository,
+) -> None:
+    """Seeker withdraws their join request."""
+    _, request_id, _ = parse_team_callback(callback.data)
+    service = ManageTeamService(team_request_repo)
+    try:
+        await service.withdraw_join(request_id, callback.from_user.id)
+        await callback.message.edit_text(MSG_TEAM_JOIN_WITHDRAWN)
+    except ValueError as e:
+        await callback.answer(str(e), show_alert=True)
+

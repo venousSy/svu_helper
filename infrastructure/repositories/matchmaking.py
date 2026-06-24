@@ -102,6 +102,29 @@ class TeamRequestRepository:
         )
         logger.info("Team request closed", request_id=request_id)
 
+    async def delete_request(self, request_id: int) -> None:
+        """Delete a team request completely."""
+        await self._db.team_requests.delete_one({"id": int(request_id)})
+        logger.info("Team request deleted", request_id=request_id)
+
+    async def atomic_accept_member(self, request_id: int, seeker_id: int) -> bool:
+        """Atomic operation to accept a member only if team is not full."""
+        result = await self._db.team_requests.update_one(
+            {
+                "id": int(request_id),
+                "$expr": {"$lt": [{"$size": "$current_members"}, "$required_members"]}
+            },
+            {
+                "$addToSet": {"current_members": seeker_id},
+                "$set": {"join_requests.$[elem].status": MatchStatus.ACCEPTED.value}
+            },
+            array_filters=[{"elem.seeker_id": seeker_id}]
+        )
+        if result.modified_count > 0:
+            logger.info("Member atomically accepted", request_id=request_id, seeker_id=seeker_id)
+            return True
+        return False
+
     async def get_user_open_requests(self, user_id: int) -> List[Dict[str, Any]]:
         """Get a host's own open team requests."""
         cursor = self._db.team_requests.find({
@@ -117,6 +140,27 @@ class TeamRequestRepository:
             "status": TeamRequestStatus.CLOSED.value,
         }).sort("created_at", -1)
         return await cursor.to_list(length=50)
+
+    async def get_user_pending_joins(self, seeker_id: int) -> List[Dict[str, Any]]:
+        """Get open team requests where this user has a pending join request."""
+        cursor = self._db.team_requests.find({
+            "status": TeamRequestStatus.OPEN.value,
+            "join_requests": {
+                "$elemMatch": {
+                    "seeker_id": seeker_id,
+                    "status": MatchStatus.PENDING.value
+                }
+            }
+        }).sort("created_at", -1)
+        return await cursor.to_list(length=50)
+
+    async def remove_join_request(self, request_id: int, seeker_id: int) -> None:
+        """Remove a join request from the list (withdraw)."""
+        await self._db.team_requests.update_one(
+            {"id": int(request_id)},
+            {"$pull": {"join_requests": {"seeker_id": seeker_id}}}
+        )
+        logger.info("Join request removed", request_id=request_id, seeker_id=seeker_id)
 
     async def has_join_request(
         self, request_id: int, seeker_id: int
@@ -151,3 +195,23 @@ class TeamRequestRepository:
             array_filters=[{"elem.status": MatchStatus.PENDING.value}]
         )
         logger.info("Auto-rejected pending joins", request_id=request_id)
+
+    async def has_active_involvement_for_course(self, user_id: int, course_name: str) -> bool:
+        """Check if user is host or accepted/pending in any open team for this course."""
+        doc = await self._db.team_requests.find_one({
+            "course_name": {"$regex": f"^{course_name}$", "$options": "i"},
+            "status": TeamRequestStatus.OPEN.value,
+            "$or": [
+                {"host_id": user_id},
+                {"current_members": user_id},
+                {
+                    "join_requests": {
+                        "$elemMatch": {
+                            "seeker_id": user_id,
+                            "status": {"$in": [MatchStatus.PENDING.value, MatchStatus.ACCEPTED.value]}
+                        }
+                    }
+                }
+            ]
+        })
+        return doc is not None

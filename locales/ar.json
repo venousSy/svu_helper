@@ -140,7 +140,12 @@
         "done": "انتهى",
         "confirm_date": "نعم التاريخ صحيح",
         "reject_date": "لا، قم باعادة ادخال التاريخ",
-        "urgent_cases": "🚨 الحالات الطارئة"
+        "urgent_cases": "🚨 الحالات الطارئة",
+        "manage_team_btn": "⚙️ إدارة",
+        "close_team_btn": "🔒 إغلاق",
+        "delete_team_btn": "🗑 حذف",
+        "withdraw_btn": "🔙 سحب الطلب",
+        "my_pending_joins_btn": "⏳ طلباتي المعلقة"
     },
     "client_prompts": {
         "ask_subject": "[1/4] 📚 ما **اسم المادة**؟\n\n_(أرسل /cancel في أي وقت للإلغاء)_",
@@ -241,6 +246,17 @@
         "team_btn": "🤝 فريق العمل",
         "my_completed_teams": "✅ فرقي المكتملة",
         "no_completed_teams": "📭 ليس لديك فرق مكتملة.",
-        "my_completed_teams_header": "✅ <b>فرقك المكتملة:</b>"
+        "my_completed_teams_header": "✅ <b>فرقك المكتملة:</b>",
+        "manage_team": "⚙️ إدارة الفريق",
+        "close_team": "🔒 إغلاق الفريق",
+        "delete_team": "🗑 حذف الفريق",
+        "withdraw_join": "🔙 سحب الطلب",
+        "team_closed_early": "✅ تم إغلاق الفريق يدوياً.",
+        "team_deleted": "✅ تم حذف الفريق.",
+        "join_withdrawn": "✅ تم سحب طلب الانضمام.",
+        "my_pending_joins": "⏳ طلباتي المعلقة",
+        "no_pending_joins": "📭 ليس لديك طلبات انضمام معلقة.",
+        "pending_joins_header": "⏳ <b>طلبات الانضمام المعلقة:</b>",
+        "active_involvement_exists": "⚠️ لا يمكنك الانضمام أو إنشاء فريق لهذه المادة لأن لديك ارتباط نشط بها (فريق خاص أو طلب معلق/مقبول)."
     }
 }

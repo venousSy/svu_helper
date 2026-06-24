@@ -45,6 +45,9 @@ class PageAction(str, Enum):
     ticket_messages = "ticket_messages"
     admin_tickets_page = "admin_tickets_page"
     find_teams = "find_teams"
+    my_teams = "my_teams"
+    my_cmp_teams = "my_cmp_teams"
+    my_pending_joins = "my_pending_joins"
 
 class TicketAction(str, Enum):
     open_new = "open_new"
@@ -97,6 +100,11 @@ class TeamAction(str, Enum):
     reject_join = "rej_join"
     my_teams = "my_teams"
     my_completed_teams = "my_cmp_teams"
+    my_pending_joins = "my_pend_joins"
+    manage = "manage"
+    close = "close"
+    delete = "delete"
+    withdraw = "withdraw"
     back = "back"
 
 class TeamCallback(CallbackData, prefix="team"):

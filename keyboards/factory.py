@@ -73,6 +73,11 @@ from utils.constants import (
     BTN_TEAM_ACCEPT_JOIN,
     BTN_TEAM_REJECT_JOIN,
     BTN_TEAM_MY_COMPLETED,
+    BTN_TEAM_MANAGE,
+    BTN_TEAM_CLOSE,
+    BTN_TEAM_DELETE,
+    BTN_TEAM_WITHDRAW,
+    BTN_TEAM_MY_PENDING_JOINS,
 )
 from utils.formatters import format_datetime
 
@@ -133,6 +138,10 @@ class KeyboardFactory:
         builder.button(
             text=BTN_TEAM_MY_COMPLETED,
             callback_data=TeamCallback(action=TeamAction.my_completed_teams).pack()
+        )
+        builder.button(
+            text=BTN_TEAM_MY_PENDING_JOINS,
+            callback_data=TeamCallback(action=TeamAction.my_pending_joins).pack()
         )
         builder.button(
             text=BTN_BACK_ICON,
@@ -200,6 +209,49 @@ class KeyboardFactory:
         )
         builder.adjust(2)
         return builder.as_markup()
+
+    @staticmethod
+    def paginated_teams(
+        action: PageAction, page: int, total_pages: int, request_id: int = 0, is_host: bool = False, is_pending: bool = False, is_completed: bool = False
+    ) -> types.InlineKeyboardMarkup:
+        from utils.pagination import build_nav_keyboard
+        builder = InlineKeyboardBuilder()
+        
+        # Add action buttons on top of pagination if a specific request_id is shown
+        if request_id > 0:
+            if is_host:
+                builder.row(
+                    types.InlineKeyboardButton(
+                        text=BTN_TEAM_CLOSE,
+                        callback_data=TeamCallback(action=TeamAction.close, id=request_id).pack()
+                    ),
+                    types.InlineKeyboardButton(
+                        text=BTN_TEAM_DELETE,
+                        callback_data=TeamCallback(action=TeamAction.delete, id=request_id).pack()
+                    )
+                )
+            elif is_pending:
+                builder.row(
+                    types.InlineKeyboardButton(
+                        text=BTN_TEAM_WITHDRAW,
+                        callback_data=TeamCallback(action=TeamAction.withdraw, id=request_id).pack()
+                    )
+                )
+            elif not is_completed:
+                builder.row(
+                    types.InlineKeyboardButton(
+                        text=BTN_TEAM_JOIN,
+                        callback_data=TeamCallback(action=TeamAction.join, id=request_id).pack()
+                    )
+                )
+
+        return build_nav_keyboard(
+            action=action,
+            page=page,
+            total_pages=total_pages,
+            builder=builder,
+            back_callback_data=MenuCallback(action=MenuAction.teams).pack()
+        )
 
     @staticmethod
     def offer_actions(proj_id: int) -> types.InlineKeyboardMarkup:
