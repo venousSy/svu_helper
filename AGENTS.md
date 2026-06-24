@@ -244,3 +244,11 @@ Whenever you debug, edit, or monitor a feature, consider that the deployment liv
 ## 12. Version Control
 
 Always commit and push to GitHub with a proper, professional commit message whenever a new feature, edit, or any code change needs to be pushed.
+
+---
+
+## 13. UX and UI Priority
+
+When designing or developing a new feature, User Experience (UX) and User Interface (UI) must ALWAYS be a top priority.
+- You are required to focus deeply on UX and UI.
+- Never hesitate to ask the user clarifying questions regarding the UX or UI. You are encouraged to ask as many questions as needed, regardless of their length or complexity, to ensure the resulting interface and flow are optimal.
