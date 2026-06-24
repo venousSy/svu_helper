@@ -17,10 +17,10 @@ from application.matchmaking_service import (
     JoinTeamService,
     HandleJoinDecisionService,
 )
-from infrastructure.repositories import TeamRequestRepository
-from keyboards.callbacks import MenuAction, MenuCallback, TeamAction, TeamCallback
+from infrastructure.repositories import TeamRequestRepository, StudentRepository
+from keyboards.callbacks import MenuAction, MenuCallback, TeamAction, TeamCallback, ProfileCallback
 from keyboards.factory import KeyboardFactory
-from states import TeamStates
+from states import TeamStates, ProfileStates
 from utils.constants import (
     MSG_TEAM_MENU_HEADER,
     MSG_TEAM_CHOOSE_COURSE,
@@ -41,8 +41,13 @@ from utils.constants import (
     MSG_TEAM_MY_HEADER,
     MSG_TEAM_NO_COMPLETED_TEAMS,
     MSG_TEAM_MY_COMPLETED_HEADER,
+    MSG_TEAM_CHOOSE_SPECIALIZATION,
+    MSG_TEAM_PROFILE_SAVED,
+    MSG_TEAM_ENTER_COURSE_NAME,
+    MSG_TEAM_ENTER_DOCTOR_NAME,
+    MSG_TEAM_CREATION_EXISTS,
 )
-from utils.courses import get_all_courses
+from utils.specializations import get_all_specializations
 
 logger = structlog.get_logger(__name__)
 router = Router()
@@ -64,12 +69,43 @@ def parse_team_callback(data_str: str) -> tuple[str, int, str]:
 async def on_team_menu(
     callback: types.CallbackQuery,
     state: FSMContext,
+    student_repo: StudentRepository,
 ) -> None:
     """Show the main matchmaking menu."""
     logger.info("Opened team menu", user_id=callback.from_user.id)
     await state.clear()
+    
+    # Check if student has a profile
+    profile = await student_repo.get_profile(callback.from_user.id)
+    if not profile:
+        specs = await get_all_specializations()
+        await state.set_state(ProfileStates.choosing_specialization)
+        await callback.message.edit_text(
+            text=MSG_TEAM_CHOOSE_SPECIALIZATION,
+            reply_markup=KeyboardFactory.specialization_selection(specs)
+        )
+        await callback.answer()
+        return
+
     await callback.message.edit_text(
         text=MSG_TEAM_MENU_HEADER,
+        reply_markup=KeyboardFactory.team_main_menu(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(ProfileCallback.filter(F.action == "select_spec"), ProfileStates.choosing_specialization)
+async def process_specialization_selection(
+    callback: types.CallbackQuery,
+    callback_data: ProfileCallback,
+    state: FSMContext,
+    student_repo: StudentRepository,
+) -> None:
+    """Save chosen specialization and show team menu."""
+    await student_repo.create_profile(callback.from_user.id, callback_data.spec)
+    await state.clear()
+    await callback.message.edit_text(
+        text=f"{MSG_TEAM_PROFILE_SAVED}\n\n{MSG_TEAM_MENU_HEADER}",
         reply_markup=KeyboardFactory.team_main_menu(),
     )
     await callback.answer()
@@ -82,31 +118,44 @@ async def start_team_creation(
     callback: types.CallbackQuery,
     state: FSMContext,
 ) -> None:
-    """Step 1: Ask host to choose a course."""
+    """Step 1: Ask host to type course name."""
     logger.info("Starting team creation", user_id=callback.from_user.id)
-    courses = get_all_courses()
-    await state.set_state(TeamStates.choosing_course)
+    await state.set_state(TeamStates.typing_course_name)
     await callback.message.edit_text(
-        text=MSG_TEAM_CHOOSE_COURSE,
-        reply_markup=KeyboardFactory.team_course_selection(courses),
+        text=MSG_TEAM_ENTER_COURSE_NAME,
+        reply_markup=KeyboardFactory.inline_cancel(),
     )
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("team:sel_course"), TeamStates.choosing_course)
-async def process_course_selection(
-    callback: types.CallbackQuery,
+@router.message(TeamStates.typing_course_name)
+async def process_course_name(
+    message: types.Message,
     state: FSMContext,
 ) -> None:
-    """Save chosen course and ask for team member count."""
-    _, _, course_name = parse_team_callback(callback.data)
+    """Save course name and ask for doctor name."""
+    course_name = message.text.strip()
     await state.update_data(course_name=course_name)
+    await state.set_state(TeamStates.typing_doctor_name)
+    await message.answer(
+        text=MSG_TEAM_ENTER_DOCTOR_NAME,
+        reply_markup=KeyboardFactory.inline_cancel(),
+    )
+
+
+@router.message(TeamStates.typing_doctor_name)
+async def process_doctor_name(
+    message: types.Message,
+    state: FSMContext,
+) -> None:
+    """Save doctor name and ask for team member count."""
+    doctor_name = message.text.strip()
+    await state.update_data(doctor_name=doctor_name)
     await state.set_state(TeamStates.choosing_member_count)
-    await callback.message.edit_text(
+    await message.answer(
         text=MSG_TEAM_CHOOSE_COUNT,
         reply_markup=KeyboardFactory.team_count_selection(),
     )
-    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("team:sel_count"), TeamStates.choosing_member_count)
@@ -114,6 +163,7 @@ async def process_count_selection(
     callback: types.CallbackQuery,
     state: FSMContext,
     team_request_repo: TeamRequestRepository,
+    student_repo: StudentRepository,
 ) -> None:
     """Save count, finalize team creation, and save to DB."""
     _, _, count_str = parse_team_callback(callback.data)
@@ -121,8 +171,12 @@ async def process_count_selection(
 
     data = await state.get_data()
     course_name = data["course_name"]
+    doctor_name = data["doctor_name"]
 
     user = callback.from_user
+    profile = await student_repo.get_profile(user.id)
+    specialization = profile.specialization if profile else "Unknown"
+
     service = CreateTeamRequestService(team_request_repo)
     
     try:
@@ -131,6 +185,8 @@ async def process_count_selection(
             host_name=user.full_name,
             host_username=user.username,
             course_name=course_name,
+            doctor_name=doctor_name,
+            specialization=specialization,
             required_members=required_members,
         )
         
@@ -141,8 +197,8 @@ async def process_count_selection(
         )
     except ValueError as e:
         err_msg = str(e)
-        if err_msg == "already_host_for_course":
-            await callback.answer("لديك بالفعل طلب فريق مفتوح لهذه المادة.", show_alert=True)
+        if err_msg == "global_team_exists":
+            await callback.answer(MSG_TEAM_CREATION_EXISTS, show_alert=True)
         else:
             await callback.answer(err_msg, show_alert=True)
     await callback.answer()
@@ -173,6 +229,7 @@ async def view_my_teams(
             t["id"],
             t.get("host_name", "Unknown"),
             t["course_name"],
+            t.get("doctor_name", "غير محدد"),
             len(t["current_members"]),
             t["required_members"],
         )
@@ -200,20 +257,28 @@ async def view_my_completed_teams(
             t["id"],
             t.get("host_name", "Unknown"),
             t["course_name"],
+            t.get("doctor_name", "غير محدد"),
             len(t["current_members"]),
             t["required_members"],
         )
         
         # Add members contact links
         contacts = []
+        host_username = t.get('host_username')
         host_link = f"<a href='tg://user?id={t['host_id']}'>{t.get('host_name', 'المنشئ')}</a> (المنشئ)"
+        if host_username:
+            host_link += f" - @{host_username}"
         contacts.append(host_link)
         
         for req in t.get("join_requests", []):
             if req.get("seeker_id") in t.get("current_members", []):
                 s_name = req.get("seeker_name") or "عضو"
                 s_id = req.get("seeker_id")
-                contacts.append(f"<a href='tg://user?id={s_id}'>{s_name}</a>")
+                s_username = req.get("seeker_username")
+                member_link = f"<a href='tg://user?id={s_id}'>{s_name}</a>"
+                if s_username:
+                    member_link += f" - @{s_username}"
+                contacts.append(member_link)
                 
         text += "\n\n💬 <b>روابط التواصل مع الأعضاء:</b>\n" + "\n".join([f"▪️ {c}" for c in contacts])
         
@@ -225,12 +290,16 @@ async def view_my_completed_teams(
 async def find_teams(
     callback: types.CallbackQuery,
     team_request_repo: TeamRequestRepository,
+    student_repo: StudentRepository,
 ) -> None:
-    """Find open teams matching the seeker's courses."""
-    courses = get_all_courses()
+    """Find open teams matching the seeker's specialization."""
+    profile = await student_repo.get_profile(callback.from_user.id)
+    if not profile:
+        await callback.answer("Profile not found. Please click Teams menu again.", show_alert=True)
+        return
     
     service = FindOpenTeamsService(team_request_repo)
-    open_teams = await service.execute(courses, callback.from_user.id)
+    open_teams = await service.execute(profile.specialization, callback.from_user.id)
 
     if not open_teams:
         await callback.message.edit_text(
@@ -250,6 +319,7 @@ async def find_teams(
             t["id"],
             t.get("host_name", "Unknown"),
             t["course_name"],
+            t.get("doctor_name", "غير محدد"),
             len(t["current_members"]),
             t["required_members"],
         )

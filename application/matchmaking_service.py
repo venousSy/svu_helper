@@ -26,6 +26,8 @@ class CreateTeamRequestService:
         host_name: Optional[str],
         host_username: Optional[str],
         course_name: str,
+        doctor_name: str,
+        specialization: str,
         required_members: int,
     ) -> int:
         """Validates inputs and persists the team request. Returns the new ID."""
@@ -34,14 +36,16 @@ class CreateTeamRequestService:
         if required_members not in self.ALLOWED_MEMBER_COUNTS:
             raise ValueError("Required members must be 1, 2, or 3.")
             
-        if await self._repo.has_open_team_for_course(host_id, course_name):
-            raise ValueError("already_host_for_course")
+        if await self._repo.has_global_open_team_for_subject(course_name, doctor_name):
+            raise ValueError("global_team_exists")
             
         return await self._repo.create_team_request(
             host_id=host_id,
             host_name=host_name,
             host_username=host_username,
             course_name=course_name,
+            doctor_name=doctor_name,
+            specialization=specialization,
             required_members=required_members,
         )
 
@@ -54,10 +58,10 @@ class FindOpenTeamsService:
 
     async def execute(
         self,
-        course_names: List[str],
+        specialization: str,
         seeker_id: int,
     ) -> List[Dict[str, Any]]:
-        return await self._repo.get_open_by_courses(course_names, seeker_id)
+        return await self._repo.get_open_teams_for_specialization(specialization, seeker_id)
 
 
 class JoinTeamService:

@@ -23,6 +23,10 @@ class TicketStates(StatesGroup):
     waiting_for_reply = State()      # User replying to existing ticket
 
 
+class ProfileStates(StatesGroup):
+    choosing_specialization = State()
+
 class TeamStates(StatesGroup):
-    choosing_course = State()        # Host selects course
+    typing_course_name = State()     # Host types course name
+    typing_doctor_name = State()     # Host types doctor name
     choosing_member_count = State()  # Host selects 1/2/3+

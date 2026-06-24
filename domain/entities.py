@@ -153,6 +153,17 @@ class JoinRequest(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
 
+class StudentProfile(BaseModel):
+    """A user profile containing their specialization."""
+    user_id: int
+    specialization: str
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
 class TeamRequest(BaseModel):
     """A team formation request posted by a host student."""
     id: int
@@ -160,6 +171,8 @@ class TeamRequest(BaseModel):
     host_name: Optional[str] = None
     host_username: Optional[str] = None
     course_name: str
+    doctor_name: str
+    specialization: str
     required_members: int
     current_members: List[int] = Field(default_factory=list)
     join_requests: List[JoinRequest] = Field(default_factory=list)

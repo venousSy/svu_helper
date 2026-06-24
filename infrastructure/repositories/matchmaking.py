@@ -19,6 +19,8 @@ class TeamRequestRepository:
         host_name: Optional[str],
         host_username: Optional[str],
         course_name: str,
+        doctor_name: str,
+        specialization: str,
         required_members: int,
     ) -> int:
         """Insert a new team request with auto-incremented ID."""
@@ -29,25 +31,27 @@ class TeamRequestRepository:
             host_name=host_name,
             host_username=host_username,
             course_name=course_name,
+            doctor_name=doctor_name,
+            specialization=specialization,
             required_members=required_members,
         )
         await self._db.team_requests.insert_one(team_request.model_dump())
-        logger.info("Team request created", request_id=request_id, host_id=host_id, course=course_name)
+        logger.info("Team request created", request_id=request_id, host_id=host_id, course=course_name, doctor=doctor_name)
         return request_id
 
     async def get_by_id(self, request_id: int) -> Optional[Dict[str, Any]]:
         """Fetch a single team request by ID."""
         return await self._db.team_requests.find_one({"id": int(request_id)})
 
-    async def get_open_by_courses(
+    async def get_open_teams_for_specialization(
         self,
-        course_names: List[str],
+        specialization: str,
         exclude_user_id: int,
     ) -> List[Dict[str, Any]]:
-        """Fetch open requests matching given courses, excluding the user's own."""
+        """Fetch open requests matching given specialization, excluding the user's own."""
         cursor = self._db.team_requests.find({
             "status": TeamRequestStatus.OPEN.value,
-            "course_name": {"$in": course_names},
+            "specialization": specialization,
             "host_id": {"$ne": exclude_user_id},
         }).sort("created_at", -1)
         return await cursor.to_list(length=100)
@@ -128,13 +132,13 @@ class TeamRequestRepository:
         })
         return doc is not None
 
-    async def has_open_team_for_course(
-        self, host_id: int, course_name: str
+    async def has_global_open_team_for_subject(
+        self, course_name: str, doctor_name: str
     ) -> bool:
-        """Check if a host already has an open request for a specific course."""
+        """Check if any host already has an open request for the specific course and doctor globally."""
         doc = await self._db.team_requests.find_one({
-            "host_id": host_id,
-            "course_name": course_name,
+            "course_name": {"$regex": f"^{course_name}$", "$options": "i"},
+            "doctor_name": {"$regex": f"^{doctor_name}$", "$options": "i"},
             "status": TeamRequestStatus.OPEN.value,
         })
         return doc is not None

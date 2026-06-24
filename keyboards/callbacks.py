@@ -104,3 +104,8 @@ class TeamCallback(CallbackData, prefix="team"):
     action: TeamAction
     id: int = 0
     data: str = ""
+
+class ProfileCallback(CallbackData, prefix="profile"):
+    """Callback for profile-related actions."""
+    action: str
+    spec: str = ""

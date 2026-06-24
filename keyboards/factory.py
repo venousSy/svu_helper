@@ -16,20 +16,13 @@ from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from keyboards.callbacks import (
-    MenuCallback,
-    PageCallback,
-    PaymentCallback,
-    ProjectCallback,
-    TicketCallback,
-    DateConfirmCallback,
-    TeamCallback,
-    MenuAction,
-    PageAction,
-    PaymentAction,
-    ProjectAction,
-    TicketAction,
-    DateConfirmAction,
-    TeamAction,
+    MenuCallback, MenuAction, 
+    ProjectCallback, ProjectAction,
+    PaymentCallback, PaymentAction,
+    PageCallback, PageAction,
+    TicketCallback, TicketAction,
+    DateConfirmCallback, DateConfirmAction,
+    TeamCallback, TeamAction, ProfileCallback
 )
 from utils.constants import (
     BTN_ACCEPT_OFFER,
@@ -149,18 +142,18 @@ class KeyboardFactory:
         return builder.as_markup()
 
     @staticmethod
-    def team_course_selection(courses: list[str]) -> types.InlineKeyboardMarkup:
+    def specialization_selection(specs: list[str]) -> types.InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
-        for course in courses:
+        for spec in specs:
             builder.button(
-                text=course,
-                callback_data=TeamCallback(action=TeamAction.select_course, data=course).pack()
+                text=spec,
+                callback_data=ProfileCallback(action="select_spec", spec=spec[:30]).pack()  # Limiting length just in case
             )
         builder.button(
             text=BTN_BACK_ICON,
-            callback_data=MenuCallback(action=MenuAction.teams).pack()
+            callback_data=MenuCallback(action=MenuAction.cancel_flow).pack()
         )
-        builder.adjust(3)
+        builder.adjust(1)
         return builder.as_markup()
 
     @staticmethod
