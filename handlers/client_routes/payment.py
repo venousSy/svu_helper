@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
 
 from application.project_service import GetStudentProjectDetailService
-from application.payment_service import SubmitPaymentService
+from application.payment_service import SubmitPaymentService, SubmitPaymentResult
 from application.audit_service import AuditService
 from domain.enums import AuditEventType
 from config import settings
