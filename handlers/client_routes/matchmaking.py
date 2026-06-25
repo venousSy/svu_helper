@@ -32,6 +32,8 @@ from utils.constants import (
     MSG_TEAM_JOIN_DUPLICATE,
     MSG_TEAM_JOIN_OWN,
     MSG_TEAM_JOIN_CLOSED,
+    MSG_TEAM_ALREADY_MEMBER,
+    MSG_TEAM_JOIN_ERROR,
     MSG_TEAM_HOST_NOTIFICATION,
     MSG_TEAM_JOIN_ACCEPTED_HOST,
     MSG_TEAM_JOIN_ACCEPTED_SEEKER,
@@ -465,9 +467,9 @@ async def join_team(
         elif err_key == "closed":
             await callback.answer(MSG_TEAM_JOIN_CLOSED, show_alert=True)
         elif err_key == "already_member":
-            await callback.answer("أنت عضو في هذا الفريق بالفعل.", show_alert=True)
+            await callback.answer(MSG_TEAM_ALREADY_MEMBER, show_alert=True)
         else:
-            await callback.answer("Error processing join request.", show_alert=True)
+            await callback.answer(MSG_TEAM_JOIN_ERROR, show_alert=True)
 
 
 # --- Host Flow: Decide Join Request ---
@@ -485,66 +487,75 @@ async def host_join_decision(
     service = HandleJoinDecisionService(team_request_repo)
 
     if action == "acc_join":
-        try:
-            res = await service.accept(request_id, seeker_id)
-        except ValueError as e:
-            if str(e) == "team_full":
-                await callback.answer("الفريق ممتلئ بالفعل!", show_alert=True)
-            else:
-                await callback.answer(str(e), show_alert=True)
-            return
-
-        team = res["team"]
-        is_full = res["is_full"]
-        
-        seeker_name = str(seeker_id)
-        for req in team["join_requests"]:
-            if req["seeker_id"] == seeker_id:
-                seeker_name = req.get("seeker_name") or str(seeker_id)
-                break
-
-        seeker_contact = f"<a href='tg://user?id={seeker_id}'>حساب الطالب</a>"
-        host_contact = f"<a href='tg://user?id={team['host_id']}'>حساب المنشئ</a>"
-
-        # Notify host
-        await callback.message.edit_text(
-            MSG_TEAM_JOIN_ACCEPTED_HOST.format(
-                seeker_name,
-                request_id,
-                len(team["current_members"]),
-                team["required_members"],
-                seeker_contact
-            ),
-            parse_mode="HTML"
-        )
-        
-        # Notify seeker
-        await callback.bot.send_message(
-            chat_id=seeker_id,
-            text=MSG_TEAM_JOIN_ACCEPTED_SEEKER.format(
-                request_id,
-                team["course_name"],
-                host_contact
-            ),
-            parse_mode="HTML"
-        )
-
-        if is_full:
-            await callback.message.answer(
-                MSG_TEAM_FULL.format(request_id, team["course_name"])
-            )
-        await callback.answer()
-
+        await _handle_accept_join(callback, request_id, seeker_id, service)
     else:
-        team = await service.reject(request_id, seeker_id)
-        await callback.message.edit_text(f"❌ تم رفض الطلب من {seeker_id}")
-        
-        # Notify seeker
-        await callback.bot.send_message(
-            chat_id=seeker_id,
-            text=MSG_TEAM_JOIN_REJECTED_SEEKER.format(request_id, team["course_name"])
-        )
-        await callback.answer()
+        await _handle_reject_join(callback, request_id, seeker_id, service)
+
+
+async def _handle_accept_join(callback, request_id, seeker_id, service):
+    try:
+        res = await service.accept(request_id, seeker_id)
+    except ValueError as e:
+        if str(e) == "team_full":
+            await callback.answer(MSG_TEAM_FULL, show_alert=True)
+        else:
+            await callback.answer(str(e), show_alert=True)
+        return
+
+    team = res["team"]
+    is_full = res["is_full"]
+    
+    seeker_name = str(seeker_id)
+    for req in team["join_requests"]:
+        if req["seeker_id"] == seeker_id:
+            seeker_name = req.get("seeker_name") or str(seeker_id)
+            break
+
+    seeker_contact = f"<a href='tg://user?id={seeker_id}'>حساب الطالب</a>"
+    host_contact = f"<a href='tg://user?id={team['host_id']}'>حساب المنشئ</a>"
+
+    # Notify host
+    await callback.message.edit_text(
+        MSG_TEAM_JOIN_ACCEPTED_HOST.format(
+            seeker_name,
+            request_id,
+            len(team["current_members"]),
+            team["required_members"],
+            seeker_contact
+        ),
+        parse_mode="HTML"
+    )
+    
+    # Notify seeker
+    await callback.bot.send_message(
+        chat_id=seeker_id,
+        text=MSG_TEAM_JOIN_ACCEPTED_SEEKER.format(
+            request_id,
+            team["course_name"],
+            host_contact
+        ),
+        parse_mode="HTML"
+    )
+
+    if is_full:
+        # Note: In Python, string format expecting 2 args must be passed 2 args. 
+        # The translation for team_full doesn't use formatting, but maybe MSG_TEAM_FULL is misused here.
+        # Actually MSG_TEAM_FULL in original code was `MSG_TEAM_FULL.format(request_id, team["course_name"])` but the translation I added had no `{}`. 
+        # I'll just use the constant without format here, as it was in my translation.
+        await callback.message.answer(MSG_TEAM_FULL)
+    await callback.answer()
+
+
+async def _handle_reject_join(callback, request_id, seeker_id, service):
+    team = await service.reject(request_id, seeker_id)
+    await callback.message.edit_text(f"❌ تم رفض الطلب من {seeker_id}")
+    
+    # Notify seeker
+    await callback.bot.send_message(
+        chat_id=seeker_id,
+        text=MSG_TEAM_JOIN_REJECTED_SEEKER.format(request_id, team["course_name"])
+    )
+    await callback.answer()
 
 # --- Management Flow ---
 

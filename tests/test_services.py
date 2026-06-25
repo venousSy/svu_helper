@@ -21,11 +21,10 @@ from application.payment_service import (
     SubmitPaymentService,
 )
 from application.project_service import (
+    GetStudentProjectDetailService,
     AddProjectService,
-    GetOfferDetailService,
-    GetStudentOffersService,
     GetStudentProjectsService,
-    VerifyProjectOwnershipService,
+    GetStudentOffersService,
 )
 from domain.enums import PaymentStatus, ProjectStatus
 
@@ -95,32 +94,30 @@ async def test_add_project_service_persists_on_valid_input(mock_project_repo):
     mock_project_repo.add_project.assert_called_once()
 
 
-# ---------------------------------------------------------------------------
-# VerifyProjectOwnershipService
+# GetStudentProjectDetailService
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_verify_ownership_raises_for_wrong_user(mock_project_repo):
-    mock_project_repo.get_project_by_id.return_value = {"id": 1, "user_id": 99}
-    service = VerifyProjectOwnershipService(mock_project_repo)
-    with pytest.raises(PermissionError):
-        await service.execute(proj_id=1, user_id=1)  # user_id 1 ≠ owner 99
-
+async def test_get_student_project_detail_success(mock_project_repo):
+    """Should return project if user_id matches."""
+    mock_project_repo.get_project_by_id.return_value = {"id": 1, "user_id": 5}
+    service = GetStudentProjectDetailService(mock_project_repo)
+    result = await service.execute(1, 5)
+    assert result["id"] == 1
 
 @pytest.mark.asyncio
-async def test_verify_ownership_raises_when_not_found(mock_project_repo):
+async def test_get_student_project_detail_not_found(mock_project_repo):
     mock_project_repo.get_project_by_id.return_value = None
-    service = VerifyProjectOwnershipService(mock_project_repo)
+    service = GetStudentProjectDetailService(mock_project_repo)
     with pytest.raises(PermissionError):
-        await service.execute(proj_id=1, user_id=1)
-
+        await service.execute(1, 5)
 
 @pytest.mark.asyncio
-async def test_verify_ownership_passes_for_correct_user(mock_project_repo):
-    project = {"id": 1, "user_id": 5}
-    mock_project_repo.get_project_by_id.return_value = project
-    result = await VerifyProjectOwnershipService(mock_project_repo).execute(1, 5)
-    assert result == project
+async def test_get_student_project_detail_wrong_user(mock_project_repo):
+    """Should raise PermissionError if user_id does not match."""
+    mock_project_repo.get_project_by_id.return_value = {"id": 1, "user_id": 99}
+    with pytest.raises(PermissionError):
+        await GetStudentProjectDetailService(mock_project_repo).execute(1, 5)
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
 
-from application.project_service import VerifyProjectOwnershipService
+from application.project_service import GetStudentProjectDetailService
 from application.payment_service import SubmitPaymentService
 from application.audit_service import AuditService
 from domain.enums import AuditEventType
@@ -48,7 +48,7 @@ async def student_accept_offer(
     """Student accepts an offer – validates ownership then enters payment FSM."""
     proj_id = callback_data.id
     try:
-        await VerifyProjectOwnershipService(project_repo).execute(proj_id, callback.from_user.id)
+        await GetStudentProjectDetailService(project_repo).execute(proj_id, callback.from_user.id)
     except PermissionError as e:
         return await callback.answer(f"⚠️ {e}", show_alert=True)
 
@@ -118,27 +118,7 @@ async def process_payment_proof(
         )
         await message.answer(MSG_RECEIPT_RECEIVED, parse_mode="Markdown")
 
-        for admin_id in settings.admin_ids:
-            try:
-                await bot.send_message(
-                    admin_id,
-                    MSG_NEW_PAYMENT_ADMIN_ALERT.format(result.payment_id, result.proj_id),
-                    parse_mode="Markdown",
-                )
-                if result.file_type == "photo":
-                    await bot.send_photo(
-                        admin_id, result.file_id,
-                        caption=f"verify_pay_{result.payment_id}",
-                        reply_markup=KeyboardFactory.payment_verify(result.payment_id),
-                    )
-                else:
-                    await bot.send_document(
-                        admin_id, result.file_id,
-                        caption=f"verify_pay_{result.payment_id}",
-                        reply_markup=KeyboardFactory.payment_verify(result.payment_id),
-                    )
-            except TelegramAPIError as e:
-                logger.error("Failed to relay receipt to admin", payment_id=result.payment_id, admin_id=admin_id, error=str(e))
+        await _notify_admins_of_payment(bot, result)
                 
         await AuditService(audit_repo).log_event(
             user_id=message.from_user.id,
@@ -154,3 +134,28 @@ async def process_payment_proof(
         logger.error("Payment upload failed", error=str(e), exc_info=True)
         await message.answer(MSG_PAYMENT_UPLOAD_ERROR)
         await state.clear()
+
+
+async def _notify_admins_of_payment(bot, result: SubmitPaymentResult) -> None:
+    """Helper to relay the new payment receipt to all admins."""
+    for admin_id in settings.admin_ids:
+        try:
+            await bot.send_message(
+                admin_id,
+                MSG_NEW_PAYMENT_ADMIN_ALERT.format(result.payment_id, result.proj_id),
+                parse_mode="Markdown",
+            )
+            if result.file_type == "photo":
+                await bot.send_photo(
+                    admin_id, result.file_id,
+                    caption=f"verify_pay_{result.payment_id}",
+                    reply_markup=KeyboardFactory.payment_verify(result.payment_id),
+                )
+            else:
+                await bot.send_document(
+                    admin_id, result.file_id,
+                    caption=f"verify_pay_{result.payment_id}",
+                    reply_markup=KeyboardFactory.payment_verify(result.payment_id),
+                )
+        except TelegramAPIError as e:
+            logger.error("Failed to relay receipt to admin", payment_id=result.payment_id, admin_id=admin_id, error=str(e))

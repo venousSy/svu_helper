@@ -1,10 +1,9 @@
 # Application layer – use-cases and service orchestration.
 from application.project_service import (
     AddProjectService,
-    GetOfferDetailService,
     GetStudentOffersService,
+    GetStudentProjectDetailService,
     GetStudentProjectsService,
-    VerifyProjectOwnershipService,
 )
 from application.payment_service import (
     ConfirmPaymentService,
@@ -43,10 +42,9 @@ from application.matchmaking_service import (
 __all__ = [
     # project
     "AddProjectService",
-    "VerifyProjectOwnershipService",
+    "GetStudentProjectDetailService",
     "GetStudentProjectsService",
     "GetStudentOffersService",
-    "GetOfferDetailService",
     # payment
     "SubmitPaymentService",
     "SubmitPaymentResult",

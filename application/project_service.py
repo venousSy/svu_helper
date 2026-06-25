@@ -5,10 +5,9 @@ All use-cases that a student triggers around their project lifecycle.
 
 Services here:
   AddProjectService         – submit a new project (existing)
-  VerifyProjectOwnershipService – auth-check before offer acceptance
+  GetStudentProjectDetailService - fetches a project and validates ownership
   GetStudentProjectsService – list all non-offered projects
   GetStudentOffersService   – list OFFERED projects
-  GetOfferDetailService     – fetch + validate a single offer detail
 """
 from typing import Any, Dict, List, Optional
 
@@ -71,12 +70,12 @@ class AddProjectService:
 
 
 # ---------------------------------------------------------------------------
-# VerifyProjectOwnershipService
+# GetStudentProjectDetailService
 # ---------------------------------------------------------------------------
 
-class VerifyProjectOwnershipService:
+class GetStudentProjectDetailService:
     """
-    Confirms that a project exists and belongs to the requesting user.
+    Fetches a specific project and validates that the requesting student owns it.
 
     Raises:
         PermissionError: if not found or user_id doesn't match.
@@ -137,22 +136,4 @@ class GetStudentOffersService:
 
 
 # ---------------------------------------------------------------------------
-# GetOfferDetailService
-# ---------------------------------------------------------------------------
 
-class GetOfferDetailService:
-    """
-    Fetches a specific project, validates the requester owns it.
-
-    Raises:
-        PermissionError: if not found or user_id doesn't match.
-    """
-
-    def __init__(self, project_repo: ProjectRepository) -> None:
-        self._repo = project_repo
-
-    async def execute(self, proj_id: int, user_id: int) -> Dict[str, Any]:
-        project = await self._repo.get_project_by_id(proj_id)
-        if not project or project["user_id"] != user_id:
-            raise PermissionError(MSG_PERMISSION_DENIED)
-        return project

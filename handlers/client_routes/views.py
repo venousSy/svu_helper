@@ -2,7 +2,7 @@ import structlog
 from aiogram import F, Router, types
 from aiogram.filters import Command
 
-from application.project_service import GetOfferDetailService, GetStudentOffersService, GetStudentProjectsService
+from application.project_service import GetStudentProjectDetailService, GetStudentOffersService, GetStudentProjectsService
 from infrastructure.repositories import ProjectRepository
 from keyboards.callbacks import MenuCallback, PageCallback, ProjectCallback, ProjectAction, PageAction, MenuAction
 from keyboards.factory import KeyboardFactory
@@ -137,7 +137,7 @@ async def show_specific_offer(
 ):
     proj_id = callback_data.id
     try:
-        res = await GetOfferDetailService(project_repo).execute(proj_id, callback.from_user.id)
+        res = await GetStudentProjectDetailService(project_repo).execute(proj_id, callback.from_user.id)
     except PermissionError as e:
         return await callback.answer(f"⚠️ {e}", show_alert=True)
 

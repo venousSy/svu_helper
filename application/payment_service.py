@@ -37,18 +37,10 @@ class PaymentActionResult:
 
 
 # ---------------------------------------------------------------------------
-# SubmitPaymentService
+# BasePaymentService
 # ---------------------------------------------------------------------------
 
-class SubmitPaymentService:
-    """
-    Persists a payment receipt and advances the project status to
-    AWAITING_VERIFICATION.
-
-    Raises:
-        ValueError: if proj_id is missing from FSM data.
-    """
-
+class BasePaymentService:
     def __init__(
         self,
         project_repo: ProjectRepository,
@@ -56,6 +48,19 @@ class SubmitPaymentService:
     ) -> None:
         self._project_repo = project_repo
         self._payment_repo = payment_repo
+
+# ---------------------------------------------------------------------------
+# SubmitPaymentService
+# ---------------------------------------------------------------------------
+
+class SubmitPaymentService(BasePaymentService):
+    """
+    Persists a payment receipt and advances the project status to
+    AWAITING_VERIFICATION.
+
+    Raises:
+        ValueError: if proj_id is missing from FSM data.
+    """
 
     async def execute(
         self,
@@ -84,21 +89,13 @@ class SubmitPaymentService:
 # ConfirmPaymentService
 # ---------------------------------------------------------------------------
 
-class ConfirmPaymentService:
+class ConfirmPaymentService(BasePaymentService):
     """
     Marks a payment Accepted and advances the project to Accepted (ongoing).
 
     Raises:
         ValueError: if payment_id not found.
     """
-
-    def __init__(
-        self,
-        project_repo: ProjectRepository,
-        payment_repo: PaymentRepository,
-    ) -> None:
-        self._project_repo = project_repo
-        self._payment_repo = payment_repo
 
     async def execute(self, payment_id: int) -> PaymentActionResult:
         payment = await self._payment_repo.get_payment(payment_id)
@@ -122,7 +119,7 @@ class ConfirmPaymentService:
 # RejectPaymentService
 # ---------------------------------------------------------------------------
 
-class RejectPaymentService:
+class RejectPaymentService(BasePaymentService):
     """
     Marks a payment Rejected and resets the project back to OFFERED so the
     student can upload a correct receipt.
@@ -130,14 +127,6 @@ class RejectPaymentService:
     Raises:
         ValueError: if payment_id not found.
     """
-
-    def __init__(
-        self,
-        project_repo: ProjectRepository,
-        payment_repo: PaymentRepository,
-    ) -> None:
-        self._project_repo = project_repo
-        self._payment_repo = payment_repo
 
     async def execute(self, payment_id: int) -> PaymentActionResult:
         payment = await self._payment_repo.get_payment(payment_id)

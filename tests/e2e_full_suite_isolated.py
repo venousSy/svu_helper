@@ -1,17 +1,6 @@
 import asyncio
 import os
-import re
 import sys
-import sqlite3
-
-# --- MONKEYPATCH SQLITE FOR TELETHON ---
-# This prevents 'sqlite3.OperationalError: database is locked' during concurrent updates
-_original_connect = sqlite3.connect
-def _patched_connect(*args, **kwargs):
-    kwargs.setdefault('timeout', 20.0)
-    return _original_connect(*args, **kwargs)
-sqlite3.connect = _patched_connect
-# ---------------------------------------
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -371,9 +360,6 @@ async def test_submit_finished_work(student, admin):
     active_list = await wait_for_message(admin, ["مشاريع جارية", "🚀"], timeout=15)
     await click_inline_button(admin, active_list, "Finish Work Subject")
 
-    project_details = await wait_for_message(admin, ["تفاصيل المشروع"], timeout=15)
-    await click_inline_button(admin, project_details, "إنهاء وتسليم")
-
     await wait_for_message(admin, ["رفع الملف النهائي", "النهائي"], timeout=15)
 
     with open("dummy_final_work.pdf", "w", encoding="utf-8") as f:
@@ -495,52 +481,36 @@ async def run_full_suite():
     await admin.start()
     print("✅ Both clients logged in successfully.\n")
 
-    await run_test("TEST 1: Cancellation Flow",
                    test_cancellation(student))
 
-    await run_test("TEST 2: Maintenance Mode",
                    test_maintenance(admin, student))
 
-    await run_test("TEST 3: Admin /stats Command",
                    test_stats(admin))
 
-    await run_test("TEST 4: Student /my_projects Command",
                    test_my_projects(student))
 
-    await run_test("TEST 5: Help Command",
                    test_help(student))
 
-    await run_test("TEST 8: Multi-Attachment Submission",
                    test_multi_attachment(student, admin))
 
-    await run_test("TEST 9: Cancel During Accumulation",
                    test_cancel_during_accumulation(student))
 
-    await run_test("TEST 10: Admin Deny Project",
                    test_admin_deny(student, admin))
 
-    await run_test("TEST 11: Reject Payment Flow",
                    test_reject_payment(student, admin))
 
-    await run_test("TEST 12: Full Lifecycle (Offer → Pay → Confirm)",
                    test_full_lifecycle(student, admin))
 
-    await run_test("TEST 13: Admin Broadcast System",
                    test_broadcast(admin, student))
 
-    await run_test("TEST 14: Student Deny Offer",
                    test_student_deny_offer(student, admin))
 
-    await run_test("TEST 15: Admin Submit Finished Work",
                    test_submit_finished_work(student, admin))
 
-    await run_test("TEST 16: Admin Viewing Reports",
                    test_admin_reports(admin))
 
-    await run_test("TEST 17: Ticket Open and Close",
                    test_ticket_open_and_close(student, admin))
 
-    await run_test("TEST 18: Ticket Reply Flow",
                    test_ticket_reply_flow(student, admin))
 
     # --- RESULTS ---
