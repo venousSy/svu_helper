@@ -212,36 +212,36 @@ class KeyboardFactory:
 
     @staticmethod
     def paginated_teams(
-        action: PageAction, page: int, total_pages: int, team_ids: list[int] = None, is_host: bool = False, is_pending: bool = False, is_completed: bool = False
+        action: PageAction, page: int, total_pages: int, team_info: list[tuple[int, str]] = None, is_host: bool = False, is_pending: bool = False, is_completed: bool = False
     ) -> types.InlineKeyboardMarkup:
         from utils.pagination import build_nav_keyboard
         builder = InlineKeyboardBuilder()
         
-        team_ids = team_ids or []
+        team_info = team_info or []
         # Add action buttons on top of pagination for each team
-        for req_id in team_ids:
+        for req_id, course_name in team_info:
             if is_host:
                 builder.row(
                     types.InlineKeyboardButton(
-                        text=f"{BTN_TEAM_CLOSE} #{req_id}",
+                        text=f"{BTN_TEAM_CLOSE} #{req_id} - {course_name}",
                         callback_data=TeamCallback(action=TeamAction.close, id=req_id).pack()
                     ),
                     types.InlineKeyboardButton(
-                        text=f"{BTN_TEAM_DELETE} #{req_id}",
+                        text=f"{BTN_TEAM_DELETE} #{req_id} - {course_name}",
                         callback_data=TeamCallback(action=TeamAction.delete, id=req_id).pack()
                     )
                 )
             elif is_pending:
                 builder.row(
                     types.InlineKeyboardButton(
-                        text=f"{BTN_TEAM_WITHDRAW} #{req_id}",
+                        text=f"{BTN_TEAM_WITHDRAW} #{req_id} - {course_name}",
                         callback_data=TeamCallback(action=TeamAction.withdraw, id=req_id).pack()
                     )
                 )
             elif not is_completed:
                 builder.row(
                     types.InlineKeyboardButton(
-                        text=f"{BTN_TEAM_JOIN} #{req_id}",
+                        text=f"{BTN_TEAM_JOIN} #{req_id} - {course_name}",
                         callback_data=TeamCallback(action=TeamAction.join, id=req_id).pack()
                     )
                 )

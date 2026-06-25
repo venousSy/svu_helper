@@ -235,9 +235,9 @@ async def view_my_teams(
     page_slice, total_pages, page = paginate(teams, page, 5)
     
     texts = []
-    team_ids = []
+    team_info = []
     for t in page_slice:
-        team_ids.append(t["id"])
+        team_info.append((t["id"], t["course_name"]))
         card_text = MSG_TEAM_CARD.format(
             t["id"],
             t.get("host_name", "Unknown"),
@@ -253,7 +253,7 @@ async def view_my_teams(
     await callback.message.edit_text(
         text=f"{MSG_TEAM_MY_HEADER}\n\n{combined_text}",
         reply_markup=KeyboardFactory.paginated_teams(
-            PageAction.my_teams, page, total_pages, team_ids=team_ids, is_host=True
+            PageAction.my_teams, page, total_pages, team_info=team_info, is_host=True
         )
     )
     if not isinstance(callback_data, PageCallback):
@@ -279,9 +279,9 @@ async def view_my_completed_teams(
     page_slice, total_pages, page = paginate(teams, page, 5)
     
     texts = []
-    team_ids = []
+    team_info = []
     for t in page_slice:
-        team_ids.append(t["id"])
+        team_info.append((t["id"], t["course_name"]))
         text = MSG_TEAM_CARD.format(
             t["id"],
             t.get("host_name", "Unknown"),
@@ -317,7 +317,7 @@ async def view_my_completed_teams(
         text=f"{MSG_TEAM_MY_COMPLETED_HEADER}\n\n{combined_text}",
         parse_mode="HTML",
         reply_markup=KeyboardFactory.paginated_teams(
-            PageAction.my_cmp_teams, page, total_pages, team_ids=team_ids, is_completed=True
+            PageAction.my_cmp_teams, page, total_pages, team_info=team_info, is_completed=True
         )
     )
     if not isinstance(callback_data, PageCallback):
@@ -352,9 +352,9 @@ async def find_teams(
     page_slice, total_pages, page = paginate(open_teams, page, 5)
     
     texts = []
-    team_ids = []
+    team_info = []
     for t in page_slice:
-        team_ids.append(t["id"])
+        team_info.append((t["id"], t["course_name"]))
         card_text = MSG_TEAM_CARD.format(
             t["id"],
             t.get("host_name", "Unknown"),
@@ -370,7 +370,7 @@ async def find_teams(
     await callback.message.edit_text(
         text=f"🔍 فرق متاحة:\n\n{combined_text}",
         reply_markup=KeyboardFactory.paginated_teams(
-            PageAction.find_teams, page, total_pages, team_ids=team_ids
+            PageAction.find_teams, page, total_pages, team_info=team_info
         )
     )
     if not isinstance(callback_data, PageCallback):
@@ -398,9 +398,9 @@ async def view_my_pending_joins(
     page_slice, total_pages, page = paginate(joins, page, 5)
     
     texts = []
-    team_ids = []
+    team_info = []
     for t in page_slice:
-        team_ids.append(t["id"])
+        team_info.append((t["id"], t["course_name"]))
         card_text = MSG_TEAM_CARD.format(
             t["id"],
             t.get("host_name", "Unknown"),
@@ -416,7 +416,7 @@ async def view_my_pending_joins(
     await callback.message.edit_text(
         text=f"{MSG_TEAM_PENDING_JOINS_HEADER}\n\n{combined_text}",
         reply_markup=KeyboardFactory.paginated_teams(
-            PageAction.my_pending_joins, page, total_pages, team_ids=team_ids, is_pending=True
+            PageAction.my_pending_joins, page, total_pages, team_info=team_info, is_pending=True
         )
     )
     if not isinstance(callback_data, PageCallback):
