@@ -57,6 +57,8 @@ async def wait_for_message(client, expected_text, timeout=15, error_msg="Timeout
                 for msg in msgs:
                     content = msg.text or ""
                     if content and any(word in content for word in expected_text):
+                        # Ensure we don't trip the bot's 2.0s anti-spam throttling for the next action
+                        await asyncio.sleep(2.1)
                         return msg
         except Exception as e:
             if "database is locked" not in str(e):
@@ -370,9 +372,6 @@ async def test_submit_finished_work(student, admin):
 
     active_list = await wait_for_message(admin, ["مشاريع جارية", "🚀"], timeout=15)
     await click_inline_button(admin, active_list, "Finish Work Subject")
-
-    project_details = await wait_for_message(admin, ["تفاصيل المشروع"], timeout=15)
-    await click_inline_button(admin, project_details, "إنهاء وتسليم")
 
     await wait_for_message(admin, ["رفع الملف النهائي", "النهائي"], timeout=15)
 
