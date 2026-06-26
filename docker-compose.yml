@@ -25,6 +25,28 @@ services:
       - mongo
       - redis
 
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: svu_helper_backup
+    restart: always
+    environment:
+      # Authenticated URI for mongodump — fixes Issue #1 (missing auth)
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secret}@mongo:27017/?authSource=admin
+      - DB_NAME=${DB_NAME:-svu_helper_bot}
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_IDS=${ADMIN_IDS}
+      # Base64-encoded service account JSON — fixes Issue #3 (Railway ephemeral fs)
+      - GDRIVE_CREDENTIALS_B64=${GDRIVE_CREDENTIALS_B64}
+      - GDRIVE_FOLDER_ID=${GDRIVE_FOLDER_ID}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+      - BACKUP_INTERVAL_HOURS=${BACKUP_INTERVAL_HOURS:-6}
+    depends_on:
+      - mongo
+    networks:
+      - default
+
   dashboard-api:
     build:
       context: .
@@ -86,6 +108,10 @@ services:
       - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASS:-secret}
     depends_on:
       - mongo
+
+networks:
+  default:
+    name: svu_helper_network
 
 volumes:
   mongo_data:

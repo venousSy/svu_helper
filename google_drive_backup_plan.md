@@ -1,30 +1,132 @@
-# Automate MongoDB Backups to Google Drive
+# Automated MongoDB → Google Drive Backup
 
-This plan details the implementation of an automated backup system that dumps the MongoDB database every 6 hours, compresses it, and uploads it to a specified folder in your Google Drive. 
+A self-contained backup system that runs as a **dedicated Docker container** alongside the bot.
+Every 6 hours (configurable), it dumps the MongoDB database, compresses it, and uploads it to Google Drive.
+All 6 flow issues from the original review have been addressed.
 
-## User Review Required
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  docker-compose                                             │
+│                                                             │
+│  ┌──────────┐   ┌──────────┐   ┌─────────────────────────┐ │
+│  │   bot    │   │  mongo   │◄──│  backup (this service)  │ │
+│  └──────────┘   └──────────┘   │                         │ │
+│                                │  1. mongodump (auth URI) │ │
+│                                │  2. tar.gz compress      │ │
+│                                │  3. Upload → Google Drive│ │
+│                                │  4. Prune old backups    │ │
+│                                │  5. Notify admins        │ │
+│                                └─────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The `backup` service is **fully isolated** — it has its own `Dockerfile.backup`,
+`backup/requirements.txt`, and `backup/config.py`. It does not import anything
+from the main bot project (no aiogram, no motor, no Redis).
+
+---
+
+## Files Created / Modified
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `Dockerfile.backup` | NEW | Two-stage build with `mongo-tools` + Python deps |
+| `backup/__init__.py` | NEW | Python package marker |
+| `backup/config.py` | NEW | Standalone pydantic-settings config |
+| `backup/gdrive.py` | NEW | Drive client: credentials, upload, cleanup |
+| `backup/runner.py` | NEW | Core backup logic (dump → compress → upload → notify) |
+| `backup/main.py` | NEW | Entrypoint + APScheduler |
+| `backup/requirements.txt` | NEW | Pinned Python dependencies |
+| `docker-compose.yml` | MODIFIED | Added `backup` service + explicit network |
+| `.gitignore` | MODIFIED | Added `credentials/` + `gdrive.json` |
+| `tests/test_backup.py` | NEW | 18 unit tests (all mocked) |
+
+---
+
+## Flow Issues Fixed
+
+| # | Issue | Fix Applied |
+|---|-------|-------------|
+| 1 | `mongodump` had no auth | URI built as `mongodb://user:pass@mongo:27017/?authSource=admin` |
+| 2 | No Docker network declaration | Explicit `networks: default` + named network in compose |
+| 3 | `credentials/` file won't work on Railway | Base64 env var (`GDRIVE_CREDENTIALS_B64`) decoded at runtime |
+| 4 | No admin alert on failure | `try/except` sends ❌ Telegram message via `aiohttp` |
+| 5 | Temp files left on disk after upload failure | `finally:` block calls `shutil.rmtree()` unconditionally |
+| 6 | Large uploads would fail / hit rate limits | `MediaFileUpload(resumable=True, chunksize=10MB)` |
+
+---
+
+## One-Time Setup (Railway)
 
 > [!IMPORTANT]
-> **Google Drive Setup Required**
-> Automating uploads to Google Drive requires a **Google Cloud Service Account**. Since this cannot be done automatically, you will need to:
-> 1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-> 2. Create a new Project and enable the **Google Drive API**.
-> 3. Go to "Credentials" -> "Create Credentials" -> "Service Account".
-> 4. Create a key (JSON format) and download it.
-> 5. Open your Google Drive, create a folder for backups (e.g., `SVU_Backups`), and **share it** with the Service Account email address.
-> 6. Add the JSON contents as a single-line string to your `.env` file (`GDRIVE_CREDENTIALS_JSON='{...}'`), along with the `GDRIVE_FOLDER_ID`.
+> **Step 1 — Google Cloud Console**
+> 1. Create a project → Enable **Google Drive API**
+> 2. Go to **Credentials** → **Create Credentials** → **Service Account**
+> 3. Download the JSON key as `gdrive.json`
+>
+> **Step 2 — Google Drive**
+> 4. Create a folder (e.g. `SVU_Backups`)
+> 5. Share it with the Service Account email (`xxx@yyy.iam.gserviceaccount.com`)
+> 6. Copy the **Folder ID** from the Drive URL: `drive.google.com/drive/folders/`**`THIS_PART`**
+>
+> **Step 3 — Generate the base64 string**
+>
+> On Windows (PowerShell):
+> ```powershell
+> [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\gdrive.json")) | Set-Clipboard
+> ```
+> On Linux/Mac:
+> ```bash
+> base64 -w 0 gdrive.json | pbcopy
+> ```
+>
+> **Step 4 — Add Railway environment variables**
+>
+> | Variable | Value |
+> |----------|-------|
+> | `GDRIVE_CREDENTIALS_B64` | (paste from clipboard) |
+> | `GDRIVE_FOLDER_ID` | (from Drive folder URL) |
+> | `MONGO_USER` | your MongoDB username |
+> | `MONGO_PASS` | your MongoDB password |
+> | `BACKUP_RETENTION_DAYS` | `7` (optional, default is 7) |
+> | `BACKUP_INTERVAL_HOURS` | `6` (optional, default is 6) |
 
-> [!WARNING]
-> **Docker Image Changes**
-> We need to install `mongo-tools` inside the `bot` container so it can run the `mongodump` command against the database container. This requires rebuilding your Docker image (`docker-compose build`).
+---
 
-## Proposed Changes
+## Notifications
 
-### Configuration and Dependencies
-- **requirements.txt**: Add `apscheduler`, `google-api-python-client`, `google-auth-httplib2`, `google-auth-oauthlib`.
-- **config.py**: Add `GDRIVE_CREDENTIALS_JSON` and `GDRIVE_FOLDER_ID`.
-- **Dockerfile**: Install `mongo-tools` via `apt-get` for `mongodump`.
+On every backup cycle, the bot sends a Telegram message to all admin IDs:
 
-### Application Logic
-- **backup_service.py** [NEW]: Service to run `mongodump`, compress to `.tar.gz`, and upload to Google Drive using the Service Account.
-- **main.py**: Schedule `AsyncIOScheduler` to run `backup_service.run_backup()` every 6 hours.
+**Success (✅):**
+```
+✅ Backup Successful
+📦 File: svu_helper_backup_2026-06-26_14-00-00.tar.gz
+📁 Size: 42.3 MB
+🕒 Time: 2026-06-26 14:00 UTC
+⏱ Duration: 18s
+🗑 Old backups pruned: 1
+```
+
+**Failure (❌):**
+```
+❌ Backup FAILED
+🕒 Time: 2026-06-26 14:00 UTC
+💥 Reason: RuntimeError: mongodump exited with code 1: auth failed
+
+Check Railway logs for full stack trace.
+```
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/test_backup.py -v
+```
+
+All 18 tests run with no network calls, no Google Drive API, no Telegram API,
+and no real `mongodump` execution.

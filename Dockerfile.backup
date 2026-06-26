@@ -1,0 +1,46 @@
+# ─── Stage 1: Builder ──────────────────────────────────────────────────────
+FROM python:3.10-slim AS builder
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+COPY backup/requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+
+# ─── Stage 2: Runtime ──────────────────────────────────────────────────────
+FROM python:3.10-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install mongodump (part of mongo-tools) — fixes Issue #1
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gnupg curl && \
+    curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb.gpg && \
+    echo "deb [ signed-by=/usr/share/keyrings/mongodb.gpg ] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" \
+        > /etc/apt/sources.list.d/mongodb-org-7.0.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends mongodb-database-tools && \
+    apt-get purge -y gnupg curl && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user for security
+RUN groupadd -r backupuser && useradd -r -g backupuser backupuser
+
+# Copy pre-built wheels and install
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache /wheels/*
+
+# Copy backup package only (not the whole project)
+COPY backup/ ./backup/
+
+RUN chown -R backupuser:backupuser /app
+USER backupuser
+
+CMD ["python", "-m", "backup.main"]

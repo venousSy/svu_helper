@@ -66,3 +66,7 @@ Thumbs.db
 # Debug/Scratch
 scratch/
 sessions/
+
+# Google Drive Service Account credentials (never commit — use base64 env var on Railway)
+credentials/
+gdrive.json
