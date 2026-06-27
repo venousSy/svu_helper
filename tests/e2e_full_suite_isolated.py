@@ -514,6 +514,7 @@ async def run_full_suite():
     await run_test("Stats", test_stats(admin))
     await run_test("My Projects", test_my_projects(student))
     await run_test("Help", test_help(student))
+    await run_test("AI Date Parsing", test_ai_date_parsing(student, admin))
     await run_test("Multi Attachment", test_multi_attachment(student, admin))
     await run_test("Cancel During Accumulation", test_cancel_during_accumulation(student))
     await run_test("Admin Deny", test_admin_deny(student, admin))
@@ -539,6 +540,8 @@ async def run_full_suite():
         print("\n🏆 ALL TESTS PASSED! Bot is production-ready! 🏆")
     else:
         print(f"\n⚠️ {len(FAILED)} test(s) failed. Review output above.")
+        import sys
+        sys.exit(1)
 
     await student.disconnect()
     await admin.disconnect()
