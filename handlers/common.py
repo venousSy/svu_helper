@@ -6,7 +6,7 @@ as well as basic main menu navigation logic.
 """
 
 from aiogram import Router, types, F
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
 from utils.constants import (
@@ -48,7 +48,7 @@ async def cb_help(callback: types.CallbackQuery):
     await callback.answer()
 
 
-@router.message(Command("cancel"))
+@router.message(Command("cancel"), StateFilter("*"))
 async def global_cancel(message: types.Message, state: FSMContext):
     """Universal cancel command to reset any active FSM state."""
     current_state = await state.get_state()

@@ -478,8 +478,14 @@ async def run_full_suite():
     student_session_str = os.getenv("STUDENT_STRING_SESSION")
     admin_session_str = os.getenv("ADMIN_STRING_SESSION")
     
-    student_session = StringSession(student_session_str) if student_session_str else 'student_session'
-    admin_session = StringSession(admin_session_str) if admin_session_str else 'admin_session'
+    if not student_session_str or not admin_session_str:
+        print("⛔️ MISSING CREDENTIALS. Please check your .env file or Railway variables.")
+        print("You must set STUDENT_STRING_SESSION and ADMIN_STRING_SESSION.")
+        import sys
+        sys.exit(1)
+        
+    student_session = StringSession(student_session_str)
+    admin_session = StringSession(admin_session_str)
 
     student = TelegramClient(student_session, S_API_ID, S_API_HASH)
     admin   = TelegramClient(admin_session,   A_API_ID, A_API_HASH)
