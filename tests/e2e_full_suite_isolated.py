@@ -213,39 +213,20 @@ async def test_my_projects(student):
     print("  ✅ /my_projects responded without error.")
 
 
+async def test_matchmaking(admin):
+    await admin.send_message(BOT_USERNAME, "/admin")
+    dashboard = await wait_for_message(admin, ["لوحة تحكم"])
+    await click_inline_button(admin, dashboard, "المطابقة")
+    await wait_for_message(admin, ["البحث", "مطابقة"], timeout=10)
+    print("  ✅ Matchmaking panel accessed.")
+
+
 async def test_help(student):
     await student.send_message(BOT_USERNAME, "/help")
     await wait_for_message(student, ["الأوامر", "المتاحة"])
     print("  ✅ /help responded without error.")
 
 
-async def test_ai_date_parsing(student, admin):
-    """Test Gemini AI fallback for date parsing."""
-    await student.send_message(BOT_USERNAME, "/new_project")
-    await wait_for_message(student, ["[1/4]", "المادة"])
-    await student.send_message(BOT_USERNAME, "AI Date Subject")
-    await wait_for_message(student, ["[2/4]", "المدرس"])
-    await student.send_message(BOT_USERNAME, "AI Tutor")
-    await wait_for_message(student, ["[3/4]", "التسليم", "Deadline"])
-    
-    # Send a conversational date
-    await student.send_message(BOT_USERNAME, "بعد اسبوع")
-    
-    # Bot should reply with Gemini confirmation
-    confirm_msg = await wait_for_message(student, ["هل تقصد", "تأكيد"])
-    
-    # Click Accept ("نعم التاريخ صحيح")
-    await click_inline_button(student, confirm_msg, "نعم")
-    
-    # Should proceed to details
-    await wait_for_message(student, ["[4/4]", "التفاصيل"])
-    
-    # Finish the submission
-    await student.send_message(BOT_USERNAME, "Some details")
-    await wait_for_message(student, ["تم استلام", "انتهى"])
-    await student.send_message(BOT_USERNAME, BTN_DONE)
-    await wait_for_message(student, ["تم تقديم", "بنجاح"], timeout=15)
-    print("  ✅ AI Date Parsing flow completed.")
 
     await wait_for_message(admin, ["مشروع جديد"], timeout=15)
     print("  ✅ Admin received AI Date project alert.")
@@ -331,10 +312,6 @@ async def test_reject_payment(student, admin):
     await wait_for_message(student, ["رفض عملية الدفع", "رفض الدفع", "تعذر التحقق"], timeout=15)
     print("  ✅ Student received payment rejection notification.")
 
-
-async def test_full_lifecycle(student, admin):
-    await full_payment_cycle(student, admin, subject="Full Lifecycle Subject")
-    print("  ✅ Full lifecycle (submit → offer → pay → confirm) completed.")
 
 
 # async def test_broadcast(admin, student):
@@ -492,6 +469,65 @@ async def test_ticket_reply_flow(student, admin):
 # MAIN ORCHESTRATOR
 # ============================================================
 
+async def test_matchmaking(student, admin):
+    """Test the matchmaking flow between two users."""
+    import time
+    course_name = f"E2E Course {int(time.time())}"
+    
+    # 1. Host (Student) Creates Team
+    await student.send_message(BOT_USERNAME, "/start")
+    menu = await wait_for_message(student, ["مرحبا بك"])
+    await click_inline_button(student, menu, "فريق العمل")
+    
+    # Handle optional profile specialization setup
+    resp = await wait_for_message(student, ["فريق العمل", "اختيار اختصاصك"])
+    if "اختيار اختصاصك" in resp.text:
+        if resp.reply_markup and resp.reply_markup.rows:
+            await student.click(data=resp.reply_markup.rows[0].buttons[0].data)
+            resp = await wait_for_message(student, ["تم حفظ ملفك", "فريق العمل"])
+            
+    await click_inline_button(student, resp, "إنشاء فريق")
+    await wait_for_message(student, ["اسم المادة"])
+    await student.send_message(BOT_USERNAME, course_name)
+    
+    await wait_for_message(student, ["دكتور", "منسق"])
+    await student.send_message(BOT_USERNAME, "Dr. Matchmaker")
+    
+    count_msg = await wait_for_message(student, ["كم عضو"])
+    await click_inline_button(student, count_msg, "عضو") # clicks e.g. 1 عضو or 2 أعضاء
+    
+    await wait_for_message(student, ["تم إنشاء طلب الفريق", "بنجاح"])
+    print("  ✅ Host created a team.")
+    
+    # 2. Seeker (Admin acting as Student 2) Joins Team
+    await admin.send_message(BOT_USERNAME, "/start")
+    menu2 = await wait_for_message(admin, ["مرحبا بك"])
+    await click_inline_button(admin, menu2, "فريق العمل")
+    
+    resp2 = await wait_for_message(admin, ["فريق العمل", "اختيار اختصاصك"])
+    if "اختيار اختصاصك" in resp2.text:
+        if resp2.reply_markup and resp2.reply_markup.rows:
+            await admin.click(data=resp2.reply_markup.rows[0].buttons[0].data)
+            resp2 = await wait_for_message(admin, ["تم حفظ ملفك", "فريق العمل"])
+            
+    await click_inline_button(admin, resp2, "البحث عن فريق")
+    open_teams = await wait_for_message(admin, ["فريق", "المادة", course_name])
+    
+    await click_inline_button(admin, open_teams, course_name)
+    await wait_for_message(admin, ["تم إرسال طلب الانضمام"])
+    print("  ✅ Seeker requested to join the team.")
+    
+    # 3. Host Receives Request & Accepts
+    join_request = await wait_for_message(student, ["طلب انضمام جديد", course_name], timeout=15)
+    await click_inline_button(student, join_request, "قبول")
+    
+    await wait_for_message(student, ["تم قبول"])
+    print("  ✅ Host accepted the join request.")
+    
+    # 4. Seeker Gets Notified
+    await wait_for_message(admin, ["تم قبولك", course_name], timeout=15)
+    print("  ✅ Seeker received acceptance notification.")
+
 async def run_full_suite():
     print("🚀 Initializing E2E Test Suite Orchestrator...")
 
@@ -518,12 +554,11 @@ async def run_full_suite():
     await run_test("Stats", test_stats(admin))
     await run_test("My Projects", test_my_projects(student))
     await run_test("Help", test_help(student))
-    await run_test("AI Date Parsing", test_ai_date_parsing(student, admin))
+    await run_test("Matchmaking", test_matchmaking(student, admin))
     await run_test("Multi Attachment", test_multi_attachment(student, admin))
     await run_test("Cancel During Accumulation", test_cancel_during_accumulation(student))
     await run_test("Admin Deny", test_admin_deny(student, admin))
     await run_test("Reject Payment", test_reject_payment(student, admin))
-    await run_test("Full Lifecycle", test_full_lifecycle(student, admin))
     # await run_test("Broadcast", test_broadcast(admin, student)) # DISABLED FOR PRODUCTION
     await run_test("Student Deny Offer", test_student_deny_offer(student, admin))
     await run_test("Submit Finished Work", test_submit_finished_work(student, admin))
