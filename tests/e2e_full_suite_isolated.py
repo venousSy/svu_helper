@@ -68,11 +68,27 @@ async def click_inline_button(client, msg, text_match, error_msg="Button not fou
                 break
     if not target_btn:
         raise Exception(f"{error_msg}. Button containing '{text_match}' not found.")
+    await asyncio.sleep(0.6)
     await msg.click(data=target_btn.data)
     await asyncio.sleep(2)
 
 
 from datetime import datetime, timedelta
+from telethon import TelegramClient
+
+original_send_message = TelegramClient.send_message
+original_send_file = TelegramClient.send_file
+
+async def throttled_send_message(self, *args, **kwargs):
+    await asyncio.sleep(0.6)
+    return await original_send_message(self, *args, **kwargs)
+
+async def throttled_send_file(self, *args, **kwargs):
+    await asyncio.sleep(0.6)
+    return await original_send_file(self, *args, **kwargs)
+
+TelegramClient.send_message = throttled_send_message
+TelegramClient.send_file = throttled_send_file
 
 def get_future_date(days=30):
     return (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
@@ -493,22 +509,22 @@ async def run_full_suite():
     await student.start()
     await admin.start()
     print("✅ Both clients logged in successfully.\n")
-    await test_cancellation(student)
-    await test_maintenance(admin, student)
-    await test_stats(admin)
-    await test_my_projects(student)
-    await test_help(student)
-    await test_multi_attachment(student, admin)
-    await test_cancel_during_accumulation(student)
-    await test_admin_deny(student, admin)
-    await test_reject_payment(student, admin)
-    await test_full_lifecycle(student, admin)
-    await test_broadcast(admin, student)
-    await test_student_deny_offer(student, admin)
-    await test_submit_finished_work(student, admin)
-    await test_admin_reports(admin)
-    await test_ticket_open_and_close(student, admin)
-    await test_ticket_reply_flow(student, admin)
+    await run_test("Cancellation", test_cancellation(student))
+    await run_test("Maintenance", test_maintenance(admin, student))
+    await run_test("Stats", test_stats(admin))
+    await run_test("My Projects", test_my_projects(student))
+    await run_test("Help", test_help(student))
+    await run_test("Multi Attachment", test_multi_attachment(student, admin))
+    await run_test("Cancel During Accumulation", test_cancel_during_accumulation(student))
+    await run_test("Admin Deny", test_admin_deny(student, admin))
+    await run_test("Reject Payment", test_reject_payment(student, admin))
+    await run_test("Full Lifecycle", test_full_lifecycle(student, admin))
+    await run_test("Broadcast", test_broadcast(admin, student))
+    await run_test("Student Deny Offer", test_student_deny_offer(student, admin))
+    await run_test("Submit Finished Work", test_submit_finished_work(student, admin))
+    await run_test("Admin Reports", test_admin_reports(admin))
+    await run_test("Ticket Open and Close", test_ticket_open_and_close(student, admin))
+    await run_test("Ticket Reply Flow", test_ticket_reply_flow(student, admin))
 
     # --- RESULTS ---
     print("\n" + "=" * 50)
