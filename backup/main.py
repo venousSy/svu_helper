@@ -27,7 +27,6 @@ async def main() -> None:
         "Backup service starting",
         db=settings.DB_NAME,
         interval_hours=settings.BACKUP_INTERVAL_HOURS,
-        retention_days=settings.BACKUP_RETENTION_DAYS,
     )
 
     # ── 2. Run immediately on startup ──────────────────────────────────────────
@@ -44,7 +43,7 @@ async def main() -> None:
         hours=settings.BACKUP_INTERVAL_HOURS,
         args=[settings],
         id="scheduled_backup",
-        name="MongoDB → Google Drive backup",
+        name="MongoDB → Telegram backup",
         misfire_grace_time=300,  # Allow up to 5-min delay before treating as missed
     )
     scheduler.start()
