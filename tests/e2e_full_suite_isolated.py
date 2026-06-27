@@ -337,20 +337,24 @@ async def test_full_lifecycle(student, admin):
     print("  ✅ Full lifecycle (submit → offer → pay → confirm) completed.")
 
 
-async def test_broadcast(admin, student):
-    await admin.send_message(BOT_USERNAME, "/admin")
-    await wait_for_message(admin, ["لوحة تحكم"])
-    dashboard = (await admin.get_messages(BOT_USERNAME, limit=1))[0]
-    await click_inline_button(admin, dashboard, "إرسال إعلان")
-    await wait_for_message(admin, ["أدخل رسالة", "الإعلان"])
-    print("  ✅ Admin entered broadcast FSM.")
-
-    await admin.send_message(BOT_USERNAME, "📢 This is an automated E2E broadcast test message.")
-    await wait_for_message(admin, ["تم الإرسال", "مستخدم"])
-    print("  ✅ Broadcast sent successfully.")
-
-    await wait_for_message(student, ["E2E broadcast test"], timeout=15)
-    print("  ✅ Student received the broadcast message!")
+# async def test_broadcast(admin, student):
+#     """
+#     WARNING: Do not run this on production! It will spam all real users!
+#     Only enable if connected to a staging/test database.
+#     """
+#     await admin.send_message(BOT_USERNAME, "/admin")
+#     await wait_for_message(admin, ["لوحة تحكم"])
+#     dashboard = (await admin.get_messages(BOT_USERNAME, limit=1))[0]
+#     await click_inline_button(admin, dashboard, "إرسال إعلان")
+#     await wait_for_message(admin, ["أدخل رسالة", "الإعلان"])
+#     print("  ✅ Admin entered broadcast FSM.")
+# 
+#     await admin.send_message(BOT_USERNAME, "📢 This is an automated E2E broadcast test message.")
+#     await wait_for_message(admin, ["تم الإرسال", "مستخدم"])
+#     print("  ✅ Broadcast sent successfully.")
+# 
+#     await wait_for_message(student, ["E2E broadcast test"], timeout=15)
+#     print("  ✅ Student received the broadcast message!")
 
 
 async def test_student_deny_offer(student, admin):
@@ -520,7 +524,7 @@ async def run_full_suite():
     await run_test("Admin Deny", test_admin_deny(student, admin))
     await run_test("Reject Payment", test_reject_payment(student, admin))
     await run_test("Full Lifecycle", test_full_lifecycle(student, admin))
-    await run_test("Broadcast", test_broadcast(admin, student))
+    # await run_test("Broadcast", test_broadcast(admin, student)) # DISABLED FOR PRODUCTION
     await run_test("Student Deny Offer", test_student_deny_offer(student, admin))
     await run_test("Submit Finished Work", test_submit_finished_work(student, admin))
     await run_test("Admin Reports", test_admin_reports(admin))
