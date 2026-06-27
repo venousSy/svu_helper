@@ -71,7 +71,7 @@ async def admin_run_tests_handler(callback: types.CallbackQuery):
     
     try:
         process = await asyncio.create_subprocess_shell(
-            "python -m pytest tests/e2e_full_suite_isolated.py -v",
+            "python tests/e2e_full_suite_isolated.py",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )

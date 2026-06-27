@@ -158,7 +158,7 @@ async def e2e_tests_job(bot: Bot):
         try:
             logger.info("Running automated 6-hour E2E tests...")
             process = await asyncio.create_subprocess_shell(
-                "python -m pytest tests/e2e_full_suite_isolated.py -v",
+                "python tests/e2e_full_suite_isolated.py",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
