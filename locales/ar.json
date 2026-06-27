@@ -102,7 +102,11 @@
         "payment_rejected_append": "\n(تم رفض الدفعة #{})",
         "admin_invalid_price": "⚠️ الرجاء إدخال سعر رقمي صالح.",
         "admin_error_format": "⚠️ {}",
-        "admin_send_media_error": "خطأ: {}"
+        "admin_send_media_error": "خطأ: {}",
+        "tests_running": "⏳ <b>جاري تشغيل الاختبارات...</b>\nقد يستغرق الأمر بضع دقائق. سيتم إعلامك بالنتيجة.",
+        "tests_success": "✅ <b>اكتملت الاختبارات بنجاح!</b>\n\nجميع الميزات تعمل بشكل سليم.\n\n<pre>{}</pre>",
+        "tests_failed": "❌ <b>فشلت بعض الاختبارات!</b>\n\nالرجاء التحقق من المشكلة في أسرع وقت:\n\n<pre>{}</pre>",
+        "tests_error": "⚠️ <b>حدث خطأ أثناء تشغيل الاختبارات:</b>\n\n<pre>{}</pre>"
     },
     "buttons": {
         "new_project": "📚 مشروع جديد",
@@ -144,6 +148,7 @@
         "confirm_date": "نعم التاريخ صحيح",
         "reject_date": "لا، قم باعادة ادخال التاريخ",
         "urgent_cases": "🚨 الحالات الطارئة",
+        "run_tests": "🧪 تشغيل اختبارات E2E",
         "manage_team_btn": "⚙️ إدارة",
         "close_team_btn": "🔒 إغلاق",
         "delete_team_btn": "🗑 حذف",

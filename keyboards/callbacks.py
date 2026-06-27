@@ -17,6 +17,7 @@ class MenuAction(str, Enum):
     admin_broadcast = "admin_broadcast"
     admin_tickets = "admin_tickets"
     admin_urgent_cases = "admin_urgent_cases"
+    admin_run_tests = "admin_run_tests"
     back_to_admin = "back_to_admin"
     close_list = "close_list"
     cancel_flow = "cancel_flow"

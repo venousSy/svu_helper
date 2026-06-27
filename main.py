@@ -145,6 +145,41 @@ async def urgent_cases_job(bot: Bot):
             
         await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
 
+async def e2e_tests_job(bot: Bot):
+    """Background task to run E2E tests every 6 hours and notify admins on failure."""
+    from utils.helpers import notify_admins
+    from utils.constants import MSG_TESTS_FAILED, MSG_TESTS_ERROR
+    
+    # Wait an hour before first run to ensure bot is fully up
+    await asyncio.sleep(60 * 60)
+    
+    while True:
+        try:
+            logger.info("Running automated 6-hour E2E tests...")
+            process = await asyncio.create_subprocess_shell(
+                "python -m pytest tests/e2e_full_suite_isolated.py -v",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            
+            output = stdout.decode('utf-8')
+            err_output = stderr.decode('utf-8')
+            full_output = (output + "\\n" + err_output).strip()
+            
+            if len(full_output) > 3000:
+                full_output = full_output[-3000:]
+                
+            if process.returncode != 0:
+                await notify_admins(bot, MSG_TESTS_FAILED.format(full_output), parse_mode="HTML")
+            else:
+                logger.info("Automated E2E tests passed successfully.")
+                
+        except Exception as e:
+            logger.error("Error in e2e tests background job", error=str(e), exc_info=True)
+            await notify_admins(bot, MSG_TESTS_ERROR.format(str(e)), parse_mode="HTML")
+            
+        await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
 
 # --- MAIN ENTRY POINT ---
 async def main():
@@ -199,6 +234,7 @@ async def main():
         # Track all background tasks so we can cancel them cleanly on shutdown
         background_tasks = [
             asyncio.create_task(urgent_cases_job(bot), name="urgent_cases_job"),
+            asyncio.create_task(e2e_tests_job(bot), name="e2e_tests_job"),
         ]
         
         await dp.start_polling(bot)

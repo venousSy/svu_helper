@@ -7,6 +7,7 @@ load_dotenv()
 
 try:
     from telethon import TelegramClient
+    from telethon.sessions import StringSession
 except ImportError:
     print("Telethon is not installed. Please run: pip install telethon")
     sys.exit(1)
@@ -474,44 +475,34 @@ async def test_ticket_reply_flow(student, admin):
 async def run_full_suite():
     print("🚀 Initializing E2E Test Suite Orchestrator...")
 
-    student = TelegramClient('student_session', S_API_ID, S_API_HASH)
-    admin   = TelegramClient('admin_session',   A_API_ID, A_API_HASH)
+    student_session_str = os.getenv("STUDENT_STRING_SESSION")
+    admin_session_str = os.getenv("ADMIN_STRING_SESSION")
+    
+    student_session = StringSession(student_session_str) if student_session_str else 'student_session'
+    admin_session = StringSession(admin_session_str) if admin_session_str else 'admin_session'
+
+    student = TelegramClient(student_session, S_API_ID, S_API_HASH)
+    admin   = TelegramClient(admin_session,   A_API_ID, A_API_HASH)
 
     await student.start()
     await admin.start()
     print("✅ Both clients logged in successfully.\n")
-
-                   test_cancellation(student))
-
-                   test_maintenance(admin, student))
-
-                   test_stats(admin))
-
-                   test_my_projects(student))
-
-                   test_help(student))
-
-                   test_multi_attachment(student, admin))
-
-                   test_cancel_during_accumulation(student))
-
-                   test_admin_deny(student, admin))
-
-                   test_reject_payment(student, admin))
-
-                   test_full_lifecycle(student, admin))
-
-                   test_broadcast(admin, student))
-
-                   test_student_deny_offer(student, admin))
-
-                   test_submit_finished_work(student, admin))
-
-                   test_admin_reports(admin))
-
-                   test_ticket_open_and_close(student, admin))
-
-                   test_ticket_reply_flow(student, admin))
+    await test_cancellation(student)
+    await test_maintenance(admin, student)
+    await test_stats(admin)
+    await test_my_projects(student)
+    await test_help(student)
+    await test_multi_attachment(student, admin)
+    await test_cancel_during_accumulation(student)
+    await test_admin_deny(student, admin)
+    await test_reject_payment(student, admin)
+    await test_full_lifecycle(student, admin)
+    await test_broadcast(admin, student)
+    await test_student_deny_offer(student, admin)
+    await test_submit_finished_work(student, admin)
+    await test_admin_reports(admin)
+    await test_ticket_open_and_close(student, admin)
+    await test_ticket_reply_flow(student, admin)
 
     # --- RESULTS ---
     print("\n" + "=" * 50)

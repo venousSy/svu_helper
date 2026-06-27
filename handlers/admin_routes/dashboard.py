@@ -23,6 +23,10 @@ from utils.constants import (
     MSG_MAINTENANCE_OFF,
     MSG_MAINTENANCE_ON,
     MSG_STATS_REPORT,
+    MSG_TESTS_RUNNING,
+    MSG_TESTS_SUCCESS,
+    MSG_TESTS_FAILED,
+    MSG_TESTS_ERROR,
 )
 from utils.formatters import format_datetime
 from utils.helpers import build_ticket_service
@@ -55,6 +59,50 @@ async def back_to_admin(callback: types.CallbackQuery):
         MSG_ADMIN_DASHBOARD, parse_mode="Markdown", reply_markup=KeyboardFactory.admin_dashboard()
     )
 
+import asyncio
+
+@router.callback_query(
+    MenuCallback.filter(F.action == MenuAction.admin_run_tests),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def admin_run_tests_handler(callback: types.CallbackQuery):
+    await callback.message.edit_text(MSG_TESTS_RUNNING, parse_mode="HTML")
+    
+    try:
+        process = await asyncio.create_subprocess_shell(
+            "python -m pytest tests/e2e_full_suite_isolated.py -v",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        output = stdout.decode('utf-8')
+        err_output = stderr.decode('utf-8')
+        
+        full_output = (output + "\\n" + err_output).strip()
+        
+        if len(full_output) > 3000:
+            full_output = full_output[-3000:]
+            
+        if process.returncode == 0:
+            await callback.message.edit_text(
+                MSG_TESTS_SUCCESS.format(full_output),
+                parse_mode="HTML",
+                reply_markup=KeyboardFactory.back()
+            )
+        else:
+            await callback.message.edit_text(
+                MSG_TESTS_FAILED.format(full_output),
+                parse_mode="HTML",
+                reply_markup=KeyboardFactory.back()
+            )
+    except Exception as e:
+        logger.error("Error running E2E tests", error=str(e))
+        await callback.message.edit_text(
+            MSG_TESTS_ERROR.format(str(e)),
+            parse_mode="HTML",
+            reply_markup=KeyboardFactory.back()
+        )
 
 @router.message(Command("stats"), F.from_user.id.in_(settings.admin_ids))
 async def admin_stats_handler(message: types.Message, stats_repo: StatsRepository):

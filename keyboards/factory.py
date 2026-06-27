@@ -49,6 +49,7 @@ from utils.constants import (
     BTN_REJECT,
     BTN_REJECT_PAYMENT,
     BTN_REOPEN_TICKET,
+    BTN_RUN_TESTS,
     BTN_SEND_OFFER,
     BTN_SEND_REPLY,
     BTN_SUPPORT,
@@ -388,6 +389,12 @@ class KeyboardFactory:
             types.InlineKeyboardButton(
                 text=BTN_URGENT_CASES,
                 callback_data=MenuCallback(action=MenuAction.admin_urgent_cases).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_RUN_TESTS,
+                callback_data=MenuCallback(action=MenuAction.admin_run_tests).pack(),
             )
         )
         return builder.as_markup()
