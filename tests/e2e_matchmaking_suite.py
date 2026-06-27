@@ -260,7 +260,8 @@ async def test_host_delete_team(host):
 # ============================================================
 
 async def cleanup_user_state(client):
-    print(f"🧹 Cleaning up state for {client.session.filename}...")
+    session_name = getattr(client.session, 'filename', 'MemorySession')
+    print(f"🧹 Cleaning up state for {session_name}...")
     try:
         await client.send_message(BOT_USERNAME, "/start")
         await asyncio.sleep(1)
@@ -277,7 +278,7 @@ async def cleanup_user_state(client):
                     await click_inline_button(client, teams_msg, "حذف")
                     await asyncio.sleep(2)
             except Exception as e:
-                print(f"    (No open teams to delete for {client.session.filename})")
+                print(f"    (No open teams to delete for {session_name})")
             
         # 2. Withdraw pending joins
         team_menu2 = await open_team_menu(client)
@@ -289,7 +290,7 @@ async def cleanup_user_state(client):
                     await click_inline_button(client, joins_msg, "سحب الطلب")
                     await asyncio.sleep(2)
             except Exception as e:
-                print(f"    (No pending joins for {client.session.filename})")
+                print(f"    (No pending joins for {session_name})")
     except Exception as e:
         print(f"  ⚠️ Cleanup error (ignoring): {e}")
 
