@@ -469,64 +469,12 @@ async def test_ticket_reply_flow(student, admin):
 # MAIN ORCHESTRATOR
 # ============================================================
 
-async def test_matchmaking(student, admin):
-    """Test the matchmaking flow between two users."""
-    import time
-    course_name = f"E2E Course {int(time.time())}"
-    
-    # 1. Host (Student) Creates Team
-    await student.send_message(BOT_USERNAME, "/start")
-    menu = await wait_for_message(student, ["مرحبا بك"])
-    await click_inline_button(student, menu, "فريق العمل")
-    
-    # Handle optional profile specialization setup
-    resp = await wait_for_message(student, ["فريق العمل", "اختيار اختصاصك"])
-    if "اختيار اختصاصك" in resp.text:
-        if resp.reply_markup and resp.reply_markup.rows:
-            await student.click(data=resp.reply_markup.rows[0].buttons[0].data)
-            resp = await wait_for_message(student, ["تم حفظ ملفك", "فريق العمل"])
-            
-    await click_inline_button(student, resp, "إنشاء فريق")
-    await wait_for_message(student, ["اسم المادة"])
-    await student.send_message(BOT_USERNAME, course_name)
-    
-    await wait_for_message(student, ["دكتور", "منسق"])
-    await student.send_message(BOT_USERNAME, "Dr. Matchmaker")
-    
-    count_msg = await wait_for_message(student, ["كم عضو"])
-    await click_inline_button(student, count_msg, "عضو") # clicks e.g. 1 عضو or 2 أعضاء
-    
-    await wait_for_message(student, ["تم إنشاء طلب الفريق", "بنجاح"])
-    print("  ✅ Host created a team.")
-    
-    # 2. Seeker (Admin acting as Student 2) Joins Team
-    await admin.send_message(BOT_USERNAME, "/start")
-    menu2 = await wait_for_message(admin, ["مرحبا بك"])
-    await click_inline_button(admin, menu2, "فريق العمل")
-    
-    resp2 = await wait_for_message(admin, ["فريق العمل", "اختيار اختصاصك"])
-    if "اختيار اختصاصك" in resp2.text:
-        if resp2.reply_markup and resp2.reply_markup.rows:
-            await admin.click(data=resp2.reply_markup.rows[0].buttons[0].data)
-            resp2 = await wait_for_message(admin, ["تم حفظ ملفك", "فريق العمل"])
-            
-    await click_inline_button(admin, resp2, "البحث عن فريق")
-    open_teams = await wait_for_message(admin, ["فريق", "المادة", course_name])
-    
-    await click_inline_button(admin, open_teams, course_name)
-    await wait_for_message(admin, ["تم إرسال طلب الانضمام"])
-    print("  ✅ Seeker requested to join the team.")
-    
-    # 3. Host Receives Request & Accepts
-    join_request = await wait_for_message(student, ["طلب انضمام جديد", course_name], timeout=15)
-    await click_inline_button(student, join_request, "قبول")
-    
-    await wait_for_message(student, ["تم قبول"])
-    print("  ✅ Host accepted the join request.")
-    
-    # 4. Seeker Gets Notified
-    await wait_for_message(admin, ["تم قبولك", course_name], timeout=15)
-    print("  ✅ Seeker received acceptance notification.")
+from tests.e2e_matchmaking_suite import (
+    cleanup_user_state, test_team_creation, test_team_concurrency,
+    test_team_join_and_withdraw, test_team_join_and_accept,
+    test_host_close_team, test_host_delete_team
+)
+
 
 async def run_full_suite():
     print("🚀 Initializing E2E Test Suite Orchestrator...")
@@ -554,7 +502,19 @@ async def run_full_suite():
     await run_test("Stats", test_stats(admin))
     await run_test("My Projects", test_my_projects(student))
     await run_test("Help", test_help(student))
-    await run_test("Matchmaking", test_matchmaking(student, admin))
+    # --- MATCHMAKING TESTS ---
+    print("\n[🧹 Cleaning Matchmaking State]")
+    await cleanup_user_state(student)
+    await cleanup_user_state(admin)
+    
+    await run_test("Matchmaking: Create Team", test_team_creation(student))
+    await run_test("Matchmaking: Concurrency", test_team_concurrency(student))
+    await run_test("Matchmaking: Join & Withdraw", test_team_join_and_withdraw(admin, student))
+    await run_test("Matchmaking: Join & Accept", test_team_join_and_accept(admin, student))
+    await run_test("Matchmaking: Close Team", test_host_close_team(student))
+    await run_test("Matchmaking: Delete Team", test_host_delete_team(student))
+    
+    # --- REST OF TESTS ---
     await run_test("Multi Attachment", test_multi_attachment(student, admin))
     await run_test("Cancel During Accumulation", test_cancel_during_accumulation(student))
     await run_test("Admin Deny", test_admin_deny(student, admin))
