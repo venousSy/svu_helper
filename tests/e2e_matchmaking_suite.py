@@ -266,14 +266,13 @@ async def cleanup_user_state(client):
         await asyncio.sleep(1)
         
         # 1. Delete open teams
-        await client.send_message(BOT_USERNAME, "🤝 فريق العمل")
-        await asyncio.sleep(2)
-        # get last message which contains inline keyboard
-        msgs = await client.get_messages(BOT_USERNAME, limit=1)
-        if msgs:
+        team_menu = await open_team_menu(client)
+        if team_menu:
             try:
-                await click_inline_button(client, msgs[0], "فرقي المفتوحة")
-                teams_msg = await wait_for_message(client, ["حذف", "لا توجد"], timeout=5)
+                await click_inline_button(client, team_menu, "فرقي المفتوحة")
+                teams_msg = await wait_for_message(client, ["حذف", "لا توجد", "إغلاق"], timeout=5)
+                # It could have 'حذف' or 'إغلاق'. If it has either, try to delete. 
+                # Note: 'حذف' completely removes it.
                 if "حذف" in teams_msg.text:
                     await click_inline_button(client, teams_msg, "حذف")
                     await asyncio.sleep(2)
@@ -281,12 +280,10 @@ async def cleanup_user_state(client):
                 print(f"    (No open teams to delete for {client.session.filename})")
             
         # 2. Withdraw pending joins
-        await client.send_message(BOT_USERNAME, "🤝 فريق العمل")
-        await asyncio.sleep(2)
-        msgs = await client.get_messages(BOT_USERNAME, limit=1)
-        if msgs:
+        team_menu2 = await open_team_menu(client)
+        if team_menu2:
             try:
-                await click_inline_button(client, msgs[0], "طلباتي المعلقة")
+                await click_inline_button(client, team_menu2, "طلباتي المعلقة")
                 joins_msg = await wait_for_message(client, ["سحب الطلب", "لا توجد"], timeout=5)
                 if "سحب الطلب" in joins_msg.text:
                     await click_inline_button(client, joins_msg, "سحب الطلب")
