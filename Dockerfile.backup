@@ -1,5 +1,6 @@
 # ─── Stage 1: Builder ──────────────────────────────────────────────────────
-FROM python:3.10-slim AS builder
+# Pin to bookworm — trixie rejects MongoDB's SHA1 GPG key (rejected since Feb 2026)
+FROM python:3.10-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -11,7 +12,7 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.t
 
 
 # ─── Stage 2: Runtime ──────────────────────────────────────────────────────
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 
 WORKDIR /app
 
