@@ -37,10 +37,6 @@ services:
       - DB_NAME=${DB_NAME:-svu_helper_bot}
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_IDS=${ADMIN_IDS}
-      # Base64-encoded service account JSON — fixes Issue #3 (Railway ephemeral fs)
-      - GDRIVE_CREDENTIALS_B64=${GDRIVE_CREDENTIALS_B64}
-      - GDRIVE_FOLDER_ID=${GDRIVE_FOLDER_ID}
-      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
       - BACKUP_INTERVAL_HOURS=${BACKUP_INTERVAL_HOURS:-6}
     depends_on:
       - mongo

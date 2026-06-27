@@ -24,16 +24,7 @@ class BackupSettings(BaseSettings):
     ADMIN_IDS: str = Field(..., description="Comma-separated admin Telegram IDs")
 
     # Google Drive — base64-encoded service account JSON (Railway-safe)
-    GDRIVE_CREDENTIALS_B64: str = Field(
-        ...,
-        description="Base64-encoded Google Service Account JSON. "
-                    "Generate with: base64 gdrive.json (Linux/Mac) or "
-                    "[Convert]::ToBase64String([IO.File]::ReadAllBytes('gdrive.json')) (PowerShell)",
-    )
-    GDRIVE_FOLDER_ID: str = Field(..., description="Google Drive folder ID for backup uploads")
-
     # Tunable knobs — configurable via Railway env vars
-    BACKUP_RETENTION_DAYS: int = Field(default=7, description="Delete Drive backups older than this many days")
     BACKUP_INTERVAL_HOURS: int = Field(default=6, description="How often to run a backup")
 
     model_config = SettingsConfigDict(
