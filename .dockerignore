@@ -18,7 +18,6 @@ coverage.xml
 .git
 .github
 .pytest_cache
-tests/
 .env
 Dockerfile
 README.md
