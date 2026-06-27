@@ -67,7 +67,8 @@ import html
     F.from_user.id.in_(settings.admin_ids),
 )
 async def admin_run_tests_handler(callback: types.CallbackQuery):
-    await callback.message.edit_text(MSG_TESTS_RUNNING, parse_mode="HTML")
+    await callback.answer()
+    loading_msg = await callback.message.edit_text(MSG_TESTS_RUNNING, parse_mode="HTML")
     
     try:
         process = await asyncio.create_subprocess_shell(
@@ -80,30 +81,32 @@ async def admin_run_tests_handler(callback: types.CallbackQuery):
         output = stdout.decode('utf-8')
         err_output = stderr.decode('utf-8')
         
-        full_output = (output + "\\n" + err_output).strip()
+        full_output = (output + "\n" + err_output).strip()
         full_output = html.escape(full_output)
         
         if len(full_output) > 3000:
             full_output = full_output[-3000:]
             
+        await loading_msg.delete()
         if process.returncode == 0:
-            await callback.message.edit_text(
+            await callback.message.answer(
                 MSG_TESTS_SUCCESS.format(full_output),
-                parse_mode="HTML",
-                reply_markup=KeyboardFactory.back()
+                parse_mode="HTML"
             )
         else:
-            await callback.message.edit_text(
+            await callback.message.answer(
                 MSG_TESTS_FAILED.format(full_output),
-                parse_mode="HTML",
-                reply_markup=KeyboardFactory.back()
+                parse_mode="HTML"
             )
     except Exception as e:
         logger.error("Error running E2E tests", error=str(e))
-        await callback.message.edit_text(
+        try:
+            await loading_msg.delete()
+        except:
+            pass
+        await callback.message.answer(
             MSG_TESTS_ERROR.format(str(e)),
-            parse_mode="HTML",
-            reply_markup=KeyboardFactory.back()
+            parse_mode="HTML"
         )
 
 @router.message(Command("stats"), F.from_user.id.in_(settings.admin_ids))
