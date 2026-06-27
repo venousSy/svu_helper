@@ -60,6 +60,7 @@ async def back_to_admin(callback: types.CallbackQuery):
     )
 
 import asyncio
+import html
 
 @router.callback_query(
     MenuCallback.filter(F.action == MenuAction.admin_run_tests),
@@ -80,6 +81,7 @@ async def admin_run_tests_handler(callback: types.CallbackQuery):
         err_output = stderr.decode('utf-8')
         
         full_output = (output + "\\n" + err_output).strip()
+        full_output = html.escape(full_output)
         
         if len(full_output) > 3000:
             full_output = full_output[-3000:]

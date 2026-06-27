@@ -149,6 +149,7 @@ async def e2e_tests_job(bot: Bot):
     """Background task to run E2E tests every 6 hours and notify admins on failure."""
     from utils.helpers import notify_admins
     from utils.constants import MSG_TESTS_FAILED, MSG_TESTS_ERROR
+    import html
     
     # Wait an hour before first run to ensure bot is fully up
     await asyncio.sleep(60 * 60)
@@ -166,6 +167,7 @@ async def e2e_tests_job(bot: Bot):
             output = stdout.decode('utf-8')
             err_output = stderr.decode('utf-8')
             full_output = (output + "\\n" + err_output).strip()
+            full_output = html.escape(full_output)
             
             if len(full_output) > 3000:
                 full_output = full_output[-3000:]

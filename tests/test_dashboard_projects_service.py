@@ -48,7 +48,7 @@ async def test_get_project_details():
     assert res.id == 1
     
     # Found with payment
-    mock_pay_repo.get_payment_by_project_id.return_value = {"id": 1, "project_id": 1, "user_id": 1, "file_id": "f", "status": "pending"}
+    mock_pay_repo.get_payment_by_project_id.return_value = {"id": 1, "project_id": 1, "user_id": 1, "file_id": "f", "status": "pending", "created_at": "2026"}
     res = await get_project_details(mock_proj_repo, mock_pay_repo, 1)
     assert res.payment is not None
     assert res.payment.file_id == "f"
