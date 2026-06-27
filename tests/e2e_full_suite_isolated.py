@@ -227,11 +227,6 @@ async def test_help(student):
     print("  ✅ /help responded without error.")
 
 
-
-    await wait_for_message(admin, ["مشروع جديد"], timeout=15)
-    print("  ✅ Admin received AI Date project alert.")
-
-
 async def test_multi_attachment(student, admin):
     """Submit a project with multiple items (text + two messages) accumulation."""
     await student.send_message(BOT_USERNAME, "/new_project")
