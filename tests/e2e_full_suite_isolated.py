@@ -469,7 +469,7 @@ async def test_ticket_reply_flow(student, admin):
 # MAIN ORCHESTRATOR
 # ============================================================
 
-from tests.e2e_matchmaking_suite import (
+from e2e_matchmaking_suite import (
     cleanup_user_state, test_team_creation, test_team_concurrency,
     test_team_join_and_withdraw, test_team_join_and_accept,
     test_host_close_team, test_host_delete_team
