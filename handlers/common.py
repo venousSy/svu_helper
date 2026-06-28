@@ -64,8 +64,17 @@ async def cb_referral(
     user_referral_repo,  # injected
     bot,
 ):
-    from handlers.client_routes.referral import cmd_referral
-    await cmd_referral(callback.message, user_referral_repo, bot)
+    user = await user_referral_repo.get_or_create_user(callback.from_user.id)
+    bot_info = await bot.me()
+    link = f"https://t.me/{bot_info.username}?start={callback.from_user.id}"
+    
+    from utils.constants import MSG_REFERRAL_INFO
+    from keyboards.factory import KeyboardFactory
+    await callback.message.answer(
+        MSG_REFERRAL_INFO.format(link=link, balance=user.balance),
+        reply_markup=KeyboardFactory.referral_menu(has_balance=user.balance > 0),
+        parse_mode="Markdown",
+    )
     await callback.answer()
 
 
