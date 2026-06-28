@@ -276,3 +276,9 @@ Never let an unhandled exception leak stack traces to the user or fail silently.
 ## 17. Security & PII in Logs
 
 When logging with `structlog`, never log sensitive Personal Identifiable Information (PII) such as user phone numbers, passwords, or exact uploaded document contents. Log identifiers like `user_id` and `project_id` instead to trace actions safely.
+
+---
+
+## 18. Testing
+
+Always add tests (unit or integration) whenever needed, especially when introducing new features, functions, or making significant modifications. Ensure adequate test coverage to maintain codebase stability and prevent regressions.

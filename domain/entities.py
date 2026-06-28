@@ -7,6 +7,7 @@ No framework (aiogram) or database (motor) dependencies here.
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -182,3 +183,37 @@ class TeamRequest(BaseModel):
     )
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class ReferralUser(BaseModel):
+    """Tracks a bot user's referral chain and ShamCash balance."""
+    user_id: int
+    referred_by: Optional[int] = None
+    balance: float = Field(default=0.0)
+    last_withdrawal_date: Optional[str] = None  # ISO date string "YYYY-MM-DD" (UTC)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class WithdrawalRequest(BaseModel):
+    """A single ShamCash withdrawal request submitted by a user."""
+    request_id: str = Field(default_factory=lambda: str(uuid4()))
+    user_id: int
+    amount: float
+    shamcash_address: str
+    shamcash_name: str
+    status: str = "pending"   # "pending" | "processed"
+    requested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CommissionLog(BaseModel):
+    """Audit record written every time a referral commission is earned."""
+    log_id: str = Field(default_factory=lambda: str(uuid4()))
+    referrer_id: int          # user who receives the commission
+    referred_user_id: int     # the student whose payment triggered it
+    project_id: int
+    project_subject: str
+    project_price: float
+    commission_amount: float  # always project_price * 0.10
+    earned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

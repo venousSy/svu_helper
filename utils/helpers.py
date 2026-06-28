@@ -87,3 +87,34 @@ def build_ticket_service(ticket_repo, bot: Bot):
     return TicketService(
         ticket_repo=ticket_repo, bot=bot, forum_group_id=forum_id
     )
+
+async def notify_admins_with_document(
+    bot: Bot,
+    text: str,
+    filename: str,
+    file_content: str,
+    parse_mode: str = "Markdown",
+) -> None:
+    """
+    Sends a text message AND a .txt file document to all configured admins.
+    Used for withdrawal audit reports.
+    """
+    from aiogram.types import BufferedInputFile
+
+    for admin_id in settings.admin_ids:
+        try:
+            await bot.send_message(
+                chat_id=admin_id,
+                text=text,
+                parse_mode=parse_mode,
+            )
+            await bot.send_document(
+                chat_id=admin_id,
+                document=BufferedInputFile(
+                    file_content.encode("utf-8"),
+                    filename=filename,
+                ),
+            )
+        except Exception as e:
+            logger.error("Failed to notify admin with document",
+                         admin_id=admin_id, error=str(e))

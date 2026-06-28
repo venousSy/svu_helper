@@ -10,6 +10,7 @@ notifications, without the services knowing anything about aiogram.
 from dataclasses import dataclass
 from typing import Optional
 
+from domain.entities import CommissionLog
 from domain.enums import PaymentStatus, ProjectStatus
 from infrastructure.repositories import PaymentRepository, ProjectRepository
 
@@ -34,6 +35,9 @@ class PaymentActionResult:
     proj_id: int
     user_id: int
     subject: str  # raw, not escaped
+    price: float          # NEW — needed for 10% commission calc
+    referrer_id: Optional[int] = None    # NEW — set if referral commission was awarded
+    reward_amount: Optional[float] = None  # NEW — the actual commission SYP amount
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +101,15 @@ class ConfirmPaymentService(BasePaymentService):
         ValueError: if payment_id not found.
     """
 
+    def __init__(
+        self,
+        project_repo: ProjectRepository,
+        payment_repo: PaymentRepository,
+        user_referral_repo,   # UserReferralRepository — avoids circular import
+    ) -> None:
+        super().__init__(project_repo, payment_repo)
+        self._user_referral_repo = user_referral_repo
+
     async def execute(self, payment_id: int) -> PaymentActionResult:
         payment = await self._payment_repo.get_payment(payment_id)
         if not payment:
@@ -107,11 +120,36 @@ class ConfirmPaymentService(BasePaymentService):
         await self._project_repo.update_status(proj_id, ProjectStatus.ACCEPTED)
 
         project = await self._project_repo.get_project_by_id(proj_id)
+        student_id = project["user_id"]
+        price = float(project.get("price") or 0)
+
+        referrer_id: Optional[int] = None
+        reward_amount: Optional[float] = None
+
+        referral_user = await self._user_referral_repo.get_user(student_id)
+        if referral_user and referral_user.referred_by:
+            reward_amount = round(price * 0.10, 2)
+            referrer_id = referral_user.referred_by
+            await self._user_referral_repo.add_balance(referrer_id, reward_amount)
+
+            log = CommissionLog(
+                referrer_id=referrer_id,
+                referred_user_id=student_id,
+                project_id=proj_id,
+                project_subject=project.get("subject_name", ""),
+                project_price=price,
+                commission_amount=reward_amount,
+            )
+            await self._user_referral_repo.save_commission_log(log)
+
         return PaymentActionResult(
             payment_id=payment_id,
             proj_id=proj_id,
-            user_id=project["user_id"],
+            user_id=student_id,
             subject=project.get("subject_name", ""),
+            price=price,
+            referrer_id=referrer_id,
+            reward_amount=reward_amount,
         )
 
 
@@ -139,9 +177,13 @@ class RejectPaymentService(BasePaymentService):
         await self._project_repo.update_status(proj_id, ProjectStatus.OFFERED)
 
         project = await self._project_repo.get_project_by_id(proj_id)
+        price = float(project.get("price") or 0) if project else 0.0
         return PaymentActionResult(
             payment_id=payment_id,
             proj_id=proj_id,
             user_id=project["user_id"] if project else 0,
             subject=project.get("subject_name", "") if project else "",
+            price=price,
+            referrer_id=None,
+            reward_amount=None,
         )

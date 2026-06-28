@@ -106,7 +106,17 @@
         "tests_running": "⏳ <b>جاري تشغيل الاختبارات...</b>\nقد يستغرق الأمر بضع دقائق. سيتم إعلامك بالنتيجة.",
         "tests_success": "✅ <b>اكتملت الاختبارات بنجاح!</b>\n\nجميع الميزات تعمل بشكل سليم.\n\n<pre>{}</pre>",
         "tests_failed": "❌ <b>فشلت بعض الاختبارات!</b>\n\nالرجاء التحقق من المشكلة في أسرع وقت:\n\n<pre>{}</pre>",
-        "tests_error": "⚠️ <b>حدث خطأ أثناء تشغيل الاختبارات:</b>\n\n<pre>{}</pre>"
+        "tests_error": "⚠️ <b>حدث خطأ أثناء تشغيل الاختبارات:</b>\n\n<pre>{}</pre>",
+        "referral_info": "🔗 رابط الإحالة الخاص بك:\n`{link}`\n\n💰 رصيدك الحالي: *{balance:.0f} ل.س*",
+        "reward_received": "🎉 تهانينا! حصلت على عمولة *{amount:.0f} ل.س* بسبب إحالتك.",
+        "withdrawal_ask_address": "أدخل عنوان حساب ShamCash الخاص بك:",
+        "withdrawal_ask_name": "أدخل الاسم المسجّل في حساب ShamCash:",
+        "withdrawal_ask_amount": "أدخل المبلغ الذي تريد سحبه بالليرة السورية (الحد الأدنى 500 ل.س):",
+        "withdrawal_confirm_prompt": "📋 *ملخص طلب السحب*\n\n💰 المبلغ: *{amount:.0f} ل.س*\n📱 الاسم: {name}\n🔑 العنوان: `{address}`\n\nهل تريد تأكيد الطلب؟",
+        "withdrawal_success": "✅ تم إرسال طلب السحب. سيتواصل معك الفريق قريباً.",
+        "withdrawal_too_small": "⚠️ الحد الأدنى للسحب هو 500 ل.س.",
+        "withdrawal_limit_reached": "⏳ يمكنك تقديم طلب سحب واحد فقط كل يوم. حاول غداً.",
+        "withdrawal_insufficient": "❌ رصيدك الحالي غير كافٍ لهذا المبلغ."
     },
     "buttons": {
         "new_project": "📚 مشروع جديد",
@@ -153,7 +163,11 @@
         "close_team_btn": "🔒 إغلاق",
         "delete_team_btn": "🗑 حذف",
         "withdraw_btn": "🔙 سحب الطلب",
-        "my_pending_joins_btn": "⏳ طلباتي المعلقة"
+        "my_pending_joins_btn": "⏳ طلباتي المعلقة",
+        "referral": "🔗 الإحالة ورصيدي",
+        "request_withdrawal": "💸 طلب سحب الرصيد",
+        "confirm_withdrawal": "تأكيد ✅",
+        "cancel_withdrawal": "إلغاء ❌"
     },
     "client_prompts": {
         "ask_subject": "[1/4] 📚 ما **اسم المادة**؟\n\n_(أرسل /cancel في أي وقت للإلغاء)_",

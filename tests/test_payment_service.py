@@ -26,7 +26,8 @@ async def test_submit_payment_service():
 async def test_confirm_payment_service():
     proj_repo = AsyncMock()
     pay_repo = AsyncMock()
-    service = ConfirmPaymentService(proj_repo, pay_repo)
+    user_referral_repo = AsyncMock()
+    service = ConfirmPaymentService(proj_repo, pay_repo, user_referral_repo)
     
     # Missing payment
     pay_repo.get_payment.return_value = None

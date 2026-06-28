@@ -13,6 +13,7 @@ common_kb.py) have been removed — import directly from this module.
 """
 
 from aiogram import types
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from keyboards.callbacks import (
@@ -79,6 +80,10 @@ from utils.constants import (
     BTN_TEAM_DELETE,
     BTN_TEAM_WITHDRAW,
     BTN_TEAM_MY_PENDING_JOINS,
+    BTN_REQUEST_WITHDRAWAL,
+    BTN_CONFIRM_WITHDRAWAL,
+    BTN_CANCEL_WITHDRAWAL,
+    BTN_REFERRAL,
 )
 from utils.formatters import format_datetime
 
@@ -118,7 +123,11 @@ class KeyboardFactory:
             text=BTN_HELP,
             callback_data=MenuCallback(action=MenuAction.help).pack(),
         )
-        builder.adjust(1)
+        builder.button(
+            text=BTN_REFERRAL,
+            callback_data=MenuCallback(action=MenuAction.referral).pack(),
+        )
+        builder.adjust(2, 2, 2, 1)
         return builder.as_markup()
 
     @staticmethod
@@ -334,6 +343,33 @@ class KeyboardFactory:
             )
         )
         return builder.as_markup()
+
+    @staticmethod
+    def referral_menu(has_balance: bool) -> InlineKeyboardMarkup:
+        """Shown after /referral — conditionally includes withdraw button."""
+        from keyboards.callbacks import WithdrawalAction, WithdrawalCallback
+        buttons = []
+        if has_balance:
+            buttons.append([InlineKeyboardButton(
+                text=BTN_REQUEST_WITHDRAWAL,
+                callback_data=WithdrawalCallback(action=WithdrawalAction.request).pack(),
+            )])
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    @staticmethod
+    def withdrawal_confirm() -> InlineKeyboardMarkup:
+        """Shown before final submission — confirm or cancel."""
+        from keyboards.callbacks import WithdrawalAction, WithdrawalCallback
+        return InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text=BTN_CONFIRM_WITHDRAWAL,
+                callback_data=WithdrawalCallback(action=WithdrawalAction.confirm).pack(),
+            ),
+            InlineKeyboardButton(
+                text=BTN_CANCEL_WITHDRAWAL,
+                callback_data=WithdrawalCallback(action=WithdrawalAction.cancel).pack(),
+            ),
+        ]])
 
     # -----------------------------------------------------------------------
     # Admin keyboards

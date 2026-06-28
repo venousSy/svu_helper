@@ -7,6 +7,7 @@ from .ticket import TicketRepository
 from .audit import AuditRepository
 from .matchmaking import TeamRequestRepository
 from .student_repo import StudentRepository
+from .user_referral import UserReferralRepository
 
 __all__ = [
     "ProjectRepository",
@@ -17,4 +18,5 @@ __all__ = [
     "AuditRepository",
     "TeamRequestRepository",
     "StudentRepository",
+    "UserReferralRepository",
 ]

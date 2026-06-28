@@ -30,6 +30,38 @@ from aiogram.types import TelegramObject
 
 from infrastructure.mongo_db import Database
 from infrastructure.repositories import (
+"""
+DB Injection Middleware
+=======================
+Builds repository instances for every incoming update and injects them
+into the aiogram handler data dict.
+
+Handlers declare typed parameters matching the keys below and aiogram
+automatically resolves them:
+
+    async def my_handler(
+        message: types.Message,
+        project_repo: ProjectRepository,
+        payment_repo: PaymentRepository,
+    ):
+        ...
+
+Design notes:
+  - Repositories are lightweight objects (just a reference to `db`) so
+    constructing them per-update is negligible overhead.
+  - We read `Database.db` here (infrastructure layer boundary). This is
+    the *only* place outside of infrastructure/ that knows about the DB
+    connection object.
+  - SettingsRepository / StatsRepository are injected the same way so
+    admin handlers can also be fully tested with mocks.
+"""
+from typing import Any, Awaitable, Callable, Dict
+
+from aiogram import BaseMiddleware
+from aiogram.types import TelegramObject
+
+from infrastructure.mongo_db import Database
+from infrastructure.repositories import (
     PaymentRepository,
     ProjectRepository,
     SettingsRepository,
@@ -38,7 +70,9 @@ from infrastructure.repositories import (
     AuditRepository,
     TeamRequestRepository,
     StudentRepository,
+    UserReferralRepository,
 )
+from application.withdrawal_service import WithdrawalService
 
 class DbInjectionMiddleware(BaseMiddleware):
     """Injects repository instances into the handler data dict."""
@@ -60,5 +94,9 @@ class DbInjectionMiddleware(BaseMiddleware):
             data["audit_repo"] = AuditRepository(db)
             data["team_request_repo"] = TeamRequestRepository(db)
             data["student_repo"] = StudentRepository(db)
+            
+            user_referral_repo = UserReferralRepository(db)
+            data["user_referral_repo"] = user_referral_repo
+            data["withdrawal_service"] = WithdrawalService(user_referral_repo)
 
         return await handler(event, data)

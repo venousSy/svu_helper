@@ -6,7 +6,7 @@ as well as basic main menu navigation logic.
 """
 
 from aiogram import Router, types, F
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
 
 from utils.constants import (
@@ -32,8 +32,19 @@ router = Router()
 
 
 @router.message(Command("start"))
-async def welcome(message: types.Message):
-    """Greets the user and provides basic instructions."""
+async def welcome(
+    message: types.Message,
+    command: CommandObject,
+    user_referral_repo,  # injected
+):
+    """Greets the user and processes referral links if present."""
+    referred_by = None
+    if command.args and command.args.isdigit():
+        referred_by = int(command.args)
+
+    # Upsert user and record referral if applicable
+    await user_referral_repo.get_or_create_user(message.from_user.id, referred_by)
+
     await message.answer(MSG_WELCOME, reply_markup=KeyboardFactory.student_main())
 
 
@@ -45,6 +56,16 @@ async def help_command(message: types.Message):
 @router.callback_query(MenuCallback.filter(F.action == MenuAction.help))
 async def cb_help(callback: types.CallbackQuery):
     await callback.message.answer(MSG_HELP)
+    await callback.answer()
+
+@router.callback_query(MenuCallback.filter(F.action == MenuAction.referral))
+async def cb_referral(
+    callback: types.CallbackQuery,
+    user_referral_repo,  # injected
+    bot,
+):
+    from handlers.client_routes.referral import cmd_referral
+    await cmd_referral(callback.message, user_referral_repo, bot)
     await callback.answer()
 
 

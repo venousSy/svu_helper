@@ -21,6 +21,7 @@ class MenuAction(str, Enum):
     back_to_admin = "back_to_admin"
     close_list = "close_list"
     cancel_flow = "cancel_flow"
+    referral = "referral"
 
 class ProjectAction(str, Enum):
     accept = "accept"
@@ -118,3 +119,11 @@ class ProfileCallback(CallbackData, prefix="profile"):
     """Callback for profile-related actions."""
     action: str
     spec: str = ""
+
+class WithdrawalAction(str, Enum):
+    confirm = "confirm"
+    cancel  = "cancel"
+    request = "request"   # triggers the withdrawal FSM from the referral menu
+
+class WithdrawalCallback(CallbackData, prefix="wdraw"):
+    action: WithdrawalAction

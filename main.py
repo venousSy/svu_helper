@@ -11,7 +11,10 @@ import sentry_sdk
 from config import settings
 from database.connection import init_db
 from handlers.admin_routes import router as admin_router
-from handlers.client_routes import router as client_router
+from handlers.client_routes import payment as client_payment
+from handlers.client_routes import project as client_project
+from handlers.client_routes import teams
+from handlers.client_routes import referral
 from handlers.common import router as common_router
 from middlewares.error_handler import GlobalErrorHandler
 from middlewares.maintenance import MaintenanceMiddleware
@@ -96,7 +99,9 @@ dp.edited_message.middleware(GlobalErrorHandler())
 
 # Register all hander routers
 dp.include_router(common_router)
-dp.include_router(client_router)
+dp.include_router(client_payment.router)
+dp.include_router(teams.router)
+dp.include_router(referral.router)
 dp.include_router(admin_router)
 
 

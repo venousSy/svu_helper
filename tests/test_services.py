@@ -269,8 +269,10 @@ async def test_submit_payment_raises_without_proj_id(mock_project_repo, mock_pay
 async def test_confirm_payment_service(mock_project_repo, mock_payment_repo):
     mock_payment_repo.get_payment.return_value = {"id": 5, "project_id": 2}
     mock_project_repo.get_project_by_id.return_value = {"user_id": 7, "subject_name": "Math"}
+    mock_referral_repo = AsyncMock()
+    mock_referral_repo.get_user.return_value = None
 
-    result = await ConfirmPaymentService(mock_project_repo, mock_payment_repo).execute(5)
+    result = await ConfirmPaymentService(mock_project_repo, mock_payment_repo, mock_referral_repo).execute(5)
 
     mock_payment_repo.update_status.assert_called_once_with(5, PaymentStatus.ACCEPTED)
     mock_project_repo.update_status.assert_called_once_with(2, ProjectStatus.ACCEPTED)
@@ -281,8 +283,9 @@ async def test_confirm_payment_service(mock_project_repo, mock_payment_repo):
 @pytest.mark.asyncio
 async def test_confirm_payment_raises_when_not_found(mock_project_repo, mock_payment_repo):
     mock_payment_repo.get_payment.return_value = None
+    mock_referral_repo = AsyncMock()
     with pytest.raises(ValueError, match="not found"):
-        await ConfirmPaymentService(mock_project_repo, mock_payment_repo).execute(999)
+        await ConfirmPaymentService(mock_project_repo, mock_payment_repo, mock_referral_repo).execute(999)
 
 
 @pytest.mark.asyncio
