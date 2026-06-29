@@ -18,6 +18,7 @@ from utils.constants import (
     MSG_ADMIN_ERROR_FORMAT,
     MSG_PAYMENT_ACCEPTED_APPEND,
     MSG_PAYMENT_REJECTED_APPEND,
+    MSG_REWARD_RECEIVED,
 )
 from utils.formatters import escape_md
 
@@ -71,11 +72,14 @@ async def confirm_payment(
     payment_repo: PaymentRepository,
     project_repo: ProjectRepository,
     audit_repo: AuditRepository,
+    user_referral_repo,          # injected — needed for commission awarding
 ):
     """ConfirmPaymentService does the DB work; handler sends notifications."""
     payment_id = callback_data.id
     try:
-        result = await ConfirmPaymentService(project_repo, payment_repo).execute(payment_id)
+        result = await ConfirmPaymentService(
+            project_repo, payment_repo, user_referral_repo
+        ).execute(payment_id)
     except ValueError as e:
         return await callback.answer(MSG_ADMIN_ERROR_FORMAT.format(e), show_alert=True)
 
@@ -89,7 +93,23 @@ async def confirm_payment(
         + MSG_PAYMENT_ACCEPTED_APPEND.format(result.payment_id),
         parse_mode="Markdown",
     )
-    
+
+    # Notify referrer of their commission (Fix 2)
+    if result.referrer_id and result.reward_amount:
+        try:
+            await bot.send_message(
+                result.referrer_id,
+                MSG_REWARD_RECEIVED.format(amount=result.reward_amount),
+                parse_mode="Markdown",
+            )
+        except Exception as e:
+            logger.warning(
+                "Could not notify referrer of commission",
+                referrer_id=result.referrer_id,
+                reward_amount=result.reward_amount,
+                error=str(e),
+            )
+
     await AuditService(audit_repo).log_event(
         user_id=callback.from_user.id,
         role="admin",

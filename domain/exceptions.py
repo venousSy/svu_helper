@@ -6,5 +6,11 @@ class InsufficientBalanceError(Exception):
 class WithdrawalTooSmallError(Exception):
     """Raised when the requested withdrawal is below the 500 SYP minimum."""
 
+class WithdrawalTooLargeError(Exception):
+    """Raised when the requested withdrawal exceeds the maximum allowed amount."""
+
+class WithdrawalAmountInvalidError(Exception):
+    """Raised when the withdrawal amount is zero or negative."""
+
 class WithdrawalLimitError(Exception):
     """Raised when the user has already submitted a withdrawal today."""

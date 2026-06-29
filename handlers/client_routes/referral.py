@@ -10,16 +10,19 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from domain.exceptions import (
-    InsufficientBalanceError, WithdrawalLimitError, WithdrawalTooSmallError,
+    InsufficientBalanceError, WithdrawalAmountInvalidError,
+    WithdrawalLimitError, WithdrawalTooLargeError, WithdrawalTooSmallError,
 )
 from keyboards.callbacks import WithdrawalAction, WithdrawalCallback
 from keyboards.factory import KeyboardFactory
 from states import ReferralStates
 from utils.constants import (
+    MSG_CANCELLED,
     MSG_REFERRAL_INFO, MSG_REWARD_RECEIVED,
     MSG_WITHDRAWAL_ASK_ADDRESS, MSG_WITHDRAWAL_ASK_NAME,
     MSG_WITHDRAWAL_ASK_AMOUNT, MSG_WITHDRAWAL_CONFIRM_PROMPT,
     MSG_WITHDRAWAL_SUCCESS, MSG_WITHDRAWAL_TOO_SMALL,
+    MSG_WITHDRAWAL_TOO_LARGE, MSG_WITHDRAWAL_AMOUNT_INVALID,
     MSG_WITHDRAWAL_LIMIT_REACHED, MSG_WITHDRAWAL_INSUFFICIENT,
 )
 from utils.helpers import notify_admins_with_document
@@ -120,8 +123,18 @@ async def cb_confirm_withdrawal(
             shamcash_address=data["shamcash_address"],
             shamcash_name=data["shamcash_name"],
         )
+    except WithdrawalAmountInvalidError:
+        await query.message.answer(MSG_WITHDRAWAL_AMOUNT_INVALID)
+        await state.clear()
+        return
     except WithdrawalTooSmallError:
         await query.message.answer(MSG_WITHDRAWAL_TOO_SMALL)
+        await state.clear()
+        return
+    except WithdrawalTooLargeError:
+        await query.message.answer(MSG_WITHDRAWAL_TOO_LARGE.format(
+            max_amount=1_000_000
+        ))
         await state.clear()
         return
     except WithdrawalLimitError:
@@ -151,5 +164,4 @@ async def cb_confirm_withdrawal(
 async def cb_cancel_withdrawal(query: types.CallbackQuery, state: FSMContext):
     await query.answer()
     await state.clear()
-    from utils.constants import MSG_CANCELLED
     await query.message.answer(MSG_CANCELLED)

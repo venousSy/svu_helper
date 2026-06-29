@@ -45,10 +45,18 @@ class UserReferralRepository:
         return ReferralUser(**doc) if doc else None
 
     async def add_balance(self, user_id: int, amount: float) -> None:
-        """Atomically increments the user's balance."""
-        await self._db.referral_users.update_one(
-            {"user_id": user_id}, {"$inc": {"balance": amount}}, upsert=True
+        """Atomically increments the user's balance.
+
+        Raises:
+            RuntimeError: if the user document doesn't exist (data integrity bug).
+        """
+        result = await self._db.referral_users.update_one(
+            {"user_id": user_id}, {"$inc": {"balance": amount}}
         )
+        if result.matched_count == 0:
+            raise RuntimeError(
+                f"add_balance: user {user_id} not found — cannot credit balance"
+            )
         logger.info("Balance credited", user_id=user_id, amount=amount)
 
     async def deduct_balance(self, user_id: int, amount: float) -> None:

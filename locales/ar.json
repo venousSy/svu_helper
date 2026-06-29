@@ -115,6 +115,8 @@
         "withdrawal_confirm_prompt": "📋 *ملخص طلب السحب*\n\n💰 المبلغ: *{amount:.0f} ل.س*\n📱 الاسم: {name}\n🔑 العنوان: `{address}`\n\nهل تريد تأكيد الطلب؟",
         "withdrawal_success": "✅ تم إرسال طلب السحب. سيتواصل معك الفريق قريباً.",
         "withdrawal_too_small": "⚠️ الحد الأدنى للسحب هو 500 ل.س.",
+        "withdrawal_too_large": "⚠️ المبلغ المطلوب كبير جداً. الحد الأقصى للسحب هو {max_amount:.0f} ل.س.",
+        "withdrawal_amount_invalid": "⚠️ المبلغ المُدخل غير صالح. يرجى إدخال قيمة موجبة.",
         "withdrawal_limit_reached": "⏳ يمكنك تقديم طلب سحب واحد فقط كل يوم. حاول غداً.",
         "withdrawal_insufficient": "❌ رصيدك الحالي غير كافٍ لهذا المبلغ."
     },
