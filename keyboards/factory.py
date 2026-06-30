@@ -84,6 +84,8 @@ from utils.constants import (
     BTN_CONFIRM_WITHDRAWAL,
     BTN_CANCEL_WITHDRAWAL,
     BTN_REFERRAL,
+    BTN_RUN_ALL_TESTS,
+    BTN_RUN_FAILED_TESTS,
 )
 from utils.formatters import format_datetime
 
@@ -430,7 +432,31 @@ class KeyboardFactory:
         builder.row(
             types.InlineKeyboardButton(
                 text=BTN_RUN_TESTS,
-                callback_data=MenuCallback(action=MenuAction.admin_run_tests).pack(),
+                callback_data=MenuCallback(action=MenuAction.admin_test_menu).pack(),
+            )
+        )
+        return builder.as_markup()
+
+    @staticmethod
+    def test_actions() -> types.InlineKeyboardMarkup:
+        """Sub-menu for running E2E tests."""
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_RUN_ALL_TESTS,
+                callback_data=MenuCallback(action=MenuAction.admin_run_all_tests).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_RUN_FAILED_TESTS,
+                callback_data=MenuCallback(action=MenuAction.admin_run_failed_tests).pack(),
+            )
+        )
+        builder.row(
+            types.InlineKeyboardButton(
+                text=BTN_BACK_ICON,
+                callback_data=MenuCallback(action=MenuAction.back_to_admin).pack(),
             )
         )
         return builder.as_markup()

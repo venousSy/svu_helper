@@ -63,16 +63,31 @@ import asyncio
 import html
 
 @router.callback_query(
-    MenuCallback.filter(F.action == MenuAction.admin_run_tests),
+    MenuCallback.filter(F.action == MenuAction.admin_test_menu),
     F.from_user.id.in_(settings.admin_ids),
 )
-async def admin_run_tests_handler(callback: types.CallbackQuery):
+async def admin_test_menu_handler(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "اختر نوع الاختبارات التي تريد تشغيلها:", 
+        reply_markup=KeyboardFactory.test_actions()
+    )
+
+
+@router.callback_query(
+    MenuCallback.filter(F.action.in_([MenuAction.admin_run_all_tests, MenuAction.admin_run_failed_tests])),
+    F.from_user.id.in_(settings.admin_ids),
+)
+async def execute_tests_handler(callback: types.CallbackQuery, callback_data: MenuCallback):
     await callback.answer()
     loading_msg = await callback.message.edit_text(MSG_TESTS_RUNNING, parse_mode="HTML")
     
+    command = "python tests/e2e_runner.py"
+    if callback_data.action == MenuAction.admin_run_failed_tests:
+        command += " --failed-only"
+        
     try:
         process = await asyncio.create_subprocess_shell(
-            "python tests/e2e_full_suite_isolated.py",
+            command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
