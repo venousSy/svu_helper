@@ -6,13 +6,15 @@ export const projectKeys = {
   list: (params) => [...projectKeys.all, 'list', params],
 };
 
-export function useProjects(page, pageSize, statusFilter, studentId) {
+export function useProjects(page, pageSize, statusFilter, studentId, sortBy, sortOrder) {
   return useQuery({
-    queryKey: projectKeys.list({ page, pageSize, statusFilter, studentId }),
+    queryKey: projectKeys.list({ page, pageSize, statusFilter, studentId, sortBy, sortOrder }),
     queryFn: async () => {
       const params = { page, size: pageSize };
       if (statusFilter) params.status = statusFilter;
       if (studentId) params.student_id = studentId;
+      if (sortBy) params.sort_by = sortBy;
+      if (sortOrder) params.sort_order = sortOrder;
 
       const res = await apiClient.get('/projects/', { params });
       return {

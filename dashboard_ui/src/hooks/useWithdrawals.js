@@ -3,7 +3,7 @@ import apiClient from '../api/client';
 
 const WS_URL = (() => {
   const base = (import.meta.env.VITE_API_URL || window.location.origin).replace(/^http/, 'ws');
-  return `${base}/ws/withdrawals`;
+  return `${base}/ws/notifications`;
 })();
 
 export function useWithdrawals(statusFilter = null) {

@@ -51,8 +51,8 @@ manager = _ConnectionManager()
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
-@router.websocket("/ws/withdrawals")
-async def withdrawals_ws(ws: WebSocket) -> None:
+@router.websocket("/ws/notifications")
+async def notifications_ws(ws: WebSocket) -> None:
     """
     Clients connect here to receive live withdrawal status updates.
     The connection is kept alive with periodic pings.

@@ -23,6 +23,8 @@ export const colors = {
     accepted: '#0ea5e9',
     finished: '#10b981',
     denied:   '#ef4444',
+    denied_student: '#ef4444',
+    denied_admin: '#b91c1c',
   },
   text: {
     primary:   '#f8fafc',

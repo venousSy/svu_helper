@@ -16,6 +16,9 @@ export default function Projects() {
   const [studentId, setStudentId] = useState('');
   const [debouncedStudentId, setDebouncedStudentId] = useState('');
 
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+
   // Modals state
   const [selectedProject, setSelectedProject] = useState(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -39,13 +42,70 @@ export default function Projects() {
     return () => clearTimeout(delayDebounceFn);
   }, [studentId]);
 
-  const { data, isLoading, isError, error, refetch } = useProjects(page, pageSize, statusFilter, debouncedStudentId);
+  const { data, isLoading, isError, error, refetch } = useProjects(page, pageSize, statusFilter, debouncedStudentId, sortBy, sortOrder);
   const { sendOffer, denyProject, finishProject } = useProjectMutations();
 
   const handleSearchChange = (e) => setStudentId(e.target.value);
   const handleStatusChange = (e) => {
     setStatusFilter(e.target.value);
     setPage(1);
+  };
+  const handleSort = (column, order) => {
+    setSortBy(column);
+    setSortOrder(order);
+    setPage(1);
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const params = new URLSearchParams({ export_all: 'true' });
+      if (statusFilter) params.append('status', statusFilter);
+      if (debouncedStudentId) params.append('student_id', debouncedStudentId);
+      if (sortBy) params.append('sort_by', sortBy);
+      if (sortOrder) params.append('sort_order', sortOrder);
+
+      const res = await window.fetch(`/api/projects/?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const json = await res.json();
+      
+      const items = json.items || [];
+      if (items.length === 0) {
+        showToast('No projects to export', 'error');
+        return;
+      }
+      
+      // Convert JSON to CSV
+      const headers = ['ID', 'Student Name', 'Student ID', 'Subject', 'Status', 'Deadline', 'Price'];
+      const rows = items.map(p => [
+        p.id,
+        `"${p.user_full_name || p.username || ''}"`,
+        p.user_id,
+        `"${p.subject_name}"`,
+        p.status,
+        p.deadline || '',
+        p.price || ''
+      ]);
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(r => r.join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      showToast('Export failed', 'error');
+    }
   };
 
   const handleSendOffer = (project) => {
@@ -107,9 +167,11 @@ export default function Projects() {
   };
 
   const columns = [
-    { header: 'ID', accessor: 'id' },
+    { header: 'ID', accessor: 'id', sortable: true },
     { 
       header: 'Student', 
+      accessor: 'user_id',
+      sortable: true,
       render: (row) => (
         <div>
           <p className="text-text-primary font-medium">{row.user_full_name || row.username || 'Unknown'}</p>
@@ -119,7 +181,9 @@ export default function Projects() {
     },
     { header: 'Subject', accessor: 'subject_name' },
     { 
-      header: 'Status', 
+      header: 'Status',
+      accessor: 'status',
+      sortable: true,
       render: (row) => {
         const bgColors = {
           pending: 'bg-status-pending/20 text-status-pending',
@@ -141,7 +205,9 @@ export default function Projects() {
       render: (row) => <span className="text-text-secondary">{row.deadline}</span>
     },
     { 
-      header: 'Price', 
+      header: 'Price',
+      accessor: 'price',
+      sortable: true,
       render: (row) => <span className="text-text-primary font-medium">{row.price ? `${row.price.toLocaleString()} SP` : '-'}</span>
     },
     {
@@ -247,6 +313,14 @@ export default function Projects() {
             <option value="denied">Denied</option>
             </select>
         </div>
+
+        <div className="flex-1" />
+        <button
+          onClick={handleExportCSV}
+          className="px-4 py-2 bg-brand-primary text-white rounded-xl shadow-[0_4px_15px_rgba(139,92,246,0.3)] hover:shadow-[0_4px_25px_rgba(139,92,246,0.5)] hover:-translate-y-0.5 transition-all font-medium text-sm"
+        >
+          Export All to CSV
+        </button>
       </motion.div>
 
       <DataTable 
@@ -256,7 +330,10 @@ export default function Projects() {
         total={data?.total || 0} 
         page={page} 
         pageSize={pageSize} 
-        onPageChange={setPage} 
+        onPageChange={setPage}
+        onSort={handleSort}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
       />
 
       <OfferModal 

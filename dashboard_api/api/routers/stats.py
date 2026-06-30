@@ -14,10 +14,13 @@ router = APIRouter(
 )
 
 @router.get("/overview", response_model=StatsOverviewResponse)
-async def get_stats_overview():
+async def get_stats_overview(
+    start_date: str = None,
+    end_date: str = None
+):
     """
     Returns aggregated stats for the dashboard overview.
     Requires authentication.
     """
-    logger.info("Fetching stats overview")
-    return await get_overview_stats()
+    logger.info("Fetching stats overview", start_date=start_date, end_date=end_date)
+    return await get_overview_stats(start_date, end_date)

@@ -34,14 +34,19 @@ async def list_projects(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     status: Optional[str] = Query(None),
-    student_id: Optional[int] = Query(None)
+    student_id: Optional[int] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    export_all: bool = Query(False)
 ):
     """
-    Returns a paginated list of projects.
+    Returns a paginated list of projects (or all projects if export_all is true).
     Requires authentication.
     """
-    logger.info("Fetching paginated projects", page=page, size=size, status=status, student_id=student_id)
-    return await get_projects_page(page, size, status, student_id)
+    logger.info("Fetching projects", page=page, size=size, status=status, student_id=student_id, sort=sort_by, order=sort_order)
+    return await get_projects_page(page, size, status, student_id, sort_by, sort_order, start_date, end_date, export_all)
 
 @router.get("/urgent", response_model=List[ProjectResponse])
 async def get_urgent(project_repo: ProjectRepository = Depends(get_project_repo)):

@@ -19,6 +19,8 @@ const STATUS_LABELS = {
   accepted: 'مقبول',
   finished: 'منتهي',
   denied: 'مرفوض',
+  denied_student: 'مرفوض من الطالب',
+  denied_admin: 'مرفوض من الإدارة',
 };
 const PIE_FALLBACK_COLORS = Object.values(colors.status);
 
@@ -82,7 +84,10 @@ function ChartTooltip({ active, payload, label, valuePrefix = '', valueSuffix = 
 }
 
 export default function Dashboard() {
-  const { data, isLoading, error, refetch } = useStats();
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const { data, isLoading, error, refetch } = useStats(startDate, endDate);
   const { data: urgentProjects, isLoading: isLoadingUrgent } = useUrgentProjects();
   
   const [selectedProjectId, setSelectedProjectId] = useState(null);
@@ -102,9 +107,29 @@ export default function Dashboard() {
     value: d.count,
     fill: STATUS_COLORS[d._id] || '#94a3b8',
   })) ?? [];
+  const topReferrers = data?.top_referrers ?? [];
 
   return (
     <AppLayout title="Overview">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <h1 className="text-xl font-bold text-text-primary">Dashboard Statistics</h1>
+        <div className="flex items-center gap-3">
+          <input 
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-3 py-2 bg-surface/50 border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-brand-primary"
+          />
+          <span className="text-text-muted">to</span>
+          <input 
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-3 py-2 bg-surface/50 border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-brand-primary"
+          />
+        </div>
+      </div>
+
       {isLoading && <LoadingSpinner />}
       {error && <ErrorMessage message={error} onRetry={refetch} />}
 
@@ -252,43 +277,79 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* --- Status Pie Chart --- */}
-          <div className="glass rounded-xl p-6 border border-border">
-            <SectionTitle>Project Status Breakdown</SectionTitle>
-            {pieData.length > 0 ? (
-              <div className="flex flex-col md:flex-row items-center gap-8">
-                <ResponsiveContainer width="100%" height={chart.heightPie} className="max-w-xs">
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={chart.innerRadius} outerRadius={chart.outerRadius} paddingAngle={3} dataKey="value">
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill || PIE_FALLBACK_COLORS[index % PIE_FALLBACK_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={({ active, payload }) => active && payload?.length ? (
-                        <div className="glass rounded-lg px-4 py-3 border border-border text-sm">
-                          <p className="font-semibold" style={{ color: payload[0].payload.fill }}>{payload[0].name}</p>
-                          <p className="text-text-primary">{payload[0].value} projects</p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* --- Status Pie Chart --- */}
+            <div className="glass rounded-xl p-6 border border-border">
+              <SectionTitle>Project Status Breakdown</SectionTitle>
+              {pieData.length > 0 ? (
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <ResponsiveContainer width="100%" height={chart.heightPie} className="max-w-xs">
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={chart.innerRadius} outerRadius={chart.outerRadius} paddingAngle={3} dataKey="value">
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill || PIE_FALLBACK_COLORS[index % PIE_FALLBACK_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        content={({ active, payload }) => active && payload?.length ? (
+                          <div className="glass rounded-lg px-4 py-3 border border-border text-sm">
+                            <p className="font-semibold" style={{ color: payload[0].payload.fill }}>{payload[0].name}</p>
+                            <p className="text-text-primary">{payload[0].value} projects</p>
+                          </div>
+                        ) : null}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-col gap-3 flex-1">
+                    {pieData.map((entry) => (
+                      <div key={entry.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.fill }} />
+                          <span className="text-sm text-text-primary">{entry.name}</span>
                         </div>
-                      ) : null}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex flex-col gap-3 flex-1">
-                  {pieData.map((entry) => (
-                    <div key={entry.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.fill }} />
-                        <span className="text-sm text-text-primary">{entry.name}</span>
+                        <span className="text-sm font-semibold text-text-primary">{entry.value}</span>
                       </div>
-                      <span className="text-sm font-semibold text-text-primary">{entry.value}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <EmptyChart label="Status breakdown will appear once projects exist" />
+              )}
+            </div>
+            
+            {/* --- Top Referrers Leaderboard --- */}
+            <div className="glass rounded-xl p-6 border border-border">
+              <div className="flex items-center gap-2 mb-5">
+                <SectionTitle>Top Referrers</SectionTitle>
+              </div>
+              {topReferrers.length > 0 ? (
+                <div className="space-y-4">
+                  {topReferrers.map((referrer, index) => (
+                    <div key={referrer._id} className="flex items-center justify-between bg-surface-elevated p-3 rounded-lg border border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          index === 0 ? 'bg-amber-500/20 text-amber-500' :
+                          index === 1 ? 'bg-gray-400/20 text-gray-400' :
+                          index === 2 ? 'bg-amber-700/20 text-amber-700' :
+                          'bg-surface-base text-text-muted'
+                        }`}>
+                          #{index + 1}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary line-clamp-1">{referrer.full_name || referrer.username || `User ${referrer._id}`}</p>
+                          <p className="text-xs text-text-muted">ID: {referrer._id}</p>
+                        </div>
+                      </div>
+                      <div className="bg-brand-primary/10 text-brand-primary font-semibold text-sm px-3 py-1 rounded-full">
+                        {referrer.count} {referrer.count === 1 ? 'referral' : 'referrals'}
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : (
-              <EmptyChart label="Status breakdown will appear once projects exist" />
-            )}
+              ) : (
+                <EmptyChart label="No referrals found for this period" />
+              )}
+            </div>
           </div>
 
         </div>

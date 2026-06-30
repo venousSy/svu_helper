@@ -25,6 +25,8 @@
   --color-status-accepted:   #0ea5e9;
   --color-status-finished:   #10b981;
   --color-status-denied:     #ef4444;
+  --color-status-denied-student: #ef4444;
+  --color-status-denied-admin: #b91c1c;
 
   /* ─── Surface / Background ──────────────────────────────── */
   --color-bg-base:      #020617;  /* slate-950 (deepest dark blue) */

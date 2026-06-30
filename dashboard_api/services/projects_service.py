@@ -38,11 +38,20 @@ async def get_projects_page(
     size: int,
     status_filter: Optional[str] = None,
     search_student_id: Optional[int] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    export_all: bool = False
 ) -> PaginatedProjectsResponse:
-    skip = (page - 1) * size
+    if export_all:
+        skip = 0
+        size = 0 # 0 limit means no limit in our repo layer
+    else:
+        skip = (page - 1) * size
 
-    total = await count_projects(status_filter, search_student_id)
-    items_raw = await get_paginated_projects(skip, size, status_filter, search_student_id)
+    total = await count_projects(status_filter, search_student_id, start_date, end_date)
+    items_raw = await get_paginated_projects(skip, size, status_filter, search_student_id, sort_by, sort_order, start_date, end_date)
 
     items = [r for doc in items_raw if (r := _to_project_response(doc)) is not None]
     pages = math.ceil(total / size) if size > 0 else 0

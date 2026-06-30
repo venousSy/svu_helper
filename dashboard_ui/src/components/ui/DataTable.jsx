@@ -10,9 +10,21 @@ export default function DataTable({
   total, 
   page, 
   pageSize, 
-  onPageChange 
+  onPageChange,
+  onSort,
+  sortBy,
+  sortOrder
 }) {
   const totalPages = Math.ceil(total / pageSize) || 1;
+
+  const handleSort = (column) => {
+    if (!column.sortable || !onSort) return;
+    if (sortBy === column.accessor) {
+      onSort(column.accessor, sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      onSort(column.accessor, 'desc');
+    }
+  };
 
   return (
     <div className="flex flex-col w-full bg-surface-elevated/50 backdrop-blur-md border border-border rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
@@ -21,8 +33,19 @@ export default function DataTable({
           <thead>
             <tr className="bg-surface-base/80 border-b border-border text-xs uppercase tracking-widest text-text-muted font-bold">
               {columns.map((col, i) => (
-                <th key={i} className="px-6 py-5">
-                  {col.header}
+                <th 
+                  key={i} 
+                  className={`px-6 py-5 ${col.sortable ? 'cursor-pointer hover:text-text-primary transition-colors select-none' : ''}`}
+                  onClick={() => handleSort(col)}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {col.header}
+                    {col.sortable && sortBy === col.accessor && (
+                      <span className="text-brand-primary">
+                        {sortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>

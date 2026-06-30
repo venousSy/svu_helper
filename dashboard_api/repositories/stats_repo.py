@@ -1,9 +1,28 @@
 from typing import List, Dict, Any
 from infrastructure.mongo_db import get_db
 
-async def aggregate_project_volume() -> List[Dict[str, Any]]:
+async def aggregate_project_volume(start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
     db = await get_db()
-    pipeline = [
+    match = {}
+    if start_date or end_date:
+        match["created_at"] = {}
+        from datetime import datetime
+        if start_date:
+            try:
+                match["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+            except: pass
+        if end_date:
+            try:
+                match["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+            except: pass
+        if not match["created_at"]:
+            del match["created_at"]
+    
+    pipeline = []
+    if match:
+        pipeline.append({"$match": match})
+        
+    pipeline.extend([
         {
             "$group": {
                 "_id": {
@@ -17,35 +36,65 @@ async def aggregate_project_volume() -> List[Dict[str, Any]]:
             }
         },
         {"$sort": {"_id": 1}}
-    ]
+    ])
     cursor = db.projects.aggregate(pipeline)
     return await cursor.to_list(length=None)
 
-async def aggregate_conversion_rates() -> List[Dict[str, Any]]:
+async def aggregate_conversion_rates(start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
     db = await get_db()
-    pipeline = [
-        {
-            "$group": {
-                "_id": "$status",
-                "count": {"$sum": 1}
-            }
+    match = {}
+    if start_date or end_date:
+        match["created_at"] = {}
+        from datetime import datetime
+        if start_date:
+            try:
+                match["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+            except: pass
+        if end_date:
+            try:
+                match["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+            except: pass
+        if not match["created_at"]:
+            del match["created_at"]
+            
+    pipeline = []
+    if match:
+        pipeline.append({"$match": match})
+        
+    pipeline.append({
+        "$group": {
+            "_id": "$status",
+            "count": {"$sum": 1}
         }
-    ]
+    })
     cursor = db.projects.aggregate(pipeline)
     return await cursor.to_list(length=None)
 
-async def aggregate_revenue_over_time() -> List[Dict[str, Any]]:
+async def aggregate_revenue_over_time(start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
     """Revenue grouped by day.  Handles price stored as string OR number."""
     db = await get_db()
     _price_as_num = {
         "$convert": {"input": "$price", "to": "double", "onError": 0, "onNull": 0}
     }
+    match = {
+        "status": {"$in": ["finished", "accepted"]}
+    }
+    if start_date or end_date:
+        match["created_at"] = {}
+        from datetime import datetime
+        if start_date:
+            try:
+                match["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+            except: pass
+        if end_date:
+            try:
+                match["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+            except: pass
+        if not match["created_at"]:
+            del match["created_at"]
+            
     pipeline = [
-        {
-            "$match": {
-                "status": {"$in": ["finished", "accepted"]},
-            }
-        },
+        {"$match": match},
         {
             "$group": {
                 "_id": {
@@ -61,6 +110,30 @@ async def aggregate_revenue_over_time() -> List[Dict[str, Any]]:
         {"$sort": {"_id": 1}}
     ]
     cursor = db.projects.aggregate(pipeline)
+    return await cursor.to_list(length=None)
+
+async def aggregate_top_referrers(limit: int = 5) -> List[Dict[str, Any]]:
+    db = await get_db()
+    pipeline = [
+        {"$match": {"referred_by": {"$ne": None}}},
+        {"$group": {"_id": "$referred_by", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": limit},
+        {"$lookup": {
+            "from": "users",
+            "localField": "_id",
+            "foreignField": "user_id",
+            "as": "user_info"
+        }},
+        {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 1,
+            "count": 1,
+            "username": "$user_info.username",
+            "full_name": "$user_info.full_name"
+        }}
+    ]
+    cursor = db.referral_users.aggregate(pipeline)
     return await cursor.to_list(length=None)
 
 
