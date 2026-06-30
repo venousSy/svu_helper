@@ -99,6 +99,10 @@ export default function Dashboard() {
   const finishedCount = data?.conversion_rates?.find(s => s._id === 'finished')?.count ?? 0;
   const conversionRate = totalProjects > 0 ? ((finishedCount / totalProjects) * 100).toFixed(1) : '0.0';
 
+  const isFiltered = Boolean(startDate || endDate);
+  const revenueSubtitle = isFiltered ? "From accepted & finished projects in range" : "From accepted & finished projects";
+  const projectsSubtitle = isFiltered ? "Projects submitted in range" : "All submissions ever";
+
   // --- Chart data transformations ---
   const revenueData = data?.revenue?.map(d => ({ date: d._id, revenue: d.revenue })) ?? [];
   const volumeData = data?.project_volume?.map(d => ({ date: d._id, projects: d.count })) ?? [];
@@ -141,7 +145,7 @@ export default function Dashboard() {
             <StatCard
               title="Total Revenue"
               value={`${totalRevenue.toLocaleString()} SP`}
-              subtitle="From accepted & finished projects"
+              subtitle={revenueSubtitle}
               icon={Banknote}
               color="green"
               to="/projects"
@@ -149,7 +153,7 @@ export default function Dashboard() {
             <StatCard
               title="Total Projects"
               value={totalProjects.toLocaleString()}
-              subtitle="All submissions ever"
+              subtitle={projectsSubtitle}
               icon={FolderOpen}
               color="blue"
               to="/projects"
