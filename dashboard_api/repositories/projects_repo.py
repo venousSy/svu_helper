@@ -16,14 +16,17 @@ async def count_projects(
         query["user_id"] = search_student_id
     if start_date or end_date:
         query["created_at"] = {}
+        from datetime import timezone
         if start_date:
             try:
-                query["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+                dt = datetime.fromisoformat(start_date)
+                query["created_at"]["$gte"] = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
             except ValueError:
                 pass
         if end_date:
             try:
-                query["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+                dt = datetime.fromisoformat(end_date)
+                query["created_at"]["$lte"] = datetime.combine(dt.date(), datetime.max.time(), tzinfo=timezone.utc)
             except ValueError:
                 pass
         if not query["created_at"]:
@@ -49,14 +52,17 @@ async def get_paginated_projects(
         query["user_id"] = search_student_id
     if start_date or end_date:
         query["created_at"] = {}
+        from datetime import timezone
         if start_date:
             try:
-                query["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+                dt = datetime.fromisoformat(start_date)
+                query["created_at"]["$gte"] = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
             except ValueError:
                 pass
         if end_date:
             try:
-                query["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+                dt = datetime.fromisoformat(end_date)
+                query["created_at"]["$lte"] = datetime.combine(dt.date(), datetime.max.time(), tzinfo=timezone.utc)
             except ValueError:
                 pass
         if not query["created_at"]:

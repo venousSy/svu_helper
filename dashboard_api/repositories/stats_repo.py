@@ -6,14 +6,16 @@ async def aggregate_project_volume(start_date: Optional[str] = None, end_date: O
     match = {}
     if start_date or end_date:
         match["created_at"] = {}
-        from datetime import datetime
+        from datetime import datetime, timezone
         if start_date:
             try:
-                match["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+                dt = datetime.fromisoformat(start_date)
+                match["created_at"]["$gte"] = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
             except: pass
         if end_date:
             try:
-                match["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+                dt = datetime.fromisoformat(end_date)
+                match["created_at"]["$lte"] = datetime.combine(dt.date(), datetime.max.time(), tzinfo=timezone.utc)
             except: pass
         if not match["created_at"]:
             del match["created_at"]
@@ -45,14 +47,16 @@ async def aggregate_conversion_rates(start_date: Optional[str] = None, end_date:
     match = {}
     if start_date or end_date:
         match["created_at"] = {}
-        from datetime import datetime
+        from datetime import datetime, timezone
         if start_date:
             try:
-                match["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+                dt = datetime.fromisoformat(start_date)
+                match["created_at"]["$gte"] = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
             except: pass
         if end_date:
             try:
-                match["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+                dt = datetime.fromisoformat(end_date)
+                match["created_at"]["$lte"] = datetime.combine(dt.date(), datetime.max.time(), tzinfo=timezone.utc)
             except: pass
         if not match["created_at"]:
             del match["created_at"]
@@ -81,14 +85,16 @@ async def aggregate_revenue_over_time(start_date: Optional[str] = None, end_date
     }
     if start_date or end_date:
         match["created_at"] = {}
-        from datetime import datetime
+        from datetime import datetime, timezone
         if start_date:
             try:
-                match["created_at"]["$gte"] = datetime.fromisoformat(start_date)
+                dt = datetime.fromisoformat(start_date)
+                match["created_at"]["$gte"] = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
             except: pass
         if end_date:
             try:
-                match["created_at"]["$lte"] = datetime.fromisoformat(end_date)
+                dt = datetime.fromisoformat(end_date)
+                match["created_at"]["$lte"] = datetime.combine(dt.date(), datetime.max.time(), tzinfo=timezone.utc)
             except: pass
         if not match["created_at"]:
             del match["created_at"]
