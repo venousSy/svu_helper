@@ -255,6 +255,76 @@ async def test_host_delete_team(host):
     print("  ✅ Team deleted manually by host.")
 
 
+async def test_team_full_cycle(seeker, host):
+    await clear_chat_history_view(host)
+    team_menu = await open_team_menu(host)
+    
+    # 1. Host creates a team for 1 member (2 people total)
+    await click_inline_button(host, team_menu, "إنشاء فريق")
+    await wait_for_message(host, ["المادة"], timeout=10)
+    
+    course_name = f"Full Cycle {uuid.uuid4().hex[:4]}"
+    await host.send_message(BOT_USERNAME, course_name)
+    await wait_for_message(host, ["دكتور", "منسق"], timeout=10)
+    
+    await host.send_message(BOT_USERNAME, "Dr. Cycle")
+    
+    count_msg = await wait_for_message(host, ["عضو", "تحتاج"], timeout=10)
+    await click_inline_button(host, count_msg, "1 عضو")
+    
+    await wait_for_message(host, ["تم إنشاء طلب الفريق", "بنجاح"], timeout=15)
+    print(f"  ✅ Team creation flow completed for {course_name}.")
+    
+    # 2. Seeker searches and joins the team
+    team_menu_seeker = await open_team_menu(seeker)
+    await click_inline_button(seeker, team_menu_seeker, "البحث عن فريق")
+    
+    find_msg = await wait_for_message(seeker, ["فريق #", "لا توجد فرق"], timeout=10)
+    res = await click_inline_button(seeker, find_msg, "انضمام")
+    if not res or not res.message or not any(w in res.message for w in ["تم إرسال طلب الانضمام", "بنجاح"]):
+        raise Exception(f"Expected join success alert, got {res.message if res else 'None'}")
+    print("  ✅ Join request sent by seeker.")
+    
+    # 3. Host receives join request and accepts
+    join_alert = await wait_for_message(host, ["طلب انضمام"], timeout=15)
+    await click_inline_button(host, join_alert, "قبول")
+    
+    await wait_for_message(host, ["تم قبول", "انضمام"], timeout=10)
+    print("  ✅ Host accepted join request.")
+    
+    # 4. Host gets a notification that the team is complete
+    await wait_for_message(host, ["اكتمل الفريق"], timeout=15)
+    print("  ✅ Host received team completion notification.")
+    
+    # 5. Seeker gets a notification that they were accepted
+    await wait_for_message(seeker, ["تم قبولك"], timeout=15)
+    print("  ✅ Seeker received acceptance confirmation.")
+    
+    # 6. Verify team is in "فرقي المكتملة" for the host
+    team_menu_host = await open_team_menu(host)
+    await click_inline_button(host, team_menu_host, "فرقي المكتملة")
+    completed_teams = await wait_for_message(host, ["فرقك المكتملة", "ليس لديك فرق مكتملة"], timeout=10)
+    if "ليس لديك فرق مكتملة" in completed_teams.text or course_name not in completed_teams.text:
+        raise Exception("Team not found in completed teams.")
+    print("  ✅ Team found in completed teams for host.")
+    
+    # 7. Verify team does not show up in "فرقي المفتوحة" for the host
+    team_menu_host2 = await open_team_menu(host)
+    await click_inline_button(host, team_menu_host2, "فرقي المفتوحة")
+    open_teams = await wait_for_message(host, ["فرقك المفتوحة", "ليس لديك فرق مفتوحة حالياً"], timeout=10)
+    if course_name in open_teams.text:
+        raise Exception("Team found in open teams but it should be completed.")
+    print("  ✅ Team removed from open teams for host.")
+
+    # 8. Verify the team doesn't show up in search for seeker
+    team_menu_seeker2 = await open_team_menu(seeker)
+    await click_inline_button(seeker, team_menu_seeker2, "البحث عن فريق")
+    find_msg_after = await wait_for_message(seeker, ["فريق #", "لا توجد فرق"], timeout=10)
+    if course_name in find_msg_after.text:
+        raise Exception("Completed team still shows up in search.")
+    print("  ✅ Team removed from search results.")
+
+
 # ============================================================
 # MAIN ORCHESTRATOR
 # ============================================================
@@ -326,6 +396,9 @@ async def run_matchmaking_suite():
 
         await run_test("TEST 6: Host Deletes Open Team",
                        test_host_delete_team(host))
+
+        await run_test("TEST 7: Full Cycle Completed Team",
+                       test_team_full_cycle(seeker, host))
     finally:
             # --- RESULTS ---
         print("\n" + "=" * 50)

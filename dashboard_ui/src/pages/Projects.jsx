@@ -7,6 +7,7 @@ import { useProjectMutations } from '../hooks/useProjectMutations';
 import OfferModal from '../components/projects/OfferModal';
 import ConfirmActionModal from '../components/projects/ConfirmActionModal';
 import ProjectDetailsModal from '../components/projects/ProjectDetailsModal';
+import { motion } from 'framer-motion';
 
 export default function Projects() {
   const [page, setPage] = useState(1);
@@ -147,35 +148,43 @@ export default function Projects() {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-2">
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleViewDetails(row)}
-            className="px-3 py-1 text-xs font-medium rounded-md bg-surface-elevated border border-border text-text-primary hover:bg-border transition-colors"
+            className="px-3 py-1 text-xs font-medium rounded-md bg-surface border border-border text-text-primary hover:bg-surface-elevated transition-colors shadow-sm"
           >
             Details
-          </button>
+          </motion.button>
           {row.status === 'pending' && (
             <>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleSendOffer(row)}
-                className="px-3 py-1 text-xs font-medium rounded-md bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition-colors"
+                className="px-3 py-1 text-xs font-medium rounded-md bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white transition-all shadow-sm"
               >
                 Offer
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleDeny(row)}
-                className="px-3 py-1 text-xs font-medium rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                className="px-3 py-1 text-xs font-medium rounded-md bg-brand-danger/10 text-brand-danger hover:bg-brand-danger hover:text-white transition-all shadow-sm"
               >
                 Deny
-              </button>
+              </motion.button>
             </>
           )}
           {row.status === 'accepted' && (
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => handleFinish(row)}
-              className="px-3 py-1 text-xs font-medium rounded-md bg-status-finished/10 text-status-finished hover:bg-status-finished/20 transition-colors"
+              className="px-3 py-1 text-xs font-medium rounded-md bg-status-finished/10 text-status-finished hover:bg-status-finished hover:text-white transition-all shadow-sm"
             >
               Finish
-            </button>
+            </motion.button>
           )}
         </div>
       )
@@ -206,25 +215,29 @@ export default function Projects() {
           <button onClick={refetch} className="ml-auto underline hover:no-underline">Retry</button>
         </div>
       )}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row gap-4 mb-6"
+      >
+        <div className="relative flex-1 max-w-sm group">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-text-muted" />
+            <Search size={18} className="text-text-muted group-focus-within:text-brand-primary transition-colors" />
           </div>
           <input
             type="number"
             placeholder="Search by Student ID..."
             value={studentId}
             onChange={handleSearchChange}
-            className="w-full pl-10 pr-4 py-2.5 bg-surface-elevated border border-border rounded-lg text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-surface/50 backdrop-blur-md border border-border rounded-xl text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-sm"
           />
         </div>
         
-        <div className="relative">
+        <div className="relative group">
             <select
             value={statusFilter}
             onChange={handleStatusChange}
-            className="px-4 py-2.5 bg-surface-elevated border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all appearance-none pr-10"
+            className="px-4 py-2.5 bg-surface/50 backdrop-blur-md border border-border rounded-xl text-sm text-text-primary focus:outline-none focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10 transition-all appearance-none pr-10 shadow-sm min-w-[160px] cursor-pointer"
             >
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
@@ -234,7 +247,7 @@ export default function Projects() {
             <option value="denied">Denied</option>
             </select>
         </div>
-      </div>
+      </motion.div>
 
       <DataTable 
         columns={columns} 

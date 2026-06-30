@@ -12,34 +12,34 @@
 
 :root {
   /* ─── Brand Palette ─────────────────────────────────────── */
-  --color-brand-primary:     #3b82f6;   /* blue-500  */
-  --color-brand-primary-dim: #1d4ed8;   /* blue-700  */
-  --color-brand-accent:      #8b5cf6;   /* purple-500 */
+  --color-brand-primary:     #8b5cf6;   /* violet-500  */
+  --color-brand-primary-dim: #6d28d9;   /* violet-700  */
+  --color-brand-accent:      #0ea5e9;   /* sky-500 */
   --color-brand-success:     #10b981;   /* emerald-500 */
   --color-brand-warning:     #f59e0b;   /* amber-500 */
   --color-brand-danger:      #ef4444;   /* red-500 */
 
   /* ─── Status Colors (mirrors bot domain/entities.py status slugs) ── */
   --color-status-pending:    #f59e0b;
-  --color-status-offered:    #3b82f6;
-  --color-status-accepted:   #8b5cf6;
+  --color-status-offered:    #8b5cf6;
+  --color-status-accepted:   #0ea5e9;
   --color-status-finished:   #10b981;
   --color-status-denied:     #ef4444;
 
   /* ─── Surface / Background ──────────────────────────────── */
-  --color-bg-base:      #020617;  /* slate-950 */
+  --color-bg-base:      #020617;  /* slate-950 (deepest dark blue) */
   --color-bg-surface:   #0f172a;  /* slate-900 */
   --color-bg-elevated:  #1e293b;  /* slate-800 */
-  --color-bg-glass:     rgba(255, 255, 255, 0.05);
+  --color-bg-glass:     rgba(15, 23, 42, 0.4);
 
   /* ─── Text ──────────────────────────────────────────────── */
-  --color-text-primary:   #f1f5f9;  /* slate-100 */
+  --color-text-primary:   #f8fafc;  /* slate-50 */
   --color-text-secondary: #94a3b8;  /* slate-400 */
-  --color-text-muted:     #475569;  /* slate-600 */
+  --color-text-muted:     #64748b;  /* slate-500 */
 
   /* ─── Borders ───────────────────────────────────────────── */
-  --color-border-default: #1e293b;  /* slate-800 */
-  --color-border-subtle:  rgba(255, 255, 255, 0.10);
+  --color-border-default: rgba(255, 255, 255, 0.08);
+  --color-border-subtle:  rgba(255, 255, 255, 0.03);
 
   /* ─── Border Radius ─────────────────────────────────────── */
   --radius-sm:  0.5rem;   /* 8px  */
@@ -48,27 +48,28 @@
   --radius-xl:  1.5rem;   /* 24px */
 
   /* ─── Blur ──────────────────────────────────────────────── */
-  --blur-glass: 16px;
+  --blur-glass: 24px;
 
   /* ─── Shadows ───────────────────────────────────────────── */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.40);
-  --shadow-brand: 0 4px 16px rgba(59, 130, 246, 0.25);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --shadow-brand: 0 4px 20px rgba(139, 92, 246, 0.4); /* violet glow */
+  --shadow-danger: 0 4px 20px rgba(239, 68, 68, 0.4); /* red glow */
 
   /* ─── Chart Dimensions ──────────────────────────────────── */
   --chart-height-default: 250px;
   --chart-height-pie:     260px;
   --chart-inner-radius:   70px;
   --chart-outer-radius:   110px;
-  --chart-dot-radius:     4px;
-  --chart-active-dot-radius: 6px;
+  --chart-dot-radius:     5px;
+  --chart-active-dot-radius: 7px;
 
   /* ─── Animation ─────────────────────────────────────────── */
   --duration-fast:   150ms;
-  --duration-normal: 200ms;
-  --duration-slow:   300ms;
+  --duration-normal: 250ms;
+  --duration-slow:   400ms;
   --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ─── Layout ────────────────────────────────────────────── */
-  --sidebar-width: 16rem;  /* 256px */
-  --header-height: 4rem;   /* 64px  */
+  --sidebar-width: 17rem;  /* slightly wider for breathing room */
+  --header-height: 4.5rem; /* 72px */
 }

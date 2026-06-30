@@ -22,10 +22,19 @@ const STATUS_LABELS = {
 };
 const PIE_FALLBACK_COLORS = Object.values(colors.status);
 
+import SkeletonLoader from '../components/ui/SkeletonLoader';
+
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-10 h-10 text-brand-primary animate-spin" />
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        {[1, 2, 3, 4].map(i => <SkeletonLoader key={i} className="h-32" />)}
+      </div>
+      <SkeletonLoader className="h-48" />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <SkeletonLoader className="h-64" />
+        <SkeletonLoader className="h-64" />
+      </div>
     </div>
   );
 }
@@ -110,6 +119,7 @@ export default function Dashboard() {
               subtitle="From accepted & finished projects"
               icon={Banknote}
               color="green"
+              to="/projects"
             />
             <StatCard
               title="Total Projects"
@@ -117,6 +127,7 @@ export default function Dashboard() {
               subtitle="All submissions ever"
               icon={FolderOpen}
               color="blue"
+              to="/projects"
             />
             <StatCard
               title="Conversion Rate"
@@ -124,6 +135,7 @@ export default function Dashboard() {
               subtitle="Finished / Total projects"
               icon={TrendingUp}
               color="purple"
+              to="/projects"
             />
             <StatCard
               title="Finished Projects"
@@ -131,6 +143,7 @@ export default function Dashboard() {
               subtitle="Successfully delivered"
               icon={CheckCircle}
               color="amber"
+              to="/projects"
             />
           </div>
 

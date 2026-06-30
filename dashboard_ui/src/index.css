@@ -1,5 +1,5 @@
 /* ─── Google Font ──────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* ─── Design Tokens (must be first) ─────────────────────── */
 @import './styles/tokens.css';
@@ -12,28 +12,31 @@
   body {
     background-color: var(--color-bg-base);
     color: var(--color-text-primary);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* subtle background glow */
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.04), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.04), transparent 25%);
   }
 
   /* Thin, themed scrollbar */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 }
 
 @layer utilities {
   /**
    * Glassmorphism utility. Uses tokens from tokens.css.
-   * DO NOT duplicate this inline in components — always use class="glass".
-   * Note: glass already includes a border. Don't add another border class on top.
    */
   .glass {
     background-color: var(--color-bg-glass);
     backdrop-filter: blur(var(--blur-glass));
     -webkit-backdrop-filter: blur(var(--blur-glass));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   /* Animated blob gradient for login background */

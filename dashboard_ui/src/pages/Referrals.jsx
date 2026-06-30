@@ -7,6 +7,7 @@ import {
   Users, UserPlus, Banknote, ChevronDown, ChevronRight,
   Loader2, AlertCircle, RefreshCw, GitBranch, Coins,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -76,22 +77,22 @@ function ReferralRow({ referral }) {
   const hasCommissions = referral.commissions?.length > 0;
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border/50 rounded-lg overflow-hidden bg-surface-elevated/30">
       <button
         onClick={() => hasCommissions && setOpen(o => !o)}
         className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors ${
           hasCommissions
             ? 'hover:bg-surface-elevated cursor-pointer'
-            : 'cursor-default'
+            : 'cursor-default opacity-80'
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-brand-primary/10 text-brand-primary font-bold text-xs">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary font-bold text-xs border border-brand-primary/20 shadow-[0_0_10px_rgba(139,92,246,0.1)]">
             {String(referral.user_id).slice(-2)}
           </div>
           <div className="text-left">
             <span className="text-text-primary font-medium">User&nbsp;{referral.user_id}</span>
-            <p className="text-[11px] text-text-muted">Joined {fmtDate(referral.joined_at)}</p>
+            <p className="text-[11px] text-text-muted mt-0.5">Joined {fmtDate(referral.joined_at)}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -103,28 +104,37 @@ function ReferralRow({ referral }) {
             <span className="text-[11px] text-text-muted">No projects yet</span>
           )}
           {hasCommissions && (
-            open ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronRight size={14} className="text-text-muted" />
+            <motion.div animate={{ rotate: open ? 180 : 0 }} className="text-text-muted">
+              <ChevronDown size={14} />
+            </motion.div>
           )}
         </div>
       </button>
 
       {/* Commission log rows */}
-      {open && hasCommissions && (
-        <div className="border-t border-border divide-y divide-border bg-surface">
-          {referral.commissions.map((c, i) => (
-            <div key={i} className="flex items-center justify-between px-6 py-2.5 text-xs text-text-secondary">
-              <div className="flex items-center gap-2">
-                <span className="text-text-muted">#{c.project_id}</span>
-                <span className="text-text-primary">{c.project_subject || '(no subject)'}</span>
+      <AnimatePresence>
+        {open && hasCommissions && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="border-t border-border/50 divide-y divide-border/30 bg-surface/50 overflow-hidden"
+          >
+            {referral.commissions.map((c, i) => (
+              <div key={i} className="flex items-center justify-between px-6 py-3 text-xs text-text-secondary hover:bg-brand-primary/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-brand-accent/70 font-mono">#{c.project_id}</span>
+                  <span className="text-text-primary font-medium">{c.project_subject || '(no subject)'}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <CommissionBadge amount={c.amount} />
+                  <span className="text-text-muted">{fmtDate(c.earned_at)}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <CommissionBadge amount={c.amount} />
-                <span className="text-text-muted">{fmtDate(c.earned_at)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -134,63 +144,74 @@ function ReferrerCard({ referrer }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="glass rounded-xl border border-border overflow-hidden">
+    <div className="glass rounded-xl border border-border overflow-hidden transition-shadow duration-normal hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
       {/* Header */}
       <button
         onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-elevated transition-colors"
+        className="w-full flex items-center justify-between px-6 py-5 hover:bg-surface-elevated/50 transition-colors relative overflow-hidden"
       >
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-brand-primary/15 border border-brand-primary/30 text-brand-primary font-bold text-sm">
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-bold text-sm shadow-[0_0_20px_rgba(139,92,246,0.15)]">
             {String(referrer.referrer_id).slice(-2)}
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-text-primary">User {referrer.referrer_id}</p>
-            <p className="text-xs text-text-muted mt-0.5">
+            <p className="text-base font-bold text-text-primary">User {referrer.referrer_id}</p>
+            <p className="text-xs text-brand-accent/80 font-medium mt-0.5">
               {referrer.referral_count} {referrer.referral_count === 1 ? 'referral' : 'referrals'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8 relative z-10">
           {/* Balance */}
           <div className="text-right hidden sm:block">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide">Balance</p>
-            <p className="text-sm font-semibold text-text-primary">{fmt(referrer.current_balance)} ل.س</p>
+            <p className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-0.5">Balance</p>
+            <p className="text-sm font-bold text-text-primary">{fmt(referrer.current_balance)} ل.س</p>
           </div>
           {/* Total earned */}
           <div className="text-right hidden sm:block">
-            <p className="text-[11px] text-text-muted uppercase tracking-wide">Total Earned</p>
-            <p className="text-sm font-semibold text-emerald-400">{fmt(referrer.total_earned)} ل.س</p>
+            <p className="text-[10px] text-text-muted uppercase tracking-widest font-semibold mb-0.5">Total Earned</p>
+            <p className="text-sm font-bold text-brand-success drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">{fmt(referrer.total_earned)} ل.س</p>
           </div>
           {/* Expand icon */}
-          <div className="text-text-muted">
-            {expanded
-              ? <ChevronDown size={16} />
-              : <ChevronRight size={16} />
-            }
-          </div>
+          <motion.div animate={{ rotate: expanded ? 180 : 0 }} className="text-text-muted bg-surface-elevated p-1.5 rounded-md border border-border">
+            <ChevronDown size={16} />
+          </motion.div>
         </div>
       </button>
 
       {/* Mobile balance strip */}
-      <div className="flex sm:hidden items-center justify-between px-5 py-2 bg-surface/50 border-t border-border text-xs text-text-secondary">
+      <div className="flex sm:hidden items-center justify-between px-5 py-3 bg-surface border-t border-border/50 text-xs text-text-secondary">
         <span>Balance: <strong className="text-text-primary">{fmt(referrer.current_balance)} ل.س</strong></span>
-        <span>Earned: <strong className="text-emerald-400">{fmt(referrer.total_earned)} ل.س</strong></span>
+        <span>Earned: <strong className="text-brand-success">{fmt(referrer.total_earned)} ل.س</strong></span>
       </div>
 
       {/* Referral list */}
-      {expanded && (
-        <div className="px-5 py-4 border-t border-border space-y-2 bg-surface/30">
-          {referrer.referrals.length === 0 ? (
-            <p className="text-sm text-text-muted text-center py-4">No referrals listed</p>
-          ) : (
-            referrer.referrals.map(r => (
-              <ReferralRow key={r.user_id} referral={r} />
-            ))
-          )}
-        </div>
-      )}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-5 py-5 border-t border-border/50 space-y-3 bg-surface/30 overflow-hidden"
+          >
+            {referrer.referrals.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-6 font-medium">No referrals listed</p>
+            ) : (
+              referrer.referrals.map((r, i) => (
+                <motion.div 
+                  key={r.user_id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <ReferralRow referral={r} />
+                </motion.div>
+              ))
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
