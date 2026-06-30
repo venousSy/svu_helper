@@ -96,6 +96,93 @@ class UserReferralRepository:
         logger.info("Withdrawal request saved", user_id=req.user_id,
                     request_id=req.request_id, amount=req.amount)
 
+    async def mark_withdrawal_paid(
+        self,
+        request_id: str,
+        processed_by: str,
+        shamcash_ref: Optional[str] = None,
+    ) -> dict:
+        """
+        Atomically marks a pending withdrawal as processed.
+
+        Returns the updated document.
+        Raises ValueError if the request is not found or already processed (double-pay guard).
+        """
+        from pymongo import ReturnDocument
+        update: dict = {
+            "status": "processed",
+            "processed_at": datetime.now(timezone.utc),
+            "processed_by": processed_by,
+        }
+        if shamcash_ref:
+            update["shamcash_ref"] = shamcash_ref.strip()
+
+        doc = await self._db.withdrawal_requests.find_one_and_update(
+            {"request_id": request_id, "status": "pending"},
+            {"$set": update},
+            return_document=ReturnDocument.AFTER,
+        )
+        if doc is None:
+            existing = await self._db.withdrawal_requests.find_one({"request_id": request_id})
+            if existing is None:
+                raise ValueError(f"Withdrawal request '{request_id}' not found")
+            raise ValueError(
+                f"Withdrawal request '{request_id}' is already '{existing['status']}'"
+            )
+        logger.info("Withdrawal paid via bot", request_id=request_id,
+                    user_id=doc["user_id"], amount=doc["amount"], by=processed_by)
+        return doc
+
+    async def reject_withdrawal(
+        self,
+        request_id: str,
+        processed_by: str,
+    ) -> dict:
+        """
+        Atomically marks a pending withdrawal as rejected.
+        Does NOT restore the balance — caller must call restore_balance() explicitly.
+
+        Raises ValueError if not found or already processed.
+        """
+        from pymongo import ReturnDocument
+        doc = await self._db.withdrawal_requests.find_one_and_update(
+            {"request_id": request_id, "status": "pending"},
+            {"$set": {
+                "status": "rejected",
+                "processed_at": datetime.now(timezone.utc),
+                "processed_by": processed_by,
+            }},
+            return_document=ReturnDocument.AFTER,
+        )
+        if doc is None:
+            existing = await self._db.withdrawal_requests.find_one({"request_id": request_id})
+            if existing is None:
+                raise ValueError(f"Withdrawal request '{request_id}' not found")
+            raise ValueError(
+                f"Withdrawal request '{request_id}' is already '{existing['status']}'"
+            )
+        logger.info("Withdrawal rejected via bot", request_id=request_id,
+                    user_id=doc["user_id"], amount=doc["amount"], by=processed_by)
+        return doc
+
+    async def restore_balance(self, user_id: int, amount: float) -> None:
+        """Atomically restores a user's balance (used after withdrawal rejection)."""
+        await self._db.referral_users.update_one(
+            {"user_id": user_id},
+            {"$inc": {"balance": amount}},
+        )
+        logger.info("Balance restored after rejection", user_id=user_id, amount=amount)
+
+    async def get_all_withdrawal_requests(
+        self, status_filter: Optional[str] = None
+    ) -> List[dict]:
+        """Lists all withdrawal requests, optionally filtered by status."""
+        query = {}
+        if status_filter:
+            query["status"] = status_filter
+        cursor = self._db.withdrawal_requests.find(query).sort("requested_at", -1)
+        return await cursor.to_list(length=500)
+
     # ── CommissionLog ────────────────────────────────────────────────────────
 
     async def save_commission_log(self, log: CommissionLog) -> None:

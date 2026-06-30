@@ -203,8 +203,12 @@ class WithdrawalRequest(BaseModel):
     amount: float
     shamcash_address: str
     shamcash_name: str
-    status: str = "pending"   # "pending" | "processed"
+    status: str = "pending"   # "pending" | "processed" | "rejected"
     requested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # ── Admin processing fields (set when admin acts) ──
+    processed_at: Optional[datetime] = None     # timestamp of admin action
+    processed_by: Optional[str] = None          # "admin_bot" or dashboard username
+    shamcash_ref: Optional[str] = None          # ShamCash transaction reference (optional)
 
 
 class CommissionLog(BaseModel):

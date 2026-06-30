@@ -1,14 +1,33 @@
 import { NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, GitBranch } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, GitBranch, Banknote } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import apiClient from '../../api/client';
 
 const navLinks = [
   { to: '/', icon: LayoutDashboard, label: 'Overview' },
   { to: '/projects', icon: FolderKanban, label: 'Projects' },
   { to: '/referrals', icon: GitBranch, label: 'Referrals' },
+  { to: '/withdrawals', icon: Banknote, label: 'Withdrawals' },
 ];
 
 export default function Sidebar() {
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    // Fetch pending withdrawal count for sidebar badge
+    apiClient.get('/withdrawals/stats')
+      .then(res => setPendingCount(res.data.pending_count || 0))
+      .catch(() => {});
+    // Refresh every 60 seconds
+    const id = setInterval(() => {
+      apiClient.get('/withdrawals/stats')
+        .then(res => setPendingCount(res.data.pending_count || 0))
+        .catch(() => {});
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <aside className="flex flex-col w-[var(--sidebar-width)] min-h-screen bg-surface/80 backdrop-blur-xl border-r border-border shrink-0 relative overflow-hidden">
       {/* Background ambient glow */}
@@ -52,7 +71,13 @@ export default function Sidebar() {
                   />
                 )}
                 <Icon size={18} className="relative z-10" />
-                <span className="relative z-10">{label}</span>
+                <span className="relative z-10 flex-1">{label}</span>
+                {/* Pending badge on Withdrawals link */}
+                {label === 'Withdrawals' && pendingCount > 0 && (
+                  <span className="relative z-10 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse">
+                    {pendingCount}
+                  </span>
+                )}
               </>
             )}
           </NavLink>

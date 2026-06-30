@@ -4,6 +4,7 @@ from .broadcast import router as broadcast_router
 from .dashboard import router as dashboard_router
 from .offers import router as offers_router
 from .payments import router as payments_router
+from .referral_pay import router as referral_pay_router
 from .tickets import router as tickets_router
 from .views import router as views_router
 
@@ -16,3 +17,4 @@ router.include_router(views_router)
 router.include_router(offers_router)
 router.include_router(payments_router)
 router.include_router(broadcast_router)
+router.include_router(referral_pay_router)

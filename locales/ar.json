@@ -111,6 +111,8 @@
         "referral_info": "🔗 رابط الإحالة الخاص بك:\n`{link}`\n\n💰 رصيدك الحالي: *{balance:.0f} ل.س*",
         "reward_received": "🎉 تهانينا! حصلت على عمولة *{amount:.0f} ل.س* بسبب إحالتك.",
         "referral_joined": "👋 مستخدم جديد انضمّ عبر رابط إحالتك! ستحصل على عمولة عند إتمامه أول مشروع.",
+        "withdrawal_paid": "✅ تم تحويل *{amount:.0f} ل.س* إلى حساب ShamCash الخاص بك.{ref_line}\nتحقق من تطبيق ShamCash.",
+        "withdrawal_rejected_admin": "❌ عذراً، تعذّر معالجة طلب سحبك.\nتمت إعادة *{amount:.0f} ل.س* إلى رصيدك تلقائياً.",
         "withdrawal_ask_address": "أدخل عنوان حساب ShamCash الخاص بك:",
         "withdrawal_ask_name": "أدخل الاسم المسجّل في حساب ShamCash:",
         "withdrawal_ask_amount": "أدخل المبلغ الذي تريد سحبه بالليرة السورية (الحد الأدنى 500 ل.س):",
