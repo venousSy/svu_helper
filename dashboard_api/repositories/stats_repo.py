@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from infrastructure.mongo_db import get_db
 
 async def aggregate_project_volume(start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict[str, Any]]:
