@@ -12,6 +12,7 @@
   body {
     background-color: var(--color-bg-base);
     color: var(--color-text-primary);
+    color-scheme: dark;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
