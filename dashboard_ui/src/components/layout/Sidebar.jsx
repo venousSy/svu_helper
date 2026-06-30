@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, GitBranch } from 'lucide-react';
 
 const navLinks = [
   { to: '/', icon: LayoutDashboard, label: 'Overview' },
   { to: '/projects', icon: FolderKanban, label: 'Projects' },
+  { to: '/referrals', icon: GitBranch, label: 'Referrals' },
 ];
 
 export default function Sidebar() {

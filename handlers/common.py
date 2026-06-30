@@ -4,7 +4,7 @@ Common Handlers Module
 Manages universal bot commands like /start, /help, and /cancel,
 as well as basic main menu navigation logic.
 """
-
+import structlog
 from aiogram import Router, types, F
 from aiogram.filters import Command, CommandObject, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -20,6 +20,7 @@ from utils.constants import (
     MSG_DATE_SELECTED_DELIVERY,
     MSG_HELP,
     MSG_NO_ACTIVE_PROCESS,
+    MSG_REFERRAL_JOINED,
     MSG_WELCOME,
 )
 from keyboards.factory import KeyboardFactory
@@ -36,14 +37,33 @@ async def welcome(
     message: types.Message,
     command: CommandObject,
     user_referral_repo,  # injected
+    bot,
 ):
     """Greets the user and processes referral links if present."""
-    referred_by = None
-    if command.args and command.args.isdigit():
+    logger = structlog.get_logger(__name__)
+
+    referred_by: int | None = None
+    if command.args and command.args.isdecimal():
         referred_by = int(command.args)
+
+    # Check if the user already exists before the upsert
+    existing = await user_referral_repo.get_user(message.from_user.id)
+    is_new_user = existing is None
 
     # Upsert user and record referral if applicable
     await user_referral_repo.get_or_create_user(message.from_user.id, referred_by)
+
+    # Notify the referrer only once — when the referred user is brand-new
+    if is_new_user and referred_by and referred_by != message.from_user.id:
+        try:
+            await bot.send_message(referred_by, MSG_REFERRAL_JOINED)
+        except Exception as exc:
+            logger.warning(
+                "Could not notify referrer of new registration",
+                referrer_id=referred_by,
+                new_user_id=message.from_user.id,
+                error=str(exc),
+            )
 
     await message.answer(MSG_WELCOME, reply_markup=KeyboardFactory.student_main())
 

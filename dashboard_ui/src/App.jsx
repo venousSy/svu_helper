@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import Referrals from './pages/Referrals';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
@@ -42,6 +43,16 @@ function App() {
                 </ErrorBoundary>
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/referrals"
+            element={
+              <ProtectedRoute>
+                <ErrorBoundary>
+                  <Referrals />
+                </ErrorBoundary>
+              </ProtectedRoute>
+            }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

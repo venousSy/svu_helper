@@ -14,6 +14,7 @@ from dashboard_api.api.routers.auth import router as auth_router
 from dashboard_api.api.routers.stats import router as stats_router
 from dashboard_api.api.routers.projects import router as projects_router
 from dashboard_api.api.routers.files import router as files_router
+from dashboard_api.api.routers.referrals import router as referrals_router
 
 logger = structlog.get_logger(__name__)
 
@@ -66,6 +67,7 @@ app.include_router(auth_router)
 app.include_router(stats_router)
 app.include_router(projects_router)
 app.include_router(files_router)
+app.include_router(referrals_router)
 
 # ── Serve React SPA ───────────────────────────────────────
 # Only mount static files if the dist folder exists (built React app).

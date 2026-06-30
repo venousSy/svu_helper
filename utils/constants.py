@@ -489,6 +489,7 @@ BTN_TEAM_MENU = _msgs["teams"]["team_btn"]
 # --- REFERRAL SYSTEM ---
 MSG_REFERRAL_INFO             = _msgs["messages"]["referral_info"]
 MSG_REWARD_RECEIVED           = _msgs["messages"]["reward_received"]
+MSG_REFERRAL_JOINED           = _msgs["messages"]["referral_joined"]
 MSG_WITHDRAWAL_ASK_ADDRESS    = _msgs["messages"]["withdrawal_ask_address"]
 MSG_WITHDRAWAL_ASK_NAME       = _msgs["messages"]["withdrawal_ask_name"]
 MSG_WITHDRAWAL_ASK_AMOUNT     = _msgs["messages"]["withdrawal_ask_amount"]
