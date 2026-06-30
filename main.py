@@ -146,17 +146,24 @@ async def urgent_cases_job(bot: Bot):
         await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
 
 async def e2e_tests_job(bot: Bot):
-    """Background task to run E2E tests every 6 hours and notify admins on failure."""
+    """Background task to run E2E tests on startup, then every 6 hours and notify admins on failure."""
     from utils.helpers import notify_admins
-    from utils.constants import MSG_TESTS_FAILED, MSG_TESTS_ERROR
+    from utils.constants import MSG_TESTS_FAILED, MSG_TESTS_ERROR, MSG_TESTS_RUNNING_STARTUP
     import html
     
-    # Wait an hour before first run to ensure bot is fully up
-    await asyncio.sleep(60 * 60)
+    # Wait a few seconds to ensure bot is fully up before running startup tests
+    await asyncio.sleep(10)
+    
+    is_startup = True
     
     while True:
         try:
-            logger.info("Running automated 6-hour E2E tests...")
+            if is_startup:
+                await notify_admins(bot, MSG_TESTS_RUNNING_STARTUP, parse_mode="HTML")
+                logger.info("Running automated E2E tests on startup...")
+            else:
+                logger.info("Running automated 6-hour E2E tests...")
+
             process = await asyncio.create_subprocess_shell(
                 "python tests/e2e_full_suite_isolated.py",
                 stdout=asyncio.subprocess.PIPE,
@@ -181,6 +188,7 @@ async def e2e_tests_job(bot: Bot):
             logger.error("Error in e2e tests background job", error=str(e), exc_info=True)
             await notify_admins(bot, MSG_TESTS_ERROR.format(str(e)), parse_mode="HTML")
             
+        is_startup = False
         await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
 
 # --- MAIN ENTRY POINT ---

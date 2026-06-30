@@ -111,6 +111,7 @@ MSG_TESTS_RUNNING = _msgs["messages"]["tests_running"]
 MSG_TESTS_SUCCESS = _msgs["messages"]["tests_success"]
 MSG_TESTS_FAILED = _msgs["messages"]["tests_failed"]
 MSG_TESTS_ERROR = _msgs["messages"]["tests_error"]
+MSG_TESTS_RUNNING_STARTUP = _msgs["messages"]["tests_running_startup"]
 
 # --- COMMANDS ---
 CMD_START = _msgs["commands"]["start"]
