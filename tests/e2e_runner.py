@@ -65,7 +65,8 @@ async def main():
     await init_db()
     from infrastructure.repositories import SettingsRepository
     from application.admin_service import MaintenanceService
-    await MaintenanceService(SettingsRepository()).disable()
+    from infrastructure.mongo_db import Database
+    await MaintenanceService(SettingsRepository(Database.db)).disable()
 
     target_suites = list(SUITES.keys())
     if args.failed_only:
