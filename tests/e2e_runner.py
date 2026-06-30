@@ -63,6 +63,9 @@ async def main():
     args = parser.parse_args()
 
     await init_db()
+    from infrastructure.repositories import SettingsRepository
+    from application.admin_service import MaintenanceService
+    await MaintenanceService(SettingsRepository()).disable()
 
     target_suites = list(SUITES.keys())
     if args.failed_only:

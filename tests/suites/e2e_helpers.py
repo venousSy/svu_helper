@@ -68,8 +68,9 @@ async def click_inline_button(client, msg, text_match, error_msg="Button not fou
     if not target_btn:
         raise Exception(f"{error_msg}. Button containing '{text_match}' not found.")
     await asyncio.sleep(0.6)
-    await msg.click(data=target_btn.data)
+    res = await msg.click(data=target_btn.data)
     await asyncio.sleep(2)
+    return res
 
 async def submit_project(
     student,
